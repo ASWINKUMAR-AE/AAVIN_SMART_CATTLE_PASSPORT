@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aavin Smart Cattle Passport — Executive Master Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0A3871;
+      --primary-dark: #072750;
+      --primary-light: #EBF3FC;
+      --emerald: #059669;
+      --emerald-light: #ECFDF5;
+      --amber: #D97706;
+      --amber-light: #FFFBEB;
+      --crimson: #DC2626;
+      --crimson-light: #FEF2F2;
+      --slate-900: #0F172A;
+      --slate-800: #1E293B;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748B;
+      --slate-200: #E2E8F0;
+      --slate-100: #F1F5F9;
+      --slate-50: #F8FAFC;
+      --white: #FFFFFF;
+      --radius: 12px;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--slate-50);
+      color: var(--slate-800);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+
+    /* Print Controls */
+    .top-actions {
+      position: sticky;
+      top: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--slate-200);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--white);
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* Hero Banner */
+    .hero-card {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      color: var(--white);
+      border-radius: var(--radius);
+      padding: 40px;
+      margin-bottom: 36px;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .hero-title {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .hero-sub {
+      font-size: 16px;
+      opacity: 0.9;
+      max-width: 800px;
+      font-weight: 400;
+    }
+
+    /* Grid Layouts */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .icon-blue { background: var(--primary-light); color: var(--primary); }
+    .icon-green { background: var(--emerald-light); color: var(--emerald); }
+    .icon-amber { background: var(--amber-light); color: var(--amber); }
+    .icon-red { background: var(--crimson-light); color: var(--crimson); }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--slate-900);
+    }
+
+    /* Section Headings */
+    .section-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin: 40px 0 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 2px solid var(--slate-200);
+      padding-bottom: 10px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-clear { background: var(--emerald-light); color: var(--emerald); border: 1px solid #A7F3D0; }
+    .badge-review { background: var(--amber-light); color: var(--amber); border: 1px solid #FDE68A; }
+    .badge-hold { background: var(--crimson-light); color: var(--crimson); border: 1px solid #FECACA; }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+      background: var(--white);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--slate-200);
+    }
+
+    th {
+      background: var(--slate-100);
+      color: var(--slate-700);
+      font-weight: 700;
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 2px solid var(--slate-200);
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--slate-200);
+      color: var(--slate-700);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #FAFAFC;
+    }
+
+    /* Flow Step Diagram */
+    .flow-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .flow-step {
+      flex: 1;
+      min-width: 150px;
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      position: relative;
+    }
+
+    .flow-step-num {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin: 0 auto 8px auto;
+    }
+
+    .flow-step-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--slate-900);
+    }
+
+    .flow-step-desc {
+      font-size: 11px;
+      color: var(--slate-500);
+      margin-top: 4px;
+    }
+
+    /* Code Blocks */
+    pre, code {
+      font-family: 'JetBrains Mono', Consolas, monospace;
+      font-size: 13px;
+    }
+
+    pre {
+      background: var(--slate-900);
+      color: #E2E8F0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    .formula-box {
+      background: var(--primary-light);
+      border: 1px dashed var(--primary);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--primary-dark);
+      font-weight: 600;
+      margin: 16px 0;
+    }
+
+    /* Print Styles */
+    @media print {
+      .top-actions { display: none !important; }
+      body { background: #FFFFFF; font-size: 11pt; }
+      .container { max-width: 100%; padding: 0; }
+      .card { page-break-inside: avoid; border: 1px solid #CCC; box-shadow: none; }
+      .section-title { page-break-before: auto; }
+      pre { background: #F1F5F9; color: #0F172A; border: 1px solid #CBD5E1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Print Toolbar -->
+  <div class="top-actions">
+    <div style="font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+      <span>🐄</span> Aavin Smart Cattle Passport — Technical Reference
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button onclick="window.print()" class="btn btn-primary">
+        🖨️ Print / Save as PDF
+      </button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Hero Header -->
+    <div class="hero-card">
+      <div class="hero-tag">Aavin Madurai District Cooperative Milk Producers Union</div>
+      <h1 class="hero-title">Aavin Smart Cattle Passport & Milk Safety Twin</h1>
+      <p class="hero-sub">
+        End-to-end dairy supply chain ecosystem digitizing cattle health, clinical withdrawal periods, instant analyzer testing, transparent 15-day farmer billing, and cold chain logistics.
+      </p>
+    </div>
+
+    <!-- Core End to End Flow Diagram -->
+    <div class="card" style="margin-bottom: 32px;">
+      <div class="card-header">
+        <div class="icon-box icon-blue">🔄</div>
+        <div>
+          <div class="card-title">Core End-to-End Operational Lifecycle</div>
+          <div style="font-size: 13px; color: var(--slate-500);">From farmer cattle registration to consumer milk safety assurance</div>
+        </div>
+      </div>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="flow-step-num">1</div>
+          <div class="flow-step-title">Cow Passport</div>
+          <div class="flow-step-desc">Opaque QR tag & health profile</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">2</div>
+          <div class="flow-step-title">Vet Clinical Rx</div>
+          <div class="flow-step-desc">Treatment & withdrawal lockout</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">3</div>
+          <div class="flow-step-title">Milk Collection</div>
+          <div class="flow-step-desc">FAT, SNF & temp analyzer test</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">4</div>
+          <div class="flow-step-title">Safety Twin</div>
+          <div class="flow-step-desc">CLEAR / REVIEW / HOLD engine</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">5</div>
+          <div class="flow-step-title">Tanker Dispatch</div>
+          <div class="flow-step-desc">Chilled transit & custody check</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">6</div>
+          <div class="flow-step-title">15-Day Payout</div>
+          <div class="flow-step-desc">Transparent direct billing</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Pillars -->
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-box icon-green">🧪</div>
+          <div class="card-title">Safety Twin Engine</div>
+        </div>
+        <p style="font-size: 13px; color: var(--slate-600);">
+          100% deterministic rules-based validation. Cross-examines veterinary withdrawal restriction dates, adulteration screenings, FAT/SNF readings, and milk temperature.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-box icon-blue">💰</div>
+          <div class="card-title">15-Day Fortnight Billing</div>
+        </div>
+        <p style="font-size: 13px; color: var(--slate-600);">
+          Transparent quality-based payout formula. Base rate of ₹36/L with automated point increments for FAT (>4.0%) and SNF (>8.5%) plus flat purity incentives.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-box icon-amber">🤖</div>
+          <div class="card-title">Bilingual AI Advisor</div>
+        </div>
+        <p style="font-size: 13px; color: var(--slate-600);">
+          Grounded conversational advisory in Tamil (தமிழ்) and English. Strict zero-hallucination isolation from clinical prescriptions and payment formulas.
+        </p>
+      </div>
+    </div>
+
+    <!-- 6 User Roles -->
+    <h2 class="section-title">👥 The 6 Ecosystem Actors & Role Matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Demo Login</th>
+          <th>Primary Responsibilities</th>
+          <th>Key Actions & Features</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>🌾 Farmer</strong></td>
+          <td><code>farmer_murugan</code><br><code>farmer_selvi</code></td>
+          <td>Cattle ownership, daily milking logs, feeding records</td>
+          <td>Digital Cow Passport, daily yield charts, AI chat, payment receipts</td>
+        </tr>
+        <tr>
+          <td><strong>🩺 Veterinarian</strong></td>
+          <td><code>vet_anand</code></td>
+          <td>Clinical checkups, vaccine administration, antibiotic prescriptions</td>
+          <td>Medicine catalog Rx, automatic withdrawal calculation, safety locks</td>
+        </tr>
+        <tr>
+          <td><strong>🥛 Centre Operator</strong></td>
+          <td><code>operator_kannan</code></td>
+          <td>Milk intake, analyzer test entry, receipt generation</td>
+          <td>QR scanner, instant CLEAR/REVIEW/HOLD reveal, session settlement</td>
+        </tr>
+        <tr>
+          <td><strong>🚛 Transport Vendor</strong></td>
+          <td><code>vendor_kumar</code></td>
+          <td>Cold chain batch logistics from rural centres to dairy plant</td>
+          <td>Batch custody transfer, tanker temperature logs, discrepancy reports</td>
+        </tr>
+        <tr>
+          <td><strong>👑 Aavin Admin</strong></td>
+          <td><code>admin_aavin</code></td>
+          <td>Overall network audit, pricing policy, AI switchboard</td>
+          <td>Safety hold supervisor review, cycle payout approval, usage logs</td>
+        </tr>
+        <tr>
+          <td><strong>💻 Web QR Portal</strong></td>
+          <td><code>http://localhost:4000/qr-portal</code></td>
+          <td>Desk operations, visual QR testing, cow token generator</td>
+          <td>High-res QR code generation, live health preview, instant scan testing</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Safety Twin Breakdown -->
+    <h2 class="section-title">🧪 The Deterministic Milk Safety Twin</h2>
+    <div class="card">
+      <div class="card-title" style="margin-bottom: 12px;">4-Domain Decision Logic & Thresholds</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Safety Parameter</th>
+            <th>Standard Standard (<span class="badge badge-clear">CLEAR</span>)</th>
+            <th>Warning Boundary (<span class="badge badge-review">REVIEW</span>)</th>
+            <th>Critical Rejection (<span class="badge badge-hold">HOLD</span>)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Active Vet Withdrawal</strong></td>
+            <td>No active antibiotic restriction</td>
+            <td>—</td>
+            <td>Under active withholding period</td>
+          </tr>
+          <tr>
+            <td><strong>Adulteration Chemical Screen</strong></td>
+            <td>Negative (0 Detected)</td>
+            <td>—</td>
+            <td>Positive (Urea, Starch, Detergent, Sugar)</td>
+          </tr>
+          <tr>
+            <td><strong>Milk FAT %</strong></td>
+            <td>&ge; 3.50%</td>
+            <td>3.00% &ndash; 3.49%</td>
+            <td>&lt; 3.00%</td>
+          </tr>
+          <tr>
+            <td><strong>Milk SNF %</strong></td>
+            <td>&ge; 8.50%</td>
+            <td>8.00% &ndash; 8.49%</td>
+            <td>&lt; 8.00%</td>
+          </tr>
+          <tr>
+            <td><strong>Intake Temperature</strong></td>
+            <td>&le; 10.0&deg;C</td>
+            <td>10.1&deg;C &ndash; 12.0&deg;C</td>
+            <td>&gt; 12.0&deg;C (Spoilage hazard)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="formula-box">
+        💡 Transparent Price Formula: Rate = BaseRate (₹36.00) + [(FAT - 4.0) * 0.30] + [(SNF - 8.5) * 0.20] + QualityIncentive (₹1.00)
+      </div>
+    </div>
+
+    <!-- Tech Stack & Database -->
+    <h2 class="section-title">📊 Technical Architecture & Database Stack</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom: 12px;">📱 Frontend & Backend Stack</div>
+        <ul style="padding-left: 20px; font-size: 13px; color: var(--slate-700);">
+          <li><strong>Mobile App:</strong> React Native 0.81.4, Expo SDK 54, Expo Router v6, TypeScript</li>
+          <li><strong>UI Design:</strong> Cupertino grouped cards, Reanimated springs, Expo Haptics</li>
+          <li><strong>Backend:</strong> Node.js Express TypeScript, Socket.IO, Helmet, Rate-Limit</li>
+          <li><strong>Database Engine:</strong> MySQL via XAMPP / InnoDB, prepared queries, strict FKs</li>
+          <li><strong>AI Engine:</strong> OpenRouter & Self-hosted LLM with non-silent audit fallback</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom: 12px;">🗄️ 40 Relational Tables (InnoDB)</div>
+        <ul style="padding-left: 20px; font-size: 13px; color: var(--slate-700);">
+          <li><strong>Identity:</strong> <code>users</code>, <code>roles</code>, <code>permissions</code>, <code>refresh_tokens</code></li>
+          <li><strong>Passport:</strong> <code>cows</code>, <code>cow_qr_tokens</code>, <code>cow_owner_history</code></li>
+          <li><strong>Clinical:</strong> <code>medicine_catalog</code>, <code>treatment_records</code>, <code>withdrawal_restrictions</code></li>
+          <li><strong>Intake:</strong> <code>milk_collection_records</code>, <code>milk_quality_tests</code>, <code>milk_safety_decisions</code></li>
+          <li><strong>Logistics & Pay:</strong> <code>milk_batches</code>, <code>batch_movements</code>, <code>farmer_payment_cycles</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Developer Quick Start -->
+    <h2 class="section-title">⚡ Developer Single-Command Execution</h2>
+    <div class="card">
+      <p style="font-size: 14px; margin-bottom: 10px;">To start the backend, QR portal, and Expo mobile dev server simultaneously:</p>
+      <pre><code>npm start</code></pre>
+      <div style="font-size: 13px; color: var(--slate-600); margin-top: 10px;">
+        • <strong>Desktop QR Testing Portal:</strong> <a href="http://localhost:4000/qr-portal" target="_blank">http://localhost:4000/qr-portal</a><br>
+        • <strong>Backend API Base URL:</strong> <code>http://localhost:4000/api/v1</code><br>
+        • <strong>Expo Metro Bundler:</strong> <code>http://localhost:8081</code> (Scan terminal QR code via Expo Go app)
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

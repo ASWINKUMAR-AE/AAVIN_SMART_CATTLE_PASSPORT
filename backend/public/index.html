@@ -1,0 +1,2211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aavin Smart Cattle Passport — Digital Ear-Tag & Milk Safety Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="/qrcode.min.js"></script>
+  <style>
+    :root {
+      --primary: #0072BC;
+      --primary-dark: #004D80;
+      --primary-light: #EBF5FB;
+      --primary-hover: #005F9E;
+      --accent: #F59E0B;
+      --clear: #10B981;
+      --clear-bg: #ECFDF5;
+      --clear-border: #A7F3D0;
+      --hold: #EF4444;
+      --hold-bg: #FEF2F2;
+      --hold-border: #FECACA;
+      --bg: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 16px -2px rgba(0,114,188,0.08);
+      --shadow-lg: 0 12px 30px -4px rgba(0,114,188,0.12);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Brand & Navigation Header */
+    header {
+      background: linear-gradient(135deg, #003B64 0%, #005E9E 50%, #0072BC 100%);
+      color: white;
+      box-shadow: 0 4px 20px rgba(0,59,100,0.25);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: white;
+      cursor: pointer;
+    }
+
+    .brand-logo-badge {
+      width: 48px;
+      height: 48px;
+      background: #FFFFFF;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    }
+
+    .brand-titles h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      line-height: 1.2;
+    }
+
+    .brand-titles p {
+      font-size: 12px;
+      opacity: 0.9;
+      font-weight: 500;
+      color: #E2E8F0;
+    }
+
+    .header-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      text-decoration: none;
+    }
+
+    .btn-white {
+      background: #FFFFFF;
+      color: var(--primary-dark);
+    }
+
+    .btn-white:hover {
+      background: #F1F5F9;
+      transform: translateY(-1px);
+    }
+
+    .btn-emerald {
+      background: #10B981;
+      color: white;
+    }
+
+    .btn-emerald:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-outline:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Sub-Navbar Tabs */
+    .nav-bar {
+      background: rgba(0, 35, 60, 0.4);
+      border-top: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+    }
+
+    .nav-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 28px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-item {
+      padding: 12px 18px;
+      color: rgba(255,255,255,0.8);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .nav-item:hover {
+      color: #FFFFFF;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .nav-item.active {
+      color: #FFFFFF;
+      border-bottom-color: #38BDF8;
+      font-weight: 700;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 28px;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* Page Views */
+    .view-section {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Hero Metric Banner */
+    .hero-banner {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .hero-text h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-bottom: 4px;
+    }
+
+    .hero-text p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      max-width: 680px;
+      line-height: 1.5;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      background: var(--primary-light);
+      padding: 10px 18px;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid rgba(0,114,188,0.12);
+      min-width: 100px;
+    }
+
+    .stat-pill .num {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .stat-pill .lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Filter & Search Bar */
+    .filter-toolbar {
+      background: white;
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .search-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 260px;
+      max-width: 460px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 9px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 13.5px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0,114,188,0.12);
+    }
+
+    .farmer-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-btn {
+      padding: 7px 14px;
+      border-radius: 20px;
+      background: #F1F5F9;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pill-btn:hover {
+      background: #E2E8F0;
+      color: var(--text);
+    }
+
+    .pill-btn.active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* Cattle Grid */
+    .cattle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 22px;
+    }
+
+    /* Cattle Card */
+    .cattle-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cattle-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+      border-color: rgba(0,114,188,0.25);
+    }
+
+    .card-top {
+      background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .owner-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .owner-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      border: 1px solid rgba(0,114,188,0.2);
+    }
+
+    .owner-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .owner-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .badge-status {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .badge-clear {
+      background: var(--clear-bg);
+      color: #065F46;
+      border: 1px solid var(--clear-border);
+    }
+
+    .badge-hold {
+      background: var(--hold-bg);
+      color: #991B1B;
+      border: 1px solid var(--hold-border);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+
+    .card-body {
+      padding: 18px;
+      display: flex;
+      gap: 18px;
+      flex: 1;
+    }
+
+    .qr-box {
+      width: 125px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #FAFAFA;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px dashed #CBD5E1;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .qr-box:hover {
+      background: #F0F9FF;
+      border-color: var(--primary);
+      transform: scale(1.02);
+    }
+
+    .qr-canvas {
+      width: 105px;
+      height: 105px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 6px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .details-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cow-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .cow-tag {
+      display: inline-block;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-family: monospace;
+    }
+
+    .spec-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .spec-item {
+      color: var(--text-muted);
+    }
+
+    .spec-item strong {
+      color: var(--text);
+    }
+
+    .alert-banner {
+      background: var(--hold-bg);
+      border-left: 3px solid var(--hold);
+      padding: 6px 8px;
+      border-radius: 0 6px 6px 0;
+      font-size: 11px;
+      color: #991B1B;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .card-footer {
+      padding: 10px 18px;
+      background: #F8FAFC;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-sm {
+      padding: 6px 11px;
+      font-size: 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-sm:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* Tables */
+    .data-table-card {
+      background: white;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .table-header-box {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #F8FAFC;
+    }
+
+    .table-header-box h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 16.5px;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      background: #F1F5F9;
+      padding: 12px 16px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #F1F5F9;
+      color: var(--text);
+    }
+
+    tr:hover td {
+      background: #F8FAFC;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15,23,42,0.65);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 20px;
+      max-width: 620px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 26px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text-muted);
+      line-height: 1;
+      padding: 4px;
+    }
+
+    .close-btn:hover {
+      color: var(--text);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 9px 13px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0,114,188,0.12);
+    }
+
+    /* Simulator Panel */
+    .simulator-box {
+      background: #F8FAFC;
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .role-btn-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .role-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .role-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .result-display {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0F172A;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      animation: slideUp 0.2s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Printable Badge Style */
+    @media print {
+      header, .nav-bar, .filter-toolbar, .hero-banner, .card-footer, .header-quick-actions, .pill-btn, .search-group {
+        display: none !important;
+      }
+      body, .container {
+        background: white !important;
+        padding: 0 !important;
+      }
+      .view-section {
+        display: block !important;
+      }
+      #view-quarantine, #view-ledger, #view-simulator, #view-guide {
+        display: none !important;
+      }
+      .cattle-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+      }
+      .cattle-card {
+        box-shadow: none !important;
+        border: 2px solid #000 !important;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Brand Header -->
+  <header>
+    <div class="header-main">
+      <div class="brand-group" id="brandBtn">
+        <div class="brand-logo-badge">🥛</div>
+        <div class="brand-titles">
+          <h1>AAVIN SMART CATTLE PASSPORT</h1>
+          <p>Madurai District Co-operative Milk Producers’ Union Ltd. • Digital Twin Platform</p>
+        </div>
+      </div>
+      <div class="header-quick-actions">
+        <button class="btn btn-white" id="btnPrintTags">🖨️ Print Ear Tags</button>
+        <button class="btn btn-emerald" id="btnRegisterTag">➕ Register New Cattle Tag</button>
+      </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <div class="nav-bar">
+      <div class="nav-container">
+        <div class="nav-item active" data-view="tags" id="nav-tags">🏷️ Cattle Ear-Tags & QR Station</div>
+        <div class="nav-item" data-view="simulator" id="nav-simulator">🛡️ Milk Safety Twin & Scanner Simulator</div>
+        <div class="nav-item" data-view="ledger" id="nav-ledger">📊 Milk Collection & Quality Ledger</div>
+        <div class="nav-item" data-view="quarantine" id="nav-quarantine">💊 Quarantine Withdrawal Board</div>
+        <div class="nav-item" data-view="guide" id="nav-guide">📱 Mobile App & Demo Guide</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <div class="container">
+
+    <!-- VIEW 1: CATTLE QR TAGS -->
+    <div id="view-tags" class="view-section active">
+      <!-- Hero Banner -->
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2>Live Digital Ear-Tag & QR Code Station</h2>
+          <p>
+            Point your mobile phone camera running the <strong>Aavin Expo Mobile App</strong> at any QR badge below.
+            The system instantly identifies the cow, evaluates antibiotic withdrawal restrictions, and validates milk collection in real time.
+          </p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-pill">
+            <div class="num" id="statFarmers">2</div>
+            <div class="lbl">Registered Farmers</div>
+          </div>
+          <div class="stat-pill">
+            <div class="num" id="statCows">6</div>
+            <div class="lbl">Cattle In DB</div>
+          </div>
+          <div class="stat-pill">
+            <div class="num" id="statHold" style="color: var(--hold);">1</div>
+            <div class="lbl">Quarantine Hold</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="filter-toolbar">
+        <div class="search-group">
+          <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search cow name, ear tag (e.g. 1001), breed, or lactation..." />
+        </div>
+        <div class="farmer-pills" id="statusFilters">
+          <button class="pill-btn active" data-status="all">📋 All Cattle Tags</button>
+          <button class="pill-btn" data-status="clear">✅ Healthy Clear</button>
+          <button class="pill-btn" data-status="hold">⚠️ Quarantine Hold</button>
+        </div>
+      </div>
+
+
+      <!-- Cattle Cards Grid -->
+      <div class="cattle-grid" id="cattleGrid">
+        <!-- Dynamically populated via JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 2: SCANNER SIMULATOR & MILK SAFETY TWIN -->
+    <div id="view-simulator" class="view-section">
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2>Milk Safety Twin & Role Scan Simulator</h2>
+          <p>
+            Test how different actor roles on the mobile app interact when scanning an ear-tag QR code. Select any cattle tag and switch roles to preview instantaneous digital passport resolution, AI intelligence, and safety twin decisions.
+          </p>
+        </div>
+      </div>
+
+      <div class="data-table-card" style="padding: 24px;">
+        <div class="simulator-box">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+            <div class="form-group" style="margin: 0;">
+              <label>Select Cattle Tag to Scan:</label>
+              <select id="simCowSelect">
+                <!-- Populated via JS -->
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Select Active Actor Role:</label>
+              <div class="role-btn-group" id="roleBtnGroup">
+                <button class="role-btn active" data-role="farmer">👨‍🌾 Farmer</button>
+                <button class="role-btn" data-role="vet">👨‍⚕️ Veterinary Doctor</button>
+                <button class="role-btn" data-role="operator">🥛 Collection Operator</button>
+                <button class="role-btn" data-role="vendor">🚚 Milk Transporter</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="simResultContainer" class="result-display">
+          <!-- Dynamic Simulator output -->
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: MILK COLLECTION & QUALITY LEDGER -->
+    <div id="view-ledger" class="view-section">
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2>Milk Collection & Analyzer Quality Ledger</h2>
+          <p>
+            Verified intake records logged at Melur Primary Milk Producers Co-op Society. Contains FAT%, SNF%, CLR density readings, safety twin approval verdicts, and calculated Fortnight payouts.
+          </p>
+        </div>
+      </div>
+
+      <div class="data-table-card">
+        <div class="table-header-box">
+          <h3>🥛 Recent Society Intake & Analyzer Records (MySQL Live)</h3>
+          <button class="btn btn-sm" id="btnRefreshLedger">🔄 Refresh Ledger</button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Farmer & Code</th>
+                <th>Cattle Tag</th>
+                <th>Session</th>
+                <th>Quantity</th>
+                <th>FAT %</th>
+                <th>SNF %</th>
+                <th>Density</th>
+                <th>Twin Decision</th>
+                <th>Rate / L</th>
+                <th>Total Payout</th>
+              </tr>
+            </thead>
+            <tbody id="collectionTableBody">
+              <tr><td colspan="11" style="text-align: center; padding: 20px;">Loading collection ledger from MySQL...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 4: QUARANTINE WITHDRAWAL BOARD -->
+    <div id="view-quarantine" class="view-section">
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2>Veterinary Antibiotic Quarantine & Withdrawal Monitor</h2>
+          <p>
+            Automated safety enforcement under FSSAI & Aavin standards. Any cattle treated with restricted veterinary drugs is locked out from dairy collection until the mandatory withdrawal period expires.
+          </p>
+        </div>
+      </div>
+
+      <div class="data-table-card">
+        <div class="table-header-box">
+          <h3>💊 Active Withdrawal Restrictions</h3>
+          <button class="btn btn-sm" id="btnRefreshQuarantine">🔄 Check Status</button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Cattle Tag</th>
+                <th>Cow Name</th>
+                <th>Farmer</th>
+                <th>Administered Drug</th>
+                <th>Diagnosis / Reason</th>
+                <th>Authorized Vet</th>
+                <th>Withdrawal End Date</th>
+                <th>Lock Status</th>
+              </tr>
+            </thead>
+            <tbody id="quarantineTableBody">
+              <tr><td colspan="8" style="text-align: center; padding: 20px;">Loading quarantine board...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 5: MOBILE APP & DEMO GUIDE -->
+    <div id="view-guide" class="view-section">
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2>Mobile App & Role Demo Accounts Guide</h2>
+          <p>
+            Use the credentials below to log in to the <strong>Aavin Smart Cattle Passport Mobile App</strong> (running on Expo Go or APK) and test the full field workflow with QR camera scanning.
+          </p>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <div class="data-table-card" style="padding: 20px;">
+          <h3 style="font-family: 'Outfit'; font-size: 16px; margin-bottom: 12px; color: var(--primary);">👨‍🌾 Farmer 1 (Murugan - Melur)</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;"><strong>Username:</strong> <code>farmer_murugan</code><br/><strong>Password:</strong> <code>murugan123</code></p>
+          <ul style="font-size: 12.5px; color: var(--text); padding-left: 18px; line-height: 1.6;">
+            <li>Owns 3 cows: Kamadhenu (#1001), Lakshmi (#1002 [Quarantine]), Gowri (#1005)</li>
+            <li>Can view 14-day production charts & Fortnight payout ledger</li>
+            <li>Can chat with AI Assistant in Tamil/English</li>
+          </ul>
+        </div>
+
+        <div class="data-table-card" style="padding: 20px;">
+          <h3 style="font-family: 'Outfit'; font-size: 16px; margin-bottom: 12px; color: var(--primary);">👩‍🌾 Farmer 2 (Selvi - Navinipatti)</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;"><strong>Username:</strong> <code>farmer_selvi</code><br/><strong>Password:</strong> <code>selvi123</code></p>
+          <ul style="font-size: 12.5px; color: var(--text); padding-left: 18px; line-height: 1.6;">
+            <li>Owns 3 cows: Ganga (#1003), Ponni (#1004), Kaveri (#1006)</li>
+            <li>View feeding logs, ration recommendations & milk receipts</li>
+          </ul>
+        </div>
+
+        <div class="data-table-card" style="padding: 20px;">
+          <h3 style="font-family: 'Outfit'; font-size: 16px; margin-bottom: 12px; color: var(--primary);">👨‍⚕️ Veterinary Officer (Dr. Anand)</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;"><strong>Username:</strong> <code>vet_anand</code><br/><strong>Password:</strong> <code>vet123</code></p>
+          <ul style="font-size: 12.5px; color: var(--text); padding-left: 18px; line-height: 1.6;">
+            <li>Scans any cow tag to view complete clinical history</li>
+            <li>Logs medical treatments & sets automated antibiotic withdrawal locks</li>
+          </ul>
+        </div>
+
+        <div class="data-table-card" style="padding: 20px;">
+          <h3 style="font-family: 'Outfit'; font-size: 16px; margin-bottom: 12px; color: var(--primary);">🥛 Collection Operator (Rajan)</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;"><strong>Username:</strong> <code>operator_rajan</code><br/><strong>Password:</strong> <code>operator123</code></p>
+          <ul style="font-size: 12.5px; color: var(--text); padding-left: 18px; line-height: 1.6;">
+            <li>Scans cow QR tag at the intake station</li>
+            <li>Milk Safety Twin checks withdrawal lock before milk dump</li>
+            <li>Calculates rate per litre based on Fat % & SNF %</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: ADD COW -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>➕ Register New Cattle Tag</h3>
+        <button class="close-btn" id="btnCloseAddModal">&times;</button>
+      </div>
+      <form id="addCowForm">
+        <div class="form-group">
+          <label>Assign to Farmer:</label>
+          <select id="newOwnerId" required>
+            <option value="usr-farmer-01">👨‍🌾 K. Murugesan (FARM-MDU-101, Melur)</option>
+            <option value="usr-farmer-02">👩‍🌾 M. Selvi (FARM-MDU-102, Navinipatti)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Official Ear-Tag ID:</label>
+          <input type="text" id="newTagNumber" placeholder="e.g. TN-MDU-COW-1007" required />
+        </div>
+        <div class="form-group">
+          <label>Cattle Name:</label>
+          <input type="text" id="newName" placeholder="e.g. Meenakshi (Sindhi Cross)" required />
+        </div>
+        <div class="form-group">
+          <label>Breed:</label>
+          <select id="newBreed" required>
+            <option value="Jersey Cross">Jersey Cross</option>
+            <option value="Holstein Friesian Cross">Holstein Friesian Cross</option>
+            <option value="Kangayam">Kangayam Native</option>
+            <option value="Red Sindhi Cross">Red Sindhi Cross</option>
+            <option value="Gir Cross">Gir Cross</option>
+            <option value="Murrah Buffalo">Murrah Buffalo Cross</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Daily Yield (Litres):</label>
+            <input type="number" step="0.5" id="newYield" value="13.5" required />
+          </div>
+          <div class="form-group">
+            <label>Breeding Status:</label>
+            <select id="newInsemination">
+              <option value="not_bred">Not Bred</option>
+              <option value="inseminated">Inseminated (AI)</option>
+              <option value="confirmed_pregnant">Confirmed Pregnant</option>
+              <option value="dry">Dry</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Green Fodder (kg/day):</label>
+            <input type="number" step="1" id="newGreenFodder" value="25" />
+          </div>
+          <div class="form-group">
+            <label>Concentrate (kg/day):</label>
+            <input type="number" step="0.5" id="newConcentrate" value="4.0" />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Somatic Cell Count (cells/mL):</label>
+            <input type="number" step="5000" id="newScc" value="145000" />
+          </div>
+          <div class="form-group">
+            <label>Last Deworming Date:</label>
+            <input type="date" id="newDeworming" value="2026-09-10" />
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline" id="btnCancelAddModal">Cancel</button>
+          <button type="submit" class="btn btn-emerald" id="submitBtn">Generate Tag & Save to DB</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: COW FULL DIGITAL PASSPORT -->
+  <div class="modal-overlay" id="passportModal">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 id="passportCowTitle">📋 Digital Cattle Passport</h3>
+        <button class="close-btn" id="btnClosePassportModal">&times;</button>
+      </div>
+      <div id="passportContent" style="font-size: 13px; line-height: 1.5;">
+        <div style="text-align: center; padding: 30px;">Loading passport details from database...</div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 14px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-sm" id="btnPassportEditCow" style="background: var(--primary-light); color: var(--primary); font-weight: 700;">✏️ Edit Cattle Details</button>
+          <button type="button" class="btn btn-sm" id="btnPassportEditFarmer" style="background: #ECFDF5; color: #059669; font-weight: 700;">👤 Edit Farmer Profile</button>
+        </div>
+        <button type="button" class="btn btn-outline" id="btnClosePassportBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT COW DATA -->
+  <div class="modal-overlay" id="editCowModal">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>✏️ Doctor Override: Update Cattle Records</h3>
+        <button class="close-btn" id="btnCloseEditCowModal">&times;</button>
+      </div>
+      <form id="editCowForm">
+        <input type="hidden" id="editCowId" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Cattle Name:</label>
+            <input type="text" id="editCowName" required />
+          </div>
+          <div class="form-group">
+            <label>Ear-Tag ID:</label>
+            <input type="text" id="editCowTag" required />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Breed:</label>
+            <select id="editCowBreed" required>
+              <option value="Jersey Cross">Jersey Cross</option>
+              <option value="Holstein Friesian Cross">Holstein Friesian Cross</option>
+              <option value="Kangayam">Kangayam Native</option>
+              <option value="Red Sindhi Cross">Red Sindhi Cross</option>
+              <option value="Gir Cross">Gir Cross</option>
+              <option value="Murrah Buffalo">Murrah Buffalo Cross</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Daily Yield (Litres):</label>
+            <input type="number" step="0.5" id="editCowYield" required />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Lactation Stage:</label>
+            <select id="editCowLactation">
+              <option value="early">Early Lactation</option>
+              <option value="peak">Peak Lactation</option>
+              <option value="mid">Mid Lactation</option>
+              <option value="late">Late Lactation</option>
+              <option value="dry">Dry Period</option>
+              <option value="heifer">Heifer</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Milking Status:</label>
+            <select id="editCowMilkingStatus">
+              <option value="lactating">Lactating</option>
+              <option value="dry">Dry</option>
+              <option value="pregnant">Pregnant</option>
+              <option value="quarantine_hold">Quarantine Hold</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Breeding / Insemination:</label>
+            <select id="editCowInsemination">
+              <option value="not_bred">Not Bred</option>
+              <option value="inseminated">Inseminated (AI)</option>
+              <option value="confirmed_pregnant">Confirmed Pregnant</option>
+              <option value="dry">Dry</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Somatic Cell Count (cells/mL):</label>
+            <input type="number" step="1000" id="editCowScc" />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Green Fodder (kg/day):</label>
+            <input type="number" step="0.5" id="editCowGreenFodder" />
+          </div>
+          <div class="form-group">
+            <label>Concentrate (kg/day):</label>
+            <input type="number" step="0.5" id="editCowConcentrate" />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Mineral Mixture (grams):</label>
+            <input type="number" step="5" id="editCowMineralMix" />
+          </div>
+          <div class="form-group">
+            <label>Last Deworming Date:</label>
+            <input type="date" id="editCowDeworming" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Vaccination Status:</label>
+          <select id="editCowVaccination">
+            <option value="up_to_date">Up to Date</option>
+            <option value="due_soon">Booster Due Soon</option>
+            <option value="overdue">Overdue</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Identification Marks:</label>
+          <input type="text" id="editCowMarks" placeholder="e.g. White patch on forehead" />
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline" id="btnCancelEditCow">Cancel</button>
+          <button type="submit" class="btn btn-emerald" id="btnSaveEditCow">Save Cattle Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT FARMER PROFILE -->
+  <div class="modal-overlay" id="editFarmerModal">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>👤 Doctor Override: Update Farmer Profile</h3>
+        <button class="close-btn" id="btnCloseEditFarmerModal">&times;</button>
+      </div>
+      <form id="editFarmerForm">
+        <input type="hidden" id="editFarmerId" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Farmer Full Name:</label>
+            <input type="text" id="editFarmerName" required />
+          </div>
+          <div class="form-group">
+            <label>Phone Number:</label>
+            <input type="tel" id="editFarmerPhone" required />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Village / Society:</label>
+            <input type="text" id="editFarmerVillage" required />
+          </div>
+          <div class="form-group">
+            <label>Taluk / District:</label>
+            <input type="text" id="editFarmerTaluk" value="Melur" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Bank Account Holder Name:</label>
+          <input type="text" id="editFarmerBankAccName" placeholder="As per bank passbook" />
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Bank Name:</label>
+            <input type="text" id="editFarmerBankName" placeholder="e.g. State Bank of India" />
+          </div>
+          <div class="form-group">
+            <label>Account Number:</label>
+            <input type="text" id="editFarmerBankAccNum" placeholder="e.g. 30894561230" />
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Bank IFSC Code:</label>
+            <input type="text" id="editFarmerIfsc" placeholder="e.g. SBIN0001234" />
+          </div>
+          <div class="form-group">
+            <label>UPI ID:</label>
+            <input type="text" id="editFarmerUpi" placeholder="e.g. name@upi" />
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline" id="btnCancelEditFarmer">Cancel</button>
+          <button type="submit" class="btn btn-emerald" id="btnSaveEditFarmer">Save Farmer Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="toast">
+    <span id="toastMsg">Notification</span>
+  </div>
+
+
+  <script>
+    // State
+    let farmersData = [];
+    let summaryData = null;
+    let currentStatusFilter = 'all';
+    let searchQuery = '';
+    let simRole = 'farmer';
+
+
+    // Global Navigation Switcher
+    window.switchNav = function(viewId) {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const activeNav = document.getElementById('nav-' + viewId);
+      if (activeNav) activeNav.classList.add('active');
+
+      document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+      const activeView = document.getElementById('view-' + viewId);
+      if (activeView) activeView.classList.add('active');
+
+      if (viewId === 'ledger' || viewId === 'quarantine') {
+        loadPortalSummary();
+      } else if (viewId === 'simulator') {
+        populateSimulatorOptions();
+        runSimulation();
+      }
+    };
+
+    // Toast
+    window.showToast = function(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 2800);
+    };
+
+    // Copy Token
+    window.copyToken = function(token) {
+      navigator.clipboard.writeText(token).then(() => {
+        showToast('📋 Scannable QR Token copied to clipboard!');
+      }).catch(() => {
+        showToast('Token: ' + token);
+      });
+    };
+
+    // Load Cattle Data
+    async function loadData() {
+      try {
+        const res = await fetch('/api/v1/cows/portal/all-tags');
+        const json = await res.json();
+        if (json.success && json.data) {
+          farmersData = json.data;
+          renderCattleGrid();
+          updateStats();
+          populateSimulatorOptions();
+        }
+      } catch (err) {
+        console.error('Failed to load cattle data:', err);
+      }
+    }
+
+    // Load Summary Data
+    async function loadPortalSummary() {
+      try {
+        const res = await fetch('/api/v1/cows/portal/summary');
+        const json = await res.json();
+        if (json.success && json.data) {
+          summaryData = json.data;
+          renderCollectionTable(summaryData.recentCollections || []);
+          renderQuarantineTable(summaryData.quarantineBoard || []);
+        }
+      } catch (err) {
+        console.error('Failed to load portal summary:', err);
+      }
+    }
+
+    // Update Statistics
+    function updateStats() {
+      let totalCows = 0;
+      let activeHold = 0;
+      farmersData.forEach(f => {
+        totalCows += (f.cows ? f.cows.length : 0);
+        if (f.cows) {
+          f.cows.forEach(c => {
+            if (c.active_withdrawal_status === 'active') activeHold++;
+          });
+        }
+      });
+      document.getElementById('statFarmers').textContent = farmersData.length;
+      document.getElementById('statCows').textContent = totalCows;
+      document.getElementById('statHold').textContent = activeHold;
+    }
+
+    // Render Cattle Cards Grid
+    function renderCattleGrid() {
+      const grid = document.getElementById('cattleGrid');
+      grid.innerHTML = '';
+
+      let matchingCount = 0;
+
+      farmersData.forEach(farmer => {
+        (farmer.cows || []).forEach(cow => {
+          const isHold = cow.active_withdrawal_status === 'active';
+
+          // Status Filter
+          if (currentStatusFilter === 'clear' && isHold) return;
+          if (currentStatusFilter === 'hold' && !isHold) return;
+
+          const searchMatch = !searchQuery ||
+            cow.name.toLowerCase().includes(searchQuery) ||
+            cow.tag_number.toLowerCase().includes(searchQuery) ||
+            cow.breed.toLowerCase().includes(searchQuery) ||
+            (cow.lactation_stage && cow.lactation_stage.toLowerCase().includes(searchQuery)) ||
+            farmer.full_name.toLowerCase().includes(searchQuery);
+
+          if (!searchMatch) return;
+          matchingCount++;
+
+          const card = document.createElement('div');
+          card.className = 'cattle-card';
+          
+          const qrId = 'qr-' + cow.id;
+          const token = cow.qr_token || ('AAVIN_QR_' + cow.tag_number);
+
+
+          const sccCount = cow.somatic_cell_count || 145000;
+          const safetyIndex = cow.milk_safety_index || (isHold ? 45 : 98);
+          const feedGreen = cow.daily_green_fodder_kg || 25.0;
+          const feedConc = cow.daily_concentrate_kg || 4.0;
+          const breeding = (cow.insemination_status || 'not_bred').replace('_', ' ');
+
+          card.innerHTML = `
+            <div class="card-top">
+              <div class="owner-info">
+                <div class="owner-avatar">${farmer.full_name.charAt(0)}</div>
+                <div>
+                  <div class="owner-name">${farmer.full_name}</div>
+                  <div class="owner-sub">${farmer.village || 'Melur'} • Code: ${farmer.farmer_id_code}</div>
+                </div>
+              </div>
+              <div class="badge-status ${isHold ? 'badge-hold' : 'badge-clear'}">
+                ${isHold ? '⚠️ WITHDRAWAL HOLD' : '✅ HEALTHY CLEAR'}
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="qr-box" data-action="copy" data-token="${token}" title="Click to copy QR token">
+                <div class="qr-canvas" id="${qrId}"></div>
+                <div class="qr-label">SCAN ON PHONE</div>
+              </div>
+
+              <div class="details-box">
+                <div>
+                  <div class="cow-title">${cow.name}</div>
+                  <div class="cow-tag">Tag: ${cow.tag_number}</div>
+
+                  <div class="spec-grid">
+                    <div class="spec-item">Breed: <strong>${cow.breed}</strong></div>
+                    <div class="spec-item">Yield: <strong>${cow.average_daily_yield} L/day</strong></div>
+                    <div class="spec-item">Lactation: <strong>${cow.lactation_stage || 'Peak'}</strong></div>
+                    <div class="spec-item">Safety Index: <strong style="color: ${safetyIndex >= 90 ? '#059669' : '#DC2626'};">${safetyIndex}/100</strong></div>
+                    <div class="spec-item">SCC Grade: <strong>${(sccCount/1000).toFixed(0)}k cells/mL</strong></div>
+                    <div class="spec-item">Breeding: <strong style="text-transform: capitalize;">${breeding}</strong></div>
+                  </div>
+                  
+                  <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted); background: #F1F5F9; padding: 4px 8px; border-radius: 6px;">
+                    🌾 <strong>Feed:</strong> ${feedGreen}kg Green + ${feedConc}kg Conc | 🩺 <strong>Dewormed:</strong> ${cow.last_deworming_date || '2026-09-10'}
+                  </div>
+                </div>
+
+                ${isHold ? `
+                  <div class="alert-banner">
+                    ⛔ Active Veterinary Withdrawal (Antibiotic). Milk collection locked until expiry.
+                  </div>
+                ` : `
+                  <div style="font-size: 11px; color: #059669; font-weight: 600;">
+                    ✓ Approved for Aavin collection & standard Fortnight payout calculation.
+                  </div>
+                `}
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <button class="btn-sm" data-action="copy" data-token="${token}">📋 Token</button>
+              <button class="btn-sm" data-action="passport" data-tag="${cow.tag_number}">🔍 Passport</button>
+              <button class="btn-sm" data-action="edit-cow" data-cow-id="${cow.id}" style="color: var(--primary); font-weight: 700;">✏️ Edit Cow</button>
+              <button class="btn-sm" data-action="edit-farmer" data-farmer-id="${farmer.id}" style="color: #059669; font-weight: 700;">👤 Edit Farmer</button>
+              <button class="btn-sm" style="background: var(--primary-light); color: var(--primary); border-color: var(--primary);" data-action="sim" data-tag="${cow.tag_number}">⚡ Test</button>
+            </div>
+          `;
+
+          grid.appendChild(card);
+
+          // Render QR code
+          setTimeout(() => {
+            const container = document.getElementById(qrId);
+            if (container && typeof QRCode !== 'undefined') {
+              container.innerHTML = '';
+              new QRCode(container, {
+                text: token,
+                width: 100,
+                height: 100,
+                colorDark: '#004D80',
+                colorLight: '#FFFFFF',
+                correctLevel: QRCode.CorrectLevel.M
+              });
+            }
+          }, 30);
+        });
+      });
+
+      if (matchingCount === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: white; border-radius: 16px; border: 1px solid var(--border);">
+            <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+            <h3 style="font-size: 16px; color: var(--text);">No cattle records matching search</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Try a different keyword or reset filters.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Event Delegation on Cattle Grid
+    document.getElementById('cattleGrid').addEventListener('click', (e) => {
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+      const action = target.getAttribute('data-action');
+      if (action === 'copy') {
+        const token = target.getAttribute('data-token');
+        if (token) copyToken(token);
+      } else if (action === 'passport') {
+        const tag = target.getAttribute('data-tag');
+        if (tag) openPassportModal(tag);
+      } else if (action === 'edit-cow') {
+        const cowId = target.getAttribute('data-cow-id');
+        if (cowId) openEditCowModal(cowId);
+      } else if (action === 'edit-farmer') {
+        const farmerId = target.getAttribute('data-farmer-id');
+        if (farmerId) openEditFarmerModal(farmerId);
+      } else if (action === 'sim') {
+        const tag = target.getAttribute('data-tag');
+        if (tag) launchSimForCow(tag);
+      }
+    });
+
+
+    // Modals
+    window.openAddModal = function() {
+      document.getElementById('addModal').classList.add('active');
+    };
+    window.closeAddModal = function() {
+      document.getElementById('addModal').classList.remove('active');
+    };
+
+    window.openPassportModal = async function(identifier) {
+      const modal = document.getElementById('passportModal');
+      const content = document.getElementById('passportContent');
+      modal.classList.add('active');
+      content.innerHTML = '<div style="text-align: center; padding: 30px;">⏳ Loading full passport from MySQL...</div>';
+
+      try {
+        const res = await fetch('/api/v1/cows/portal/passport/' + identifier);
+        const json = await res.json();
+        if (!json.success || !json.data) {
+          content.innerHTML = `<div style="color: var(--hold); text-align: center;">Error: ${json.message || 'Unable to load'}</div>`;
+          return;
+        }
+
+        const { cow, healthRecords, treatments, vaccinations, production } = json.data;
+        document.getElementById('passportCowTitle').textContent = `📋 Digital Cattle Passport — ${cow.name} (${cow.tag_number})`;
+
+        const isHold = cow.active_withdrawal_status === 'active';
+        const sccVal = Number(cow.somatic_cell_count || 145000);
+        const safetyIdx = cow.milk_safety_index || (isHold ? 45 : 98);
+
+        content.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #F8FAFC; padding: 14px; border-radius: 12px; margin-bottom: 14px; border: 1px solid var(--border);">
+            <div><strong>Owner:</strong> ${cow.owner_name} (${cow.owner_phone})</div>
+            <div><strong>Society:</strong> ${cow.centre_name || 'Melur Co-op'}</div>
+            <div><strong>Breed:</strong> ${cow.breed}</div>
+            <div><strong>Daily Yield:</strong> ${cow.average_daily_yield} Litres/day</div>
+            <div><strong>Health Status:</strong> <span style="text-transform: capitalize; font-weight: 700; color: ${isHold ? 'var(--hold)' : '#059669'};">${cow.health_status}</span></div>
+            <div><strong>Lactation:</strong> ${cow.lactation_stage || 'Peak'} (${cow.milking_status})</div>
+          </div>
+
+          <!-- Aavin Milk Company Quality & Safety Scorecard -->
+          <div style="background: ${isHold ? '#FEF2F2' : '#F0FDF4'}; border: 1px solid ${isHold ? '#FECACA' : '#BBF7D0'}; border-radius: 12px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-weight: 700; color: ${isHold ? '#991B1B' : '#166534'}; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span>🛡️ Aavin Dairy Company Quality & Health Scorecard</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12.5px;">
+              <div><strong>Milk Safety Index:</strong> <span style="font-weight: 800; color: ${safetyIdx >= 90 ? '#16A34A' : '#DC2626'};">${safetyIdx}/100</span></div>
+              <div><strong>Somatic Cells (SCC):</strong> <span style="font-weight: 700;">${sccVal.toLocaleString('en-IN')} cells/mL</span></div>
+              <div><strong>Breeding / Cycle:</strong> <span style="text-transform: capitalize;">${(cow.insemination_status || 'not_bred').replace('_', ' ')}</span></div>
+              <div><strong>Vaccination / Deworm:</strong> ${(cow.vaccination_status || 'up_to_date').replace(/_/g, ' ')} (${cow.last_deworming_date || '2026-09-10'})</div>
+            </div>
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid ${isHold ? '#FEE2E2' : '#DCFCE7'}; font-size: 11.5px; color: var(--text);">
+              🌾 <strong>Daily Nutrition Ration:</strong> ${cow.daily_green_fodder_kg || '25.0'} kg Green Fodder + ${cow.daily_concentrate_kg || '4.0'} kg Concentrate + ${cow.mineral_mixture_grams || '50'}g Mineral Mixture
+            </div>
+          </div>
+
+          <!-- AI Vaccination Predictor & Ledger -->
+          <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-weight: 700; color: #1E40AF; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span>💉 Vaccination Status & AI Next Booster Prediction</span>
+              <span style="background: #DBEAFE; color: #1D4ED8; padding: 2px 8px; border-radius: 6px; font-size: 11px;">
+                ${(vaccinations && vaccinations.length) ? '✅ Schedule Up to Date' : '⚠️ Pending Protocol'}
+              </span>
+            </div>
+            ${(vaccinations && vaccinations.length) ? `
+              <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #DBEAFE; margin-bottom: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div>
+                  <div style="font-size: 11px; color: var(--text-muted);">LAST ADMINISTERED VACCINE:</div>
+                  <div style="font-weight: 700; color: var(--text);">${vaccinations[0].vaccine_name}</div>
+                  <div style="font-size: 11px; color: #64748B;">Admin Date: <strong>${vaccinations[0].administration_date}</strong> (Batch: ${vaccinations[0].batch_number})</div>
+                </div>
+                <div>
+                  <div style="font-size: 11px; color: var(--text-muted);">PREDICTED NEXT BOOSTER DUE:</div>
+                  <div style="font-weight: 800; color: #059669; font-size: 14px;">📅 ${vaccinations[0].next_booster_due_date}</div>
+                  <div style="font-size: 11px; color: #059669; font-weight: 600;">⏳ Seasonal Immuno-Advisory Active</div>
+                </div>
+              </div>
+            ` : '<div style="font-size: 12px; color: #64748B;">No prior immunization doses recorded on database.</div>'}
+          </div>
+
+          <h4 style="font-size: 14px; margin: 12px 0 6px; color: var(--primary-dark);">🥛 Recent Milking Production & Hygiene Log (14 Sessions)</h4>
+          <div style="max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px;">
+            <table style="font-size: 12px;">
+              <thead><tr><th>Date</th><th>Session</th><th>Yield</th><th>Fat %</th><th>SNF %</th><th>Temp</th><th>Teat Dip</th></tr></thead>
+              <tbody>
+                ${(production && production.length) ? production.map(p => `
+                  <tr>
+                    <td>${p.production_date}</td>
+                    <td>${p.session.toUpperCase()}</td>
+                    <td><strong>${p.quantity_litres} L</strong></td>
+                    <td>${p.fat_percentage || 4.2}%</td>
+                    <td>${p.snf_percentage || 8.6}%</td>
+                    <td>${p.milking_temperature_c || 37.2}°C</td>
+                    <td>${p.teat_dip_applied !== 0 ? '✅ Applied' : '❌ No'}</td>
+                  </tr>
+                `).join('') : '<tr><td colspan="7" style="text-align: center;">No production records</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+
+          <h4 style="font-size: 14px; margin: 12px 0 6px; color: var(--primary-dark);">👨‍⚕️ Clinical Examinations & Treatments</h4>
+          <div style="max-height: 130px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+            <table style="font-size: 12px;">
+              <thead><tr><th>Date</th><th>Diagnosis / Medicine</th><th>Prescribed By</th><th>Withdrawal Period</th></tr></thead>
+              <tbody>
+                ${(treatments && treatments.length) ? treatments.map(t => `
+                  <tr>
+                    <td>${t.treatment_start_date ? t.treatment_start_date.slice(0,10) : 'Recent'}</td>
+                    <td>${t.diagnosis || 'Clinical Mastitis'} (${t.brand_name || 'Antibiotic'})</td>
+                    <td>${t.vet_name || 'Dr. R. Anand BVSc'}</td>
+                    <td><span style="color: ${isHold ? 'var(--hold)' : '#64748B'}; font-weight: 600;">${t.withdrawal_period_hours} Hours</span></td>
+                  </tr>
+                `).join('') : '<tr><td colspan="4" style="text-align: center;">No treatment records</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        `;
+        window.activePassportCow = cow;
+        window.activePassportFarmerId = cow.owner_id || cow.current_owner_user_id;
+      } catch (err) {
+        content.innerHTML = `<div style="color: var(--hold); text-align: center;">Failed to load passport: ${err.message}</div>`;
+      }
+    };
+
+
+    window.closePassportModal = function() {
+      document.getElementById('passportModal').classList.remove('active');
+    };
+
+    // Edit Cow Modal Open / Close
+    window.openEditCowModal = async function(cowId) {
+      let cow = null;
+      farmersData.forEach(f => {
+        (f.cows || []).forEach(c => {
+          if (c.id === cowId) cow = c;
+        });
+      });
+      if (!cow && window.activePassportCow && window.activePassportCow.id === cowId) {
+        cow = window.activePassportCow;
+      }
+      if (!cow) {
+        try {
+          const res = await fetch('/api/v1/cows/' + cowId);
+          const json = await res.json();
+          if (json.success && json.data) cow = json.data;
+        } catch(e) {}
+      }
+      if (!cow) {
+        alert('Cattle record not found for ID: ' + cowId);
+        return;
+      }
+
+      document.getElementById('editCowId').value = cow.id;
+      document.getElementById('editCowName').value = cow.name || '';
+      document.getElementById('editCowTag').value = cow.tag_number || '';
+      document.getElementById('editCowBreed').value = cow.breed || 'Jersey Cross';
+      document.getElementById('editCowYield').value = cow.average_daily_yield || 12.0;
+      document.getElementById('editCowLactation').value = cow.lactation_stage || 'peak';
+      document.getElementById('editCowMilkingStatus').value = cow.milking_status || 'lactating';
+      document.getElementById('editCowInsemination').value = cow.insemination_status || 'not_bred';
+      document.getElementById('editCowScc').value = cow.somatic_cell_count || 145000;
+      document.getElementById('editCowGreenFodder').value = cow.daily_green_fodder_kg || 25.0;
+      document.getElementById('editCowConcentrate').value = cow.daily_concentrate_kg || 4.0;
+      document.getElementById('editCowMineralMix').value = cow.mineral_mixture_grams || 50;
+      document.getElementById('editCowVaccination').value = cow.vaccination_status || 'up_to_date';
+      document.getElementById('editCowDeworming').value = cow.last_deworming_date ? cow.last_deworming_date.slice(0, 10) : '2026-09-10';
+      document.getElementById('editCowMarks').value = cow.identification_marks || '';
+      document.getElementById('editCowModal').classList.add('active');
+    };
+
+    window.closeEditCowModal = function() {
+      document.getElementById('editCowModal').classList.remove('active');
+    };
+
+    // Edit Farmer Modal Open / Close
+    window.openEditFarmerModal = async function(farmerId) {
+      let farmer = farmersData.find(f => f.id === farmerId);
+      try {
+        const res = await fetch('/api/v1/farmers/' + farmerId);
+        const json = await res.json();
+        if (json.success && json.data) farmer = json.data;
+      } catch(e) {}
+
+      if (!farmer) {
+        alert('Farmer record not found for ID: ' + farmerId);
+        return;
+      }
+
+      document.getElementById('editFarmerId').value = farmer.id;
+      document.getElementById('editFarmerName').value = farmer.full_name || '';
+      document.getElementById('editFarmerPhone').value = farmer.phone || '';
+      document.getElementById('editFarmerVillage').value = farmer.village || '';
+      document.getElementById('editFarmerTaluk').value = farmer.taluk || 'Melur';
+      document.getElementById('editFarmerBankAccName').value = farmer.bank_account_name || '';
+      document.getElementById('editFarmerBankName').value = farmer.bank_name || '';
+      document.getElementById('editFarmerBankAccNum').value = farmer.bank_account_number || '';
+      document.getElementById('editFarmerIfsc').value = farmer.bank_ifsc || '';
+      document.getElementById('editFarmerUpi').value = farmer.upi_id || '';
+      document.getElementById('editFarmerModal').classList.add('active');
+    };
+
+    window.closeEditFarmerModal = function() {
+      document.getElementById('editFarmerModal').classList.remove('active');
+    };
+
+    // Simulator
+    function populateSimulatorOptions() {
+      const select = document.getElementById('simCowSelect');
+      select.innerHTML = '';
+      farmersData.forEach(f => {
+        (f.cows || []).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.tag_number;
+          opt.textContent = `${c.name} [${c.tag_number}] — ${f.full_name}`;
+          select.appendChild(opt);
+        });
+      });
+    }
+
+    function launchSimForCow(tagNumber) {
+      switchNav('simulator');
+      document.getElementById('simCowSelect').value = tagNumber;
+      runSimulation();
+    }
+
+    async function runSimulation() {
+      const container = document.getElementById('simResultContainer');
+      const tag = document.getElementById('simCowSelect').value;
+      if (!tag) {
+        container.innerHTML = '<div>Select a cattle tag above to test role resolution.</div>';
+        return;
+      }
+
+      container.innerHTML = '<div style="text-align: center; padding: 20px;">⚡ Simulating live mobile app lookup...</div>';
+
+      try {
+        const res = await fetch('/api/v1/cows/portal/passport/' + tag);
+        const json = await res.json();
+        if (!json.success || !json.data) {
+          container.innerHTML = `<div style="color: var(--hold);">Error: ${json.message}</div>`;
+          return;
+        }
+
+        const { cow, healthRecords, treatments } = json.data;
+        const isHold = cow.active_withdrawal_status === 'active';
+
+        if (simRole === 'farmer') {
+          container.innerHTML = `
+            <div style="background: #F0FDF4; padding: 14px; border-radius: 10px; border: 1px solid #BBF7D0; margin-bottom: 12px;">
+              <h4 style="color: #166534; font-size: 15px; margin-bottom: 4px;">📱 Farmer App Screen: Cattle Digital Passport</h4>
+              <p style="font-size: 12.5px; color: #15803D;">Resolved Cattle ID: <strong>${cow.name}</strong> (#${cow.tag_number}) owned by <strong>${cow.owner_name}</strong>.</p>
+            </div>
+            <div style="font-size: 13px; line-height: 1.6;">
+              • <strong>Milking Average:</strong> ${cow.average_daily_yield} Litres/day (14-day production logged)<br/>
+              • <strong>Lactation Stage:</strong> ${cow.lactation_stage || 'Peak'}<br/>
+              • <strong>Health Status:</strong> ${isHold ? '<span style="color: var(--hold); font-weight: 700;">Under Antibiotic Quarantine</span>' : '<span style="color: #059669; font-weight: 700;">Healthy & Active</span>'}<br/>
+              • <strong>AI Assistant Action:</strong> Instant vernacular Tamil advice & feed ration recommendations generated.
+            </div>
+          `;
+        } else if (simRole === 'vet') {
+          container.innerHTML = `
+            <div style="background: #EFF6FF; padding: 14px; border-radius: 10px; border: 1px solid #BFDBFE; margin-bottom: 12px;">
+              <h4 style="color: #1E40AF; font-size: 15px; margin-bottom: 4px;">🩺 Veterinary Doctor Portal: Clinical Examination & Data Management</h4>
+              <p style="font-size: 12.5px; color: #1D4ED8;">Scanned Tag <strong>${cow.tag_number}</strong>. Assigned Vet: <strong>${cow.assigned_vet_name || 'Dr. R. Anand BVSc'}</strong>.</p>
+            </div>
+            <div style="font-size: 13px; line-height: 1.6;">
+              • <strong>Vaccination Status:</strong> FMD & Anthrax up to date.<br/>
+              • <strong>Treatment Log:</strong> ${(treatments && treatments.length) ? treatments[0].diagnosis + ' (' + treatments[0].withdrawal_period_hours + 'h withdrawal)' : 'No recent treatments.'}<br/>
+              • <strong>Doctor Action:</strong> Update cow non-health/health data and farmer profile directly below:
+              <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-sm" onclick="openEditCowModal('${cow.id}')" style="background: var(--primary); color: white;">✏️ Update Cow Data as Doctor</button>
+                <button class="btn btn-sm" onclick="openEditFarmerModal('${cow.owner_id || cow.current_owner_user_id}')" style="background: #10B981; color: white;">👤 Update Farmer Profile as Doctor</button>
+              </div>
+            </div>
+          `;
+        } else if (simRole === 'operator') {
+
+          container.innerHTML = `
+            <div style="background: ${isHold ? '#FEF2F2' : '#ECFDF5'}; padding: 14px; border-radius: 10px; border: 1px solid ${isHold ? '#FECACA' : '#A7F3D0'}; margin-bottom: 12px;">
+              <h4 style="color: ${isHold ? '#991B1B' : '#065F46'}; font-size: 15px; margin-bottom: 4px;">
+                ${isHold ? '⛔ MILK SAFETY TWIN VERDICT: REJECT & HOLD' : '✅ MILK SAFETY TWIN VERDICT: ACCEPT & CLEAR'}
+              </h4>
+              <p style="font-size: 12.5px; color: ${isHold ? '#B91C1C' : '#047857'};">
+                Intake at <strong>Melur Primary Milk Producers Co-op Society</strong>.
+              </p>
+            </div>
+            <div style="font-size: 13px; line-height: 1.6;">
+              ${isHold ? `
+                <div style="color: #991B1B; font-weight: 700; margin-bottom: 6px;">
+                  ⚠️ ANTIBIOTIC RESIDUE LOCK: Cow is currently within withdrawal period (${cow.withdrawal_reason || 'Ceftiofur Mastitis Treatment'}).
+                </div>
+                • <strong>Operator Action:</strong> DO NOT accept milk into bulk milk chiller. Advise farmer on safe disposal.
+              ` : `
+                <div style="color: #065F46; font-weight: 700; margin-bottom: 6px;">
+                  ✓ APPROVED: No active drug withdrawal restrictions.
+                </div>
+                • <strong>Analyzer Step:</strong> Proceed with ultrasonic Fat % (4.2%) & SNF % (8.6%) test and print Fortnight receipt.
+              `}
+            </div>
+          `;
+        } else {
+          container.innerHTML = `
+            <div style="background: #FFFBEB; padding: 14px; border-radius: 10px; border: 1px solid #FDE68A; margin-bottom: 12px;">
+              <h4 style="color: #92400E; font-size: 15px; margin-bottom: 4px;">🚚 Milk Transporter & Tanker Verification</h4>
+              <p style="font-size: 12.5px; color: #B45309;">Batch Dispatch verification for Route MDU-RT-04 (Melur -> Madurai Central Dairy).</p>
+            </div>
+            <div style="font-size: 13px; line-height: 1.6;">
+              • <strong>Origin Validation:</strong> Tag ${cow.tag_number} verified under Melur BMC.<br/>
+              • <strong>Digital Chain of Custody:</strong> Safe batch sealed with encrypted hash.
+            </div>
+          `;
+        }
+      } catch (err) {
+        container.innerHTML = `<div style="color: var(--hold);">Simulation error: ${err.message}</div>`;
+      }
+    }
+
+    // Tables
+    function renderCollectionTable(collections) {
+      const tbody = document.getElementById('collectionTableBody');
+      if (!collections.length) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px;">No milk collections recorded yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = collections.map(c => `
+        <tr>
+          <td>${c.collection_time ? c.collection_time.slice(0, 16).replace('T', ' ') : '-'}</td>
+          <td><strong>${c.farmer_name}</strong><br/><span style="font-size: 11px; color: var(--text-muted);">${c.farmer_id_code} (${c.village})</span></td>
+          <td><span class="cow-tag">${c.tag_number}</span></td>
+          <td style="text-transform: uppercase; font-weight: 600;">${c.session}</td>
+          <td><strong>${c.quantity_litres} L</strong></td>
+          <td>${c.fat_percentage || 4.2}%</td>
+          <td>${c.snf_percentage || 8.6}%</td>
+          <td>${c.density_g_cm3 || 1.0285}</td>
+          <td>
+            <span class="badge-status ${c.decision === 'HOLD' ? 'badge-hold' : 'badge-clear'}">
+              ${c.decision || 'CLEAR'}
+            </span>
+          </td>
+          <td>₹${c.rate_per_litre_inr || 35.00}</td>
+          <td><strong style="color: var(--primary);">₹${c.calculated_amount_inr || (c.quantity_litres * 35).toFixed(2)}</strong></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderQuarantineTable(quarantines) {
+      const tbody = document.getElementById('quarantineTableBody');
+      if (!quarantines.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #059669;">✓ All cattle in union are currently healthy and clear of antibiotic restrictions!</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = quarantines.map(q => `
+        <tr>
+          <td><span class="cow-tag">${q.tag_number}</span></td>
+          <td><strong>${q.cow_name}</strong></td>
+          <td>${q.farmer_name} (${q.village})</td>
+          <td><strong style="color: var(--hold);">${q.medicine_brand || 'Ceftiofur'}</strong> (${q.medicine_generic || 'Broad-spectrum Antibiotic'})</td>
+          <td>${q.reason || 'Clinical Mastitis'}</td>
+          <td>${q.vet_name || 'Dr. R. Anand BVSc'}</td>
+          <td>${q.restriction_end ? q.restriction_end.slice(0, 16).replace('T', ' ') : 'Active'}</td>
+          <td>
+            <span class="badge-status badge-hold">
+              ⛔ ${q.hours_remaining > 0 ? q.hours_remaining + 'h REMAINING' : 'LOCKED'}
+            </span>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Setup All Event Listeners on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', () => {
+      // Header & Navigation Listeners
+      document.getElementById('brandBtn').addEventListener('click', () => switchNav('tags'));
+      document.getElementById('btnPrintTags').addEventListener('click', () => window.print());
+      document.getElementById('btnRegisterTag').addEventListener('click', () => openAddModal());
+
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const view = item.getAttribute('data-view');
+          if (view) switchNav(view);
+        });
+      });
+
+      // Status Filter Pills
+      document.querySelectorAll('#statusFilters .pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#statusFilters .pill-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentStatusFilter = btn.getAttribute('data-status') || 'all';
+          renderCattleGrid();
+        });
+      });
+
+
+      // Search
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase().trim();
+        renderCattleGrid();
+      });
+
+      // Simulator Select & Role Buttons
+      document.getElementById('simCowSelect').addEventListener('change', () => runSimulation());
+      document.querySelectorAll('#roleBtnGroup .role-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#roleBtnGroup .role-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          simRole = btn.getAttribute('data-role');
+          runSimulation();
+        });
+      });
+
+      // Refresh Buttons
+      document.getElementById('btnRefreshLedger').addEventListener('click', () => loadPortalSummary());
+      document.getElementById('btnRefreshQuarantine').addEventListener('click', () => loadPortalSummary());
+
+      // Modal Buttons
+      document.getElementById('btnCloseAddModal').addEventListener('click', () => closeAddModal());
+      document.getElementById('btnCancelAddModal').addEventListener('click', () => closeAddModal());
+      document.getElementById('btnClosePassportModal').addEventListener('click', () => closePassportModal());
+      document.getElementById('btnClosePassportBtn').addEventListener('click', () => closePassportModal());
+
+      document.getElementById('btnCloseEditCowModal').addEventListener('click', () => closeEditCowModal());
+      document.getElementById('btnCancelEditCow').addEventListener('click', () => closeEditCowModal());
+      document.getElementById('btnCloseEditFarmerModal').addEventListener('click', () => closeEditFarmerModal());
+      document.getElementById('btnCancelEditFarmer').addEventListener('click', () => closeEditFarmerModal());
+
+      // Passport Modal Edit Buttons
+      const btnPassportEditCow = document.getElementById('btnPassportEditCow');
+      if (btnPassportEditCow) {
+        btnPassportEditCow.addEventListener('click', () => {
+          if (window.activePassportCow) {
+            openEditCowModal(window.activePassportCow.id);
+          }
+        });
+      }
+
+      const btnPassportEditFarmer = document.getElementById('btnPassportEditFarmer');
+      if (btnPassportEditFarmer) {
+        btnPassportEditFarmer.addEventListener('click', () => {
+          if (window.activePassportFarmerId) {
+            openEditFarmerModal(window.activePassportFarmerId);
+          }
+        });
+      }
+
+      // Edit Cow Form Submission
+      document.getElementById('editCowForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const cowId = document.getElementById('editCowId').value;
+        const btn = document.getElementById('btnSaveEditCow');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const payload = {
+          name: document.getElementById('editCowName').value.trim(),
+          tagNumber: document.getElementById('editCowTag').value.trim(),
+          breed: document.getElementById('editCowBreed').value,
+          averageDailyYield: parseFloat(document.getElementById('editCowYield').value),
+          lactationStage: document.getElementById('editCowLactation').value,
+          milkingStatus: document.getElementById('editCowMilkingStatus').value,
+          inseminationStatus: document.getElementById('editCowInsemination').value,
+          somaticCellCount: parseInt(document.getElementById('editCowScc').value, 10),
+          dailyGreenFodderKg: parseFloat(document.getElementById('editCowGreenFodder').value),
+          dailyConcentrateKg: parseFloat(document.getElementById('editCowConcentrate').value),
+          mineralMixtureGrams: parseInt(document.getElementById('editCowMineralMix').value, 10),
+          vaccinationStatus: document.getElementById('editCowVaccination').value,
+          lastDewormingDate: document.getElementById('editCowDeworming').value,
+          identificationMarks: document.getElementById('editCowMarks').value.trim(),
+        };
+
+        try {
+          const res = await fetch('/api/v1/cows/portal/cow/' + cowId, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const json = await res.json();
+          if (json.success) {
+            showToast('✅ Cattle records updated successfully in MySQL!');
+            closeEditCowModal();
+            await loadData();
+            if (document.getElementById('passportModal').classList.contains('active')) {
+              openPassportModal(payload.tagNumber);
+            }
+          } else {
+            alert('Error updating cattle: ' + json.message);
+          }
+        } catch (err) {
+          alert('Update error: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save Cattle Data';
+        }
+      });
+
+      // Edit Farmer Form Submission
+      document.getElementById('editFarmerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const farmerId = document.getElementById('editFarmerId').value;
+        const btn = document.getElementById('btnSaveEditFarmer');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const payload = {
+          fullName: document.getElementById('editFarmerName').value.trim(),
+          phone: document.getElementById('editFarmerPhone').value.trim(),
+          village: document.getElementById('editFarmerVillage').value.trim(),
+          taluk: document.getElementById('editFarmerTaluk').value.trim(),
+          bankAccountName: document.getElementById('editFarmerBankAccName').value.trim(),
+          bankName: document.getElementById('editFarmerBankName').value.trim(),
+          bankAccountNumber: document.getElementById('editFarmerBankAccNum').value.trim(),
+          bankIfsc: document.getElementById('editFarmerIfsc').value.trim(),
+          upiId: document.getElementById('editFarmerUpi').value.trim(),
+        };
+
+        try {
+          const res = await fetch('/api/v1/farmers/portal/farmer/' + farmerId, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const json = await res.json();
+          if (json.success) {
+            showToast('✅ Farmer profile & bank details updated in MySQL!');
+            closeEditFarmerModal();
+            await loadData();
+            if (document.getElementById('passportModal').classList.contains('active') && window.activePassportCow) {
+              openPassportModal(window.activePassportCow.tag_number);
+            }
+          } else {
+            alert('Error updating farmer: ' + json.message);
+          }
+        } catch (err) {
+          alert('Update error: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save Farmer Profile';
+        }
+      });
+
+      // Add Cow Form
+      document.getElementById('addCowForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Generating...';
+
+        const payload = {
+          ownerId: document.getElementById('newOwnerId').value,
+          tagNumber: document.getElementById('newTagNumber').value.trim(),
+          name: document.getElementById('newName').value.trim(),
+          breed: document.getElementById('newBreed').value,
+          averageDailyYield: parseFloat(document.getElementById('newYield').value),
+          inseminationStatus: document.getElementById('newInsemination') ? document.getElementById('newInsemination').value : 'not_bred',
+          dailyGreenFodderKg: parseFloat(document.getElementById('newGreenFodder')?.value || 25),
+          dailyConcentrateKg: parseFloat(document.getElementById('newConcentrate')?.value || 4),
+          somaticCellCount: parseInt(document.getElementById('newScc')?.value || 145000, 10),
+          lastDewormingDate: document.getElementById('newDeworming')?.value || '2026-09-10',
+          healthStatus: 'healthy',
+        };
+
+        try {
+          const res = await fetch('/api/v1/cows/portal/generate-tag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const json = await res.json();
+          if (json.success) {
+            showToast(`✅ Cattle Tag ${payload.tagNumber} created in MySQL!`);
+            closeAddModal();
+            document.getElementById('addCowForm').reset();
+            await loadData();
+          } else {
+            alert('Error: ' + json.message);
+          }
+        } catch (err) {
+          alert('Failed to create cattle tag: ' + err.message);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Generate Tag & Save to DB';
+        }
+      });
+
+      // Close on Backdrop Click
+      document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) {
+            closeAddModal();
+            closePassportModal();
+            closeEditCowModal();
+            closeEditFarmerModal();
+          }
+        });
+      });
+
+      // Close on Escape Key
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeAddModal();
+          closePassportModal();
+          closeEditCowModal();
+          closeEditFarmerModal();
+        }
+      });
+
+      // Initial Data Fetch
+      loadData();
+    });
+
+  </script>
+</body>
+</html>
