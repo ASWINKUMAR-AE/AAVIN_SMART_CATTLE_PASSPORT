@@ -96,8 +96,22 @@ npm start
 
 ---
 
+## Makefile & Quick Execution
+
+You can use `make` or `npm run`:
+
+```bash
+make help        # View all available make commands
+make setup       # One-step install and environment setup
+make db-init     # Initialize XAMPP MySQL database (aavin_milkflow)
+make dev         # Run full ecosystem (or npm start)
+```
+
+---
+
 ## Documentation Links
 
+- 📘 [**XAMPP & Database Startup Guide (Step-by-Step)**](XAMPP_SETUP_GUIDE.md)
 - [System Architecture](docs/architecture.md)
 - [Setup & LAN Configuration Guide](docs/setup.md)
 - [REST API Contract Reference](docs/api.md)

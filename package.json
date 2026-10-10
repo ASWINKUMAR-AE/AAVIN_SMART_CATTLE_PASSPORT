@@ -6,6 +6,8 @@
     "start": "node scripts/dev.js",
     "dev": "node scripts/dev.js",
     "backend": "npm --prefix backend run dev",
+    "db:init": "node scripts/init-db.js",
+    "db:reset": "node scripts/init-db.js --reset",
     "expo": "npx expo start --host lan",
     "android": "expo run:android",
     "ios": "expo run:ios",
