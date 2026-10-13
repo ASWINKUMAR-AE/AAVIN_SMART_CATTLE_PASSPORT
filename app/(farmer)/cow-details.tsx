@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, Image, Pressable } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function CowDetailsScreen() {
   const params = useLocalSearchParams();
+  const router = useRouter();
   const cowId = (params.cowId as string) || 'COW001';
   const { cows } = useAavinStore();
   const { colors } = useTheme();
@@ -27,6 +28,7 @@ export default function CowDetailsScreen() {
         title={cow.name}
         subtitle={`Passport #${cow.cowId} • Tag #${cow.tagId}`}
         showBack
+        onBack={() => router.replace('/(farmer)/cows')}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -472,4 +474,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-

@@ -25,16 +25,7 @@ export default function FarmerLayout() {
         }}
       />
 
-      {/* 2. Milk */}
-      <Tabs.Screen
-        name="milk-history"
-        options={{
-          title: 'Milk',
-          headerShown: false,
-        }}
-      />
-
-      {/* 3. My Cows */}
+      {/* 2. My Cows */}
       <Tabs.Screen
         name="cows"
         options={{
@@ -43,11 +34,20 @@ export default function FarmerLayout() {
         }}
       />
 
-      {/* 4. Notifications */}
+      {/* 3. Milk */}
       <Tabs.Screen
-        name="notifications"
+        name="milk-history"
         options={{
-          title: 'Notifications',
+          title: 'Milk',
+          headerShown: false,
+        }}
+      />
+
+      {/* 4. Receipts */}
+      <Tabs.Screen
+        name="receipts"
+        options={{
+          title: 'Receipts',
           headerShown: false,
         }}
       />
@@ -62,14 +62,16 @@ export default function FarmerLayout() {
       />
 
       {/* Subroutes (Hidden from Bottom Bar) */}
+
       <Tabs.Screen
-        name="receipts"
+        name="notifications"
         options={{
           href: null,
-          title: 'Receipts',
+          title: 'Notifications',
           headerShown: false,
         }}
       />
+
       <Tabs.Screen
         name="cow-details"
         options={{

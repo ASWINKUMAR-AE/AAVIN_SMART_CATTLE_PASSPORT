@@ -1,17 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
-  Animated,
-  Dimensions,
   Platform,
   Keyboard,
-  LayoutChangeEvent,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -55,11 +50,11 @@ const ROUTE_META_MAP: Record<
     labelKey: 'nav.myCows',
     fallbackLabel: 'My Cows',
   },
-  notifications: {
-    outline: 'notifications-outline',
-    filled: 'notifications',
-    labelKey: 'nav.notifications',
-    fallbackLabel: 'Notifications',
+  receipts: {
+    outline: 'receipt-outline',
+    filled: 'receipt',
+    labelKey: 'nav.receipts',
+    fallbackLabel: 'Receipts',
   },
   profile: {
     outline: 'person-outline',
@@ -189,7 +184,7 @@ export function FloatingAavinTabBar({
 }: FloatingAavinTabBarProps) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { isScrolled } = useScroll();
+  const { isScrolled, barsVisible } = useScroll();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   // Filter to only routes that have a registered icon and not hidden
@@ -199,27 +194,15 @@ export function FloatingAavinTabBar({
     return Boolean(ROUTE_META_MAP[route.name]);
   });
 
-  const totalTabs = visibleRoutes.length || 5;
-
   // Active index among visible tabs
   const activeRoute = state.routes[state.index];
-  const activeVisibleIndex = Math.max(
-    0,
-    visibleRoutes.findIndex((r: any) => r.key === activeRoute?.key)
-  );
+  const activeRouteIndex = visibleRoutes.findIndex((route: any) => route.key === activeRoute?.key);
+  const cowDetailsTabIndex = activeRoute?.name === 'cow-details'
+    ? visibleRoutes.findIndex((route: any) => ['cows', 'cattle-registry'].includes(route.name))
+    : -1;
+  const activeVisibleIndex = Math.max(0, activeRouteIndex >= 0 ? activeRouteIndex : cowDetailsTabIndex);
 
-  // Bar layout measurement
-  const screenWidth = Dimensions.get('window').width;
   const horizontalMargin = 16;
-  const initialBarWidth = Math.max(280, screenWidth - horizontalMargin * 2);
-  const [barWidth, setBarWidth] = useState(initialBarWidth);
-
-  const itemWidth = barWidth / totalTabs;
-  const initialX = (activeVisibleIndex + 0.5) * itemWidth;
-
-  const animatedX = useRef(new Animated.Value(initialX)).current;
-  const animatedScale = useRef(new Animated.Value(1)).current;
-  const [currentX, setCurrentX] = useState(initialX);
 
   // Track keyboard events to hide bar during text entry
   useEffect(() => {
@@ -237,72 +220,11 @@ export function FloatingAavinTabBar({
     };
   }, []);
 
-  // Sync listener for animated SVG path rendering
-  useEffect(() => {
-    const listenerId = animatedX.addListener(({ value }) => {
-      setCurrentX(value);
-    });
-    return () => {
-      animatedX.removeListener(listenerId);
-    };
-  }, [animatedX]);
-
-  // Animate position and scale when activeVisibleIndex changes
-  useEffect(() => {
-    if (barWidth > 0 && totalTabs > 0) {
-      const targetX = (activeVisibleIndex + 0.5) * (barWidth / totalTabs);
-
-      Animated.parallel([
-        Animated.spring(animatedX, {
-          toValue: targetX,
-          tension: 68,
-          friction: 10,
-          useNativeDriver: false,
-        }),
-        Animated.sequence([
-          Animated.timing(animatedScale, {
-            toValue: 0.88,
-            duration: 90,
-            useNativeDriver: true,
-          }),
-          Animated.spring(animatedScale, {
-            toValue: 1,
-            friction: 5,
-            tension: 85,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
-    }
-  }, [activeVisibleIndex, barWidth, totalTabs]);
-
-  const onBarLayout = (e: LayoutChangeEvent) => {
-    const measuredWidth = e.nativeEvent.layout.width;
-    if (measuredWidth > 0 && Math.abs(measuredWidth - barWidth) > 1) {
-      setBarWidth(measuredWidth);
-      const targetX = (activeVisibleIndex + 0.5) * (measuredWidth / totalTabs);
-      animatedX.setValue(targetX);
-      setCurrentX(targetX);
-    }
-  };
-
-  if (isKeyboardVisible) {
+  if (isKeyboardVisible || !barsVisible) {
     return null;
   }
 
   const bottomOffset = Math.max(insets.bottom, 12);
-  const pathData = getCurvedBarPath(barWidth, TAB_BAR_HEIGHT, currentX);
-
-  // Active item metadata
-  const currentActiveRoute = visibleRoutes[activeVisibleIndex];
-  const activeMeta = currentActiveRoute
-    ? ROUTE_META_MAP[currentActiveRoute.name] || {
-        outline: 'ellipse-outline',
-        filled: 'ellipse',
-        labelKey: '',
-        fallbackLabel: currentActiveRoute.name,
-      }
-    : null;
 
   return (
     <View
@@ -321,48 +243,8 @@ export function FloatingAavinTabBar({
           { height: TAB_BAR_HEIGHT },
           isScrolled && styles.barWrapperScrolled,
         ]}
-        onLayout={onBarLayout}
       >
-        {/* SVG Curved Notch Background */}
-        <Svg
-          width={barWidth}
-          height={TAB_BAR_HEIGHT}
-          style={styles.svgBackground}
-        >
-          <Path d={pathData} fill={AAVIN_COLORS.white} />
-        </Svg>
-
-        {/* Floating Raised Circle for Active Tab */}
-        <Animated.View
-          style={[
-            styles.floatingCircleWrapper,
-            {
-              left: currentX - BUTTON_SIZE / 2,
-              transform: [{ scale: animatedScale }],
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <LinearGradient
-            colors={[AAVIN_COLORS.headerBg, AAVIN_COLORS.headerBg]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[
-              styles.floatingCircle,
-              isScrolled && styles.floatingCircleScrolled,
-            ]}
-          >
-            {activeMeta && (
-              <Ionicons
-                name={activeMeta.filled}
-                size={26}
-                color={AAVIN_COLORS.white}
-              />
-            )}
-          </LinearGradient>
-        </Animated.View>
-
-        {/* Five Tab Touch Targets & Content */}
+        {/* Tab Touch Targets & Content */}
         <View style={styles.tabsRow}>
           {visibleRoutes.map((route: any, index: number) => {
             const isFocused = index === activeVisibleIndex;
@@ -410,18 +292,29 @@ export function FloatingAavinTabBar({
                 testID={`tab-${route.name}`}
                 onPress={onPress}
                 onLongPress={onLongPress}
-                style={styles.tabItem}
+                style={[
+                  styles.tabItem,
+                  isFocused && styles.tabItemFocused,
+                ]}
               >
-                {/* Render only the icon: inactive items show outline icon; active item is elevated in the circle */}
                 <View style={styles.iconContainer}>
-                  {!isFocused && (
-                    <Ionicons
-                      name={meta.outline}
-                      size={25}
-                      color={AAVIN_COLORS.secondaryText}
-                    />
-                  )}
+                  <Ionicons
+                    name={isFocused ? meta.filled : meta.outline}
+                    size={21}
+                    color={isFocused ? AAVIN_COLORS.primaryBlue : AAVIN_COLORS.secondaryText}
+                  />
                 </View>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={[
+                    styles.tabLabel,
+                    { color: isFocused ? AAVIN_COLORS.navy : AAVIN_COLORS.secondaryText },
+                    isFocused && styles.tabLabelFocused,
+                  ]}
+                >
+                  {label}
+                </Text>
               </Pressable>
             );
           })}
@@ -443,6 +336,8 @@ const styles = StyleSheet.create({
   barWrapper: {
     width: '100%',
     position: 'relative',
+    backgroundColor: AAVIN_COLORS.white,
+    borderRadius: 24,
     // Shadow styling matching dairy/clean executive aesthetic
     ...Platform.select({
       ios: {
@@ -477,61 +372,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  svgBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  floatingCircleWrapper: {
-    position: 'absolute',
-    top: -20,
-    width: BUTTON_SIZE,
-    height: BUTTON_SIZE,
-    zIndex: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  floatingCircle: {
-    width: BUTTON_SIZE,
-    height: BUTTON_SIZE,
-    borderRadius: BUTTON_SIZE / 2,
-    borderWidth: 4,
-    borderColor: AAVIN_COLORS.white,
-    backgroundColor: AAVIN_COLORS.headerBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: AAVIN_COLORS.headerBg,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.45,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 8,
-      },
-      default: {
-        boxShadow: '0px 6px 14px rgba(94, 168, 238, 0.45)',
-        transition: 'box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
-      },
-    }),
-  },
-  floatingCircleScrolled: {
-    ...Platform.select({
-      ios: {
-        shadowColor: AAVIN_COLORS.headerBg,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.62,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 12,
-      },
-      default: {
-        boxShadow: '0px 8px 24px rgba(94, 168, 238, 0.65), 0px 3px 8px rgba(10, 56, 113, 0.22)',
-      },
-    }),
-  },
   tabsRow: {
     flex: 1,
     flexDirection: 'row',
@@ -544,11 +384,28 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 3,
+    marginHorizontal: 3,
+    borderRadius: 18,
+  },
+  tabItemFocused: {
+    backgroundColor: AAVIN_COLORS.skyBlueLight,
   },
   iconContainer: {
     width: 44,
-    height: 44,
+    height: 21,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tabLabel: {
+    maxWidth: '100%',
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  tabLabelFocused: {
+    fontWeight: '800',
   },
 });
