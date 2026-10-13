@@ -9,6 +9,7 @@ import { Typography } from '../constants/Typography';
 import { UserRole } from '../types/aavin';
 
 import { useTranslation } from '../context/LanguageContext';
+import { useScroll } from '../context/ScrollContext';
 
 interface DemoHeaderProps {
   title?: string;
@@ -21,6 +22,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
   const { colors } = useTheme();
   const { language, toggleLanguage } = useTranslation();
   const { notifications } = useAavinStore();
+  const { isScrolled } = useScroll();
   const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -100,7 +102,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, isScrolled && styles.containerScrolled]}>
         {/* Top Info Strip */}
         <View style={styles.topStrip}>
           <View style={styles.brandBadgeRow}>
@@ -271,7 +273,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#5EA8EE', // Sky-Blue surface matching reference UI
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'ios' ? 48 : 38,
-    paddingBottom: 16,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    zIndex: 100,
+    ...Platform.select({
+      default: {
+        transition: 'box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-bottom-color 0.28s ease',
+      },
+    }),
+  },
+  containerScrolled: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0A3871',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+      default: {
+        boxShadow: '0px 6px 20px rgba(10, 56, 113, 0.24), 0px 2px 6px rgba(0, 0, 0, 0.08)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.28)',
+      },
+    }),
   },
   topStrip: {
     flexDirection: 'row',
@@ -286,9 +314,8 @@ const styles = StyleSheet.create({
   },
   logoThumbnail: {
     width: 58,
-    height: 30,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+    height: 34,
+    backgroundColor: 'transparent',
   },
   roleBadge: {
     flexDirection: 'row',

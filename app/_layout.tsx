@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
+import { ScrollProvider } from '../context/ScrollContext';
 import { AuthProvider } from '../context/AuthContext';
 import { NetworkProvider } from '../context/NetworkContext';
 import { LanguageProvider } from '../context/LanguageContext';
@@ -25,7 +26,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)/register" options={{ title: 'Farmer Registration', headerBackTitle: 'Login' }} />
+        <Stack.Screen name="(auth)/register" options={{ title: 'Farmer Registration', headerBackTitle: 'Back' }} />
         <Stack.Screen name="(farmer)" options={{ headerShown: false }} />
         <Stack.Screen name="(booth)" options={{ headerShown: false }} />
         <Stack.Screen name="(bmc)" options={{ headerShown: false }} />
@@ -49,15 +50,17 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <LanguageProvider>
-          <NetworkProvider>
-            <AavinStoreProvider>
-              <AuthProvider>
-                <RootLayoutNav />
-              </AuthProvider>
-            </AavinStoreProvider>
-          </NetworkProvider>
-        </LanguageProvider>
+        <ScrollProvider>
+          <LanguageProvider>
+            <NetworkProvider>
+              <AavinStoreProvider>
+                <AuthProvider>
+                  <RootLayoutNav />
+                </AuthProvider>
+              </AavinStoreProvider>
+            </NetworkProvider>
+          </LanguageProvider>
+        </ScrollProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

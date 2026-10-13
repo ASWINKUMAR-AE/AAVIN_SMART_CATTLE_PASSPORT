@@ -224,11 +224,39 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state, persistState]);
 
   const updateFarmer = useCallback((farmer: Farmer) => {
+    const newNotification: InAppNotification = {
+      id: `NOTIF-${Date.now()}`,
+      recipientRole: 'admin',
+      title: 'Farmer Profile Updated',
+      message: `Farmer record for ${farmer.name} (${farmer.farmerIdCode}) was updated.`,
+      type: 'system',
+      timestamp: 'Just now',
+      isRead: false,
+    };
+
     const updated = {
       ...state,
       farmers: state.farmers.map(f => f.id === farmer.id ? farmer : f),
+      notifications: [newNotification, ...state.notifications],
     };
     persistState(updated);
+
+    // Sync to backend MySQL / API
+    WorkflowApi.updateFarmer(farmer.id, {
+      fullName: farmer.name,
+      phone: farmer.mobileNumber,
+      village: farmer.village,
+      taluk: farmer.community,
+      farmerIdCode: farmer.farmerIdCode,
+      bankAccountName: farmer.bankAccountName,
+      bankName: farmer.bankName,
+      bankAccountNumber: farmer.bankAccountNumber,
+      bankIfsc: farmer.bankIfsc,
+      upiId: farmer.upiId,
+      primaryCentreId: farmer.assignedBoothId,
+    }).catch(err => {
+      console.log('[WorkflowApi] Farmer update persisted locally. Offline/mock mode:', err?.message || err);
+    });
   }, [state, persistState]);
 
   const verifyFarmer = useCallback((farmerId: string, status: 'verified' | 'pending') => {

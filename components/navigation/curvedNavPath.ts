@@ -6,6 +6,7 @@ export const AAVIN_NAV_COLORS = {
   navy: '#123451',
   primaryBlue: '#1688C9',
   skyBlueLight: '#EAF6FC',
+  headerBg: '#5EA8EE', // Header background color matching DemoHeader & reference UI
   white: '#FFFFFF',
   darkText: '#17324D',
   secondaryText: '#718096',
