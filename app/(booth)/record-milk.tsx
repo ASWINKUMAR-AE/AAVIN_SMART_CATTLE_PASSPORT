@@ -449,7 +449,6 @@ export default function RecordMilkScreen() {
                     },
                   ]}
                 >
-                  <Ionicons name="walk" size={18} color={route === 'direct' ? colors.primary : colors.textSecondary} />
                   <View style={styles.routeBtnTextCol}>
                     <Text style={[styles.routeToggleBtnText, { color: route === 'direct' ? colors.primary : colors.text }]}>
                       Direct Producer Supply
@@ -470,7 +469,6 @@ export default function RecordMilkScreen() {
                     },
                   ]}
                 >
-                  <Ionicons name="bus" size={18} color={route === 'vendor' ? colors.primary : colors.textSecondary} />
                   <View style={styles.routeBtnTextCol}>
                     <Text style={[styles.routeToggleBtnText, { color: route === 'vendor' ? colors.primary : colors.text }]}>
                       Route Transport Vehicle
@@ -981,14 +979,12 @@ const styles = StyleSheet.create({
   },
   routeToggleBtn: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1.5,
-    gap: 8,
   },
   routeBtnTextCol: {
     flex: 1,
