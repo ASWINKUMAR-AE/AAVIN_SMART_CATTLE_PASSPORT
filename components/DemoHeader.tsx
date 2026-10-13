@@ -15,9 +15,10 @@ interface DemoHeaderProps {
   title?: string;
   subtitle?: string;
   showBack?: boolean;
+  onBack?: () => void;
 }
 
-export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBack = false }) => {
+export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBack = false, onBack }) => {
   const { user, activeRole, switchRole, demoUsers, logout } = useAuth();
   const { colors } = useTheme();
   const { language, toggleLanguage } = useTranslation();
@@ -150,7 +151,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
         {/* User Info Bar */}
         <View style={styles.userBar}>
           {showBack && (
-            <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <Pressable onPress={onBack || (() => router.back())} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </Pressable>
           )}
