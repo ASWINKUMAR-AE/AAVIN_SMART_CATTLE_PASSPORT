@@ -300,9 +300,21 @@ export default function RecordMilkScreen() {
               </Pressable>
             </View>
 
-            {/* Active Producer Spotlight Banner */}
+            {/* Active Producer Spotlight Banner - Clickable Card to Change Producer */}
             {selectedFarmer && (
-              <View style={[styles.farmerSpotlightBox, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+              <Pressable
+                onPress={() => setShowFarmerSelector(!showFarmerSelector)}
+                style={({ pressed }) => [
+                  styles.farmerSpotlightBox,
+                  {
+                    backgroundColor: showFarmerSelector 
+                      ? (isDark ? '#1E293B' : '#EFF6FF') 
+                      : (isDark ? '#1E293B' : '#F8FAFC'),
+                    borderColor: showFarmerSelector ? colors.primary : colors.border,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
                 <View style={styles.farmerSpotlightAvatar}>
                   <Text style={styles.avatarInitials}>
                     {selectedFarmer.name.substring(0, 2).toUpperCase()}
@@ -342,7 +354,19 @@ export default function RecordMilkScreen() {
                     </View>
                   </View>
                 </View>
-              </View>
+
+                {/* Right Action Badge / Chevron Indicator */}
+                <View style={[styles.changeFarmerActionPill, { backgroundColor: showFarmerSelector ? colors.primaryLight : (isDark ? '#334155' : '#E0F2FE') }]}>
+                  <Text style={[styles.changeFarmerActionText, { color: colors.primary }]}>
+                    {showFarmerSelector ? 'Close' : 'Change'}
+                  </Text>
+                  <Ionicons 
+                    name={showFarmerSelector ? "chevron-up" : "chevron-forward"} 
+                    size={14} 
+                    color={colors.primary} 
+                  />
+                </View>
+              </Pressable>
             )}
 
             {/* Expandable Searchable Farmer List */}
@@ -891,6 +915,19 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginHorizontal: 5,
     fontSize: 10,
+  },
+  changeFarmerActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 3,
+    marginLeft: 8,
+  },
+  changeFarmerActionText: {
+    fontSize: 10,
+    fontWeight: '800',
   },
   farmerDropdownContainer: {
     marginTop: 12,
