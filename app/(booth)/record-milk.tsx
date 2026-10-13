@@ -15,7 +15,7 @@ import { CollectionRoute, MeasurementMethod } from '../../types/aavin';
 export default function RecordMilkScreen() {
   const { user } = useAuth();
   const { farmers, vendors, booths, recordMilk, cows } = useAavinStore();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
 
   const boothId = user?.associatedId || 'BOOTH001';
@@ -43,7 +43,7 @@ export default function RecordMilkScreen() {
     setErrorMsg(null);
     const qty = parseFloat(quantityLitres);
     if (isNaN(qty) || qty <= 0) {
-      setErrorMsg('Please enter a valid milk quantity greater than 0 Litres.');
+      setErrorMsg('Please enter a valid measured milk volume in litres (greater than 0).');
       return;
     }
 
@@ -68,11 +68,11 @@ export default function RecordMilkScreen() {
         });
 
         Alert.alert(
-          'Milk Recorded Successfully!',
-          `Recorded ${qty.toFixed(2)} Litres for ${farmerObj?.name}. Shared state updated and notification dispatched to farmer.`,
+          'Milk Intake Recorded Successfully',
+          `Successfully recorded ${qty.toFixed(2)} Litres for ${farmerObj?.name}. The collection entry has been saved and an in-app confirmation notification was issued.`,
           [
             {
-              text: 'Add Another Entry',
+              text: '+ Record Another Entry',
               onPress: () => {
                 setQuantityLitres('');
                 setNotes('');
@@ -100,13 +100,20 @@ export default function RecordMilkScreen() {
           measurementMethod: 'combined',
           individualAllocation: 'not_available',
           createdBy: user?.fullName || 'Booth Operator',
-          notes: notes.trim() || 'Bulk batch from vendor pickup cans.',
+          notes: notes.trim() || 'Bulk intake batch from route vendor cans.',
         });
 
         Alert.alert(
-          'Combined Vendor Entry Saved!',
-          `Recorded ${qty.toFixed(2)} Litres for Vendor ${vendorObj?.name} (Method: Combined Bulk, Individual: N/A). Total added to eligible booth receipt.`,
+          'Combined Route Intake Saved',
+          `Successfully recorded ${qty.toFixed(2)} Litres for Vendor ${vendorObj?.name} (Method: Combined Bulk Route, Individual Allocation: N/A). Total added to eligible booth dispatch receipt.`,
           [
+            {
+              text: '+ Record Another Entry',
+              onPress: () => {
+                setQuantityLitres('');
+                setNotes('');
+              },
+            },
             {
               text: 'Review Daily Collection',
               onPress: () => router.push('/(booth)/review-collection'),
@@ -115,7 +122,7 @@ export default function RecordMilkScreen() {
         );
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Could not record milk entry.');
+      setErrorMsg(err.message || 'Could not save milk collection entry.');
     } finally {
       setSubmitting(false);
     }
@@ -128,15 +135,18 @@ export default function RecordMilkScreen() {
     >
       <DemoHeader 
         title="Record Milk Collection"
-        subtitle={`Intake Station • ${booth.name}`}
+        subtitle={`Milk Intake Station • ${booth.name}`}
         showBack
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Method Toggle */}
         <Card style={styles.card}>
-          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Measurement Mode
+          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 4 }]}>
+            Milk Intake Measurement Mode
+          </Text>
+          <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
+            Select individual farmer measurement or bulk route logistics batch
           </Text>
 
           <View style={styles.toggleRow}>
@@ -153,7 +163,7 @@ export default function RecordMilkScreen() {
                 color={measurementMethod === 'farmer_wise' ? '#FFFFFF' : colors.textSecondary} 
               />
               <Text style={[styles.toggleText, { color: measurementMethod === 'farmer_wise' ? '#FFFFFF' : colors.text }]}>
-                Farmer-Wise Measured
+                Farmer-Wise Direct Intake
               </Text>
             </Pressable>
 
@@ -170,7 +180,7 @@ export default function RecordMilkScreen() {
                 color={measurementMethod === 'combined' ? '#FFFFFF' : colors.textSecondary} 
               />
               <Text style={[styles.toggleText, { color: measurementMethod === 'combined' ? '#FFFFFF' : colors.text }]}>
-                Combined Vendor Batch
+                Combined Route Batch
               </Text>
             </Pressable>
           </View>
@@ -188,8 +198,11 @@ export default function RecordMilkScreen() {
         {/* Farmer Selection (When Farmer-Wise) */}
         {measurementMethod === 'farmer_wise' && (
           <Card style={styles.card}>
-            <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 10 }]}>
-              1. Select Assigned Farmer
+            <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 2 }]}>
+              1. Select Producer / Farmer
+            </Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
+              {assignedFarmers.length} registered producers linked to {booth.name}
             </Text>
 
             <View style={styles.farmerList}>
@@ -217,7 +230,7 @@ export default function RecordMilkScreen() {
                         {f.name} ({f.farmerIdCode})
                       </Text>
                       <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                        {f.village} • {f.numberOfCows} Cows Registered
+                        {f.village} • {f.numberOfCows} Cows Registered • +91 {f.mobileNumber}
                       </Text>
                     </View>
                   </Pressable>
@@ -231,10 +244,10 @@ export default function RecordMilkScreen() {
                 <Ionicons name="warning" size={18} color="#DC2626" />
                 <View style={{ marginLeft: 8, flex: 1 }}>
                   <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800' }]}>
-                    SAFETY AUDIT WARNING: Active Medicine Withdrawal
+                    SAFETY WITHDRAWAL HOLD: Active Medical Treatment
                   </Text>
-                  <Text style={[Typography.caption2, { color: '#991B1B' }]}>
-                    Cow {cowWithWithdrawal.name} (#{cowWithWithdrawal.tagId}) is on antibiotic hold. Ensure farmer has segregated this cow's milk!
+                  <Text style={[Typography.caption2, { color: '#991B1B', marginTop: 2 }]}>
+                    Cow "{cowWithWithdrawal.name}" (Ear Tag #{cowWithWithdrawal.tagId}) is under antibiotic / medicine withdrawal hold. Verify that milk from this animal was segregated and NOT mixed in this intake!
                   </Text>
                 </View>
               </View>
@@ -242,7 +255,7 @@ export default function RecordMilkScreen() {
 
             {/* Delivery Route Selector */}
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginTop: 14, marginBottom: 8 }]}>
-              Delivery Route
+              Milk Delivery Route
             </Text>
             <View style={styles.routeRow}>
               <Pressable
@@ -253,7 +266,7 @@ export default function RecordMilkScreen() {
                 ]}
               >
                 <Text style={[styles.routeTabText, { color: route === 'direct' ? colors.primary : colors.textSecondary }]}>
-                  🚶 Direct Farmer Delivery
+                  🚶 Direct Farmer Supply
                 </Text>
               </Pressable>
 
@@ -265,7 +278,7 @@ export default function RecordMilkScreen() {
                 ]}
               >
                 <Text style={[styles.routeTabText, { color: route === 'vendor' ? colors.primary : colors.textSecondary }]}>
-                  🚛 Vendor-Mediated
+                  🚛 Transport Vendor Route
                 </Text>
               </Pressable>
             </View>
@@ -273,7 +286,7 @@ export default function RecordMilkScreen() {
             {route === 'vendor' && (
               <View style={{ marginTop: 10 }}>
                 <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>
-                  Collector / Logistics Vendor:
+                  Transport Vendor / Route Vehicle:
                 </Text>
                 {vendors.map((v) => (
                   <Pressable
@@ -285,7 +298,7 @@ export default function RecordMilkScreen() {
                     ]}
                   >
                     <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600' }]}>
-                      {v.name} ({v.vehicleNumber})
+                      {v.name} ({v.vehicleNumber}) • Route: {v.routeName}
                     </Text>
                   </Pressable>
                 ))}
@@ -297,11 +310,11 @@ export default function RecordMilkScreen() {
         {/* Vendor Selection (When Combined Batch) */}
         {measurementMethod === 'combined' && (
           <Card style={styles.card}>
-            <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 6 }]}>
-              Combined Vendor Logistics
+            <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 4 }]}>
+              Combined Route Logistics Batch
             </Text>
             <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 12 }]}>
-              Measured as a single combined bulk batch without measuring each farmer separately. Individual allocation: Not Available.
+              Measured as a single combined bulk volume from route collection cans without individual producer weighing. Individual allocation: Not Available.
             </Text>
 
             {vendors.map((v) => (
@@ -334,21 +347,22 @@ export default function RecordMilkScreen() {
         {/* Quantity & Session Input */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 12 }]}>
-            Measured Volume & Session
+            Milk Volume & Session Details
           </Text>
 
           <TextField
-            label="Measured Quantity (Litres) *"
-            placeholder="e.g. 8.5"
+            label="Measured Milk Quantity (Litres) *"
+            placeholder="e.g. 12.5"
             value={quantityLitres}
             onChangeText={(t) => { setQuantityLitres(t); setErrorMsg(null); }}
             keyboardType="decimal-pad"
             icon="water-outline"
+            helperText="Enter net measured milk intake volume in Litres"
           />
 
           {/* Session toggle */}
-          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginBottom: 6, marginTop: 4 }]}>
-            Milking Session *
+          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginBottom: 6, marginTop: 8 }]}>
+            Intake Session *
           </Text>
           <View style={styles.sessionRow}>
             <Pressable
@@ -360,7 +374,7 @@ export default function RecordMilkScreen() {
             >
               <Ionicons name="sunny" size={16} color={session === 'morning' ? '#D97706' : colors.textSecondary} />
               <Text style={[styles.sessionTabText, { color: session === 'morning' ? '#92400E' : colors.textSecondary }]}>
-                MORNING INTAKE
+                Morning Intake (காலை)
               </Text>
             </Pressable>
 
@@ -373,29 +387,30 @@ export default function RecordMilkScreen() {
             >
               <Ionicons name="moon" size={16} color={session === 'evening' ? '#4F46E5' : colors.textSecondary} />
               <Text style={[styles.sessionTabText, { color: session === 'evening' ? '#3730A3' : colors.textSecondary }]}>
-                EVENING INTAKE
+                Evening Intake (மாலை)
               </Text>
             </Pressable>
           </View>
 
           <TextField
-            label="Collection Date"
+            label="Collection Date (YYYY-MM-DD)"
             value={collectionDate}
             onChangeText={setCollectionDate}
             icon="calendar-outline"
           />
 
           <TextField
-            label="Optional Operator Notes"
-            placeholder="e.g. Can #4 clean, lactometer reading 1.028"
+            label="Operator Notes (Optional)"
+            placeholder="e.g. Can #4 inspected, lactometer 1.028, FAT/SNF passed"
             value={notes}
             onChangeText={setNotes}
             icon="create-outline"
+            helperText="Quality remarks, can IDs, or analyzer test observations"
           />
         </Card>
 
         <Button
-          title={submitting ? "Saving Entry..." : "Submit Milk Intake Record"}
+          title={submitting ? "Saving Intake Entry..." : "Submit Milk Intake Record"}
           size="lg"
           loading={submitting}
           onPress={handleSubmit}

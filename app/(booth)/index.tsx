@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Pressable, RefreshControl, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
@@ -73,118 +73,61 @@ export default function BoothDashboard() {
           </View>
         )}
 
-        {/* Signature Hero Dark Navy Card (Reference Wallet UI) */}
-        <View style={styles.heroNavyCard}>
-          <View style={styles.heroCardHeaderRow}>
-            <View style={styles.heroHeaderPill}>
-              <Text style={styles.heroHeaderPillText}>Booth #{booth.code} ›</Text>
+        {/* Signature Hero Dark Navy Card with Assets soc.png Background & Dark Overlay */}
+        <ImageBackground
+          source={require('../../assets/soc.png')}
+          style={styles.heroNavyCard}
+          imageStyle={styles.heroBgImage}
+          resizeMode="cover"
+        >
+          {/* Dark Color Layer above image */}
+          <View style={styles.darkOverlayLayer}>
+            <View style={styles.heroCardHeaderRow}>
+              <View style={styles.heroHeaderPill}>
+                <Text style={styles.heroHeaderPillText}>Booth #{booth.code} ›</Text>
+              </View>
+              <View style={[styles.heroStatusBadge, { backgroundColor: todayReceipt ? '#16A34A' : '#D97706' }]}>
+                <Text style={styles.heroStatusBadgeText}>
+                  {todayReceipt ? '✓ DISPATCH READY' : 'CLOSURE PENDING'}
+                </Text>
+              </View>
             </View>
-            <View style={[styles.heroStatusBadge, { backgroundColor: todayReceipt ? '#16A34A' : '#D97706' }]}>
-              <Text style={styles.heroStatusBadgeText}>
-                {todayReceipt ? '✓ DISPATCH READY' : 'CLOSURE PENDING'}
-              </Text>
-            </View>
-          </View>
 
-          <Text style={styles.heroBalanceNumber}>
-            {stats.eligibleReceiptTotal.toFixed(2)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
-          </Text>
-
-          <View style={styles.heroSubRow}>
-            <View style={styles.growthPill}>
-              <Text style={styles.growthPillText}>+4.2% ↑</Text>
-            </View>
-            <Text style={styles.heroSubText}>
-              Farmer: {stats.farmerWiseTotal.toFixed(1)} L • Route: {stats.vendorCombinedTotal.toFixed(1)} L
+            <Text style={styles.heroBalanceNumber}>
+              {stats.eligibleReceiptTotal.toFixed(2)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
             </Text>
+
+            <View style={styles.heroSubRow}>
+              <View style={styles.growthPill}>
+                <Text style={styles.growthPillText}>+4.2% ↑</Text>
+              </View>
+              <Text style={styles.heroSubText}>
+                Farmer: {stats.farmerWiseTotal.toFixed(1)} L • Route: {stats.vendorCombinedTotal.toFixed(1)} L
+              </Text>
+            </View>
           </View>
+        </ImageBackground>
 
-          {/* 4 Circular Action Buttons (from Reference UI: Down, Up-Right, Swap, Plus) */}
-          <View style={styles.heroActionsRow}>
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(booth)/record-milk')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Record</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(booth)/review-collection')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Review</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(booth)/sent-receipts')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Receipts</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(booth)/farmers')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="people" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Farmers</Text>
-            </Pressable>
-          </View>
+        {/* Quick Operations Row */}
+        <View style={styles.actionBtnRow}>
+          <Pressable 
+            onPress={() => router.push('/(booth)/farmers')}
+            style={[styles.quickActionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <View style={[styles.quickActionIconCircle, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="people" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                Farmers Directory & KYC
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                {assignedFarmers.length} Assigned • Tap to Edit Data
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
         </View>
-
-        {/* Dispatch Pipeline Overview */}
-        <Card style={styles.pipelineCard}>
-          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-            Milk Collection Chain Node
-          </Text>
-
-          <View style={styles.pipelineFlow}>
-            <View style={styles.flowNode}>
-              <Text style={{ fontSize: 24 }}>👨‍🌾</Text>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700', marginTop: 4 }]}>
-                Farmers
-              </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '800' }]}>
-                {stats.farmersAttended} Supplied
-              </Text>
-            </View>
-
-            <Ionicons name="arrow-forward" size={18} color="#94A3B8" />
-
-            <View style={[styles.flowNode, { backgroundColor: colors.primaryLight, padding: 8, borderRadius: 10 }]}>
-              <Text style={{ fontSize: 24 }}>🏢</Text>
-              <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', marginTop: 4 }]}>
-                Melur Booth
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '900' }]}>
-                {stats.eligibleReceiptTotal.toFixed(1)} L
-              </Text>
-            </View>
-
-            <Ionicons name="arrow-forward" size={18} color="#94A3B8" />
-
-            <View style={styles.flowNode}>
-              <Text style={{ fontSize: 24 }}>❄️</Text>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700', marginTop: 4 }]}>
-                East BMC
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800' }]}>
-                {todayReceipt?.status === 'sent_to_bmc' ? 'Dispatched' : 'Pending'}
-              </Text>
-            </View>
-          </View>
-        </Card>
 
         {/* Today's Recorded Entries List */}
         <Card style={styles.entriesCard}>
@@ -296,19 +239,24 @@ const styles = StyleSheet.create({
   actionBtnRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 6,
+    marginTop: 2,
+    marginBottom: 6,
   },
-  pipelineCard: {
-    padding: 16,
-  },
-  pipelineFlow: {
+  quickActionCard: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
   },
-  flowNode: {
+  quickActionIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   entriesCard: {
     padding: 16,
@@ -343,15 +291,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   heroNavyCard: {
-    backgroundColor: '#0D1E36',
     borderRadius: 24,
-    padding: 18,
     marginBottom: 16,
+    overflow: 'hidden',
     shadowColor: '#071325',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
+  },
+  heroBgImage: {
+    borderRadius: 24,
+    width: '100%',
+    height: '100%',
+  },
+  darkOverlayLayer: {
+    backgroundColor: 'rgba(8, 20, 38, 0.82)',
+    padding: 18,
+    borderRadius: 24,
+    width: '100%',
   },
   heroCardHeaderRow: {
     flexDirection: 'row',
@@ -390,7 +348,7 @@ const styles = StyleSheet.create({
   heroSubRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 4,
   },
   growthPill: {
     backgroundColor: 'rgba(22, 163, 74, 0.2)',
@@ -408,33 +366,5 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 12,
     fontWeight: '600',
-  },
-  heroActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.12)',
-    paddingTop: 14,
-  },
-  heroCircleAction: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  circleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#162C4E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  circleBtnLabel: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
   },
 });

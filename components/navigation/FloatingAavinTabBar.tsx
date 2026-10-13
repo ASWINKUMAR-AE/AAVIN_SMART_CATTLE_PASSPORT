@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../context/LanguageContext';
+import { useScroll } from '../../context/ScrollContext';
 import {
   TAB_BAR_HEIGHT,
   BUTTON_SIZE,
@@ -188,6 +189,7 @@ export function FloatingAavinTabBar({
 }: FloatingAavinTabBarProps) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { isScrolled } = useScroll();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   // Filter to only routes that have a registered icon and not hidden
@@ -314,7 +316,11 @@ export function FloatingAavinTabBar({
       pointerEvents="box-none"
     >
       <View
-        style={[styles.barWrapper, { height: TAB_BAR_HEIGHT }]}
+        style={[
+          styles.barWrapper,
+          { height: TAB_BAR_HEIGHT },
+          isScrolled && styles.barWrapperScrolled,
+        ]}
         onLayout={onBarLayout}
       >
         {/* SVG Curved Notch Background */}
@@ -338,10 +344,13 @@ export function FloatingAavinTabBar({
           pointerEvents="none"
         >
           <LinearGradient
-            colors={[AAVIN_COLORS.navy, AAVIN_COLORS.primaryBlue]}
+            colors={[AAVIN_COLORS.headerBg, AAVIN_COLORS.headerBg]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.floatingCircle}
+            style={[
+              styles.floatingCircle,
+              isScrolled && styles.floatingCircleScrolled,
+            ]}
           >
             {activeMeta && (
               <Ionicons
@@ -447,6 +456,24 @@ const styles = StyleSheet.create({
       },
       default: {
         boxShadow: '0px 6px 18px rgba(18, 52, 81, 0.12)',
+        transition: 'box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+    }),
+  },
+  barWrapperScrolled: {
+    ...Platform.select({
+      ios: {
+        shadowColor: AAVIN_COLORS.navy,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 16,
+      },
+      default: {
+        boxShadow: '0px 12px 32px rgba(18, 52, 81, 0.24), 0px 4px 14px rgba(94, 168, 238, 0.20)',
+        transform: 'translateY(-2px)',
       },
     }),
   },
@@ -470,11 +497,12 @@ const styles = StyleSheet.create({
     borderRadius: BUTTON_SIZE / 2,
     borderWidth: 4,
     borderColor: AAVIN_COLORS.white,
+    backgroundColor: AAVIN_COLORS.headerBg,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: AAVIN_COLORS.primaryBlue,
+        shadowColor: AAVIN_COLORS.headerBg,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.45,
         shadowRadius: 10,
@@ -483,7 +511,24 @@ const styles = StyleSheet.create({
         elevation: 8,
       },
       default: {
-        boxShadow: '0px 6px 14px rgba(22, 136, 201, 0.45)',
+        boxShadow: '0px 6px 14px rgba(94, 168, 238, 0.45)',
+        transition: 'box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+    }),
+  },
+  floatingCircleScrolled: {
+    ...Platform.select({
+      ios: {
+        shadowColor: AAVIN_COLORS.headerBg,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.62,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      default: {
+        boxShadow: '0px 8px 24px rgba(94, 168, 238, 0.65), 0px 3px 8px rgba(10, 56, 113, 0.22)',
       },
     }),
   },

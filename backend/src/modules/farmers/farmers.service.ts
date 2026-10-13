@@ -27,14 +27,14 @@ export class FarmersService {
     );
 
     const village = data.village !== undefined ? data.village : null;
-    const taluk = data.taluk !== undefined ? data.taluk : null;
+    const taluk = data.taluk !== undefined ? data.taluk : (data.community !== undefined ? data.community : null);
     const farmerIdCode = data.farmerIdCode !== undefined ? data.farmerIdCode : (data.farmer_id_code !== undefined ? data.farmer_id_code : null);
     const bankAccountName = data.bankAccountName !== undefined ? data.bankAccountName : (data.bank_account_name !== undefined ? data.bank_account_name : null);
     const bankName = data.bankName !== undefined ? data.bankName : (data.bank_name !== undefined ? data.bank_name : null);
     const bankAccountNumber = data.bankAccountNumber !== undefined ? data.bankAccountNumber : (data.bank_account_number !== undefined ? data.bank_account_number : null);
     const bankIfsc = data.bankIfsc !== undefined ? data.bankIfsc : (data.bank_ifsc !== undefined ? data.bank_ifsc : null);
     const upiId = data.upiId !== undefined ? data.upiId : (data.upi_id !== undefined ? data.upi_id : null);
-    const primaryCentreId = data.primaryCentreId !== undefined ? data.primaryCentreId : (data.primary_centre_id !== undefined ? data.primary_centre_id : null);
+    const primaryCentreId = data.primaryCentreId !== undefined ? data.primaryCentreId : (data.assignedBoothId !== undefined ? data.assignedBoothId : (data.primary_centre_id !== undefined ? data.primary_centre_id : null));
 
     if (existingProfile.length === 0) {
       await db.query(
@@ -82,7 +82,7 @@ export class FarmersService {
     }
 
     // Check phone uniqueness if phone is being changed
-    const newPhone = data.phone !== undefined ? data.phone : null;
+    const newPhone = data.phone !== undefined ? data.phone : (data.mobileNumber !== undefined ? data.mobileNumber : null);
     if (newPhone) {
       const [existingPhone] = await db.query<RowDataPacket[]>(
         `SELECT id FROM users WHERE phone = ? AND id != ?`,
@@ -93,7 +93,7 @@ export class FarmersService {
       }
     }
 
-    const fullName = data.fullName !== undefined ? data.fullName : (data.full_name !== undefined ? data.full_name : null);
+    const fullName = data.fullName !== undefined ? data.fullName : (data.full_name !== undefined ? data.full_name : (data.name !== undefined ? data.name : null));
     const preferredLanguage = data.preferredLanguage !== undefined ? data.preferredLanguage : (data.preferred_language !== undefined ? data.preferred_language : null);
     const email = data.email !== undefined ? data.email : null;
     const status = data.status !== undefined ? data.status : null;
