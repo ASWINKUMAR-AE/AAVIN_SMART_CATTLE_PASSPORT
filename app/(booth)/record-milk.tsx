@@ -215,26 +215,14 @@ export default function RecordMilkScreen() {
                 },
               ]}
             >
-              <View style={[styles.modeIconCircle, { backgroundColor: measurementMethod === 'farmer_wise' ? colors.primary : '#E2E8F0' }]}>
-                <Ionicons 
-                  name="person" 
-                  size={16} 
-                  color={measurementMethod === 'farmer_wise' ? '#FFFFFF' : '#64748B'} 
-                />
-              </View>
               <View style={styles.modeTextCol}>
-                <Text style={[Typography.subhead, { color: measurementMethod === 'farmer_wise' ? colors.primary : colors.text, fontWeight: '800' }]}>
+                <Text style={[Typography.subhead, { color: measurementMethod === 'farmer_wise' ? colors.primary : colors.text, fontWeight: '800', textAlign: 'center' }]}>
                   Farmer-Wise
                 </Text>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 10 }]}>
+                <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 11, textAlign: 'center', marginTop: 3 }]}>
                   Individual Weighing
                 </Text>
               </View>
-              <Ionicons 
-                name={measurementMethod === 'farmer_wise' ? "radio-button-on" : "radio-button-off"} 
-                size={18} 
-                color={measurementMethod === 'farmer_wise' ? colors.primary : colors.textMuted} 
-              />
             </Pressable>
 
             {/* Mode 2: Combined Route */}
@@ -248,26 +236,14 @@ export default function RecordMilkScreen() {
                 },
               ]}
             >
-              <View style={[styles.modeIconCircle, { backgroundColor: measurementMethod === 'combined' ? colors.primary : '#E2E8F0' }]}>
-                <Ionicons 
-                  name="bus" 
-                  size={16} 
-                  color={measurementMethod === 'combined' ? '#FFFFFF' : '#64748B'} 
-                />
-              </View>
               <View style={styles.modeTextCol}>
-                <Text style={[Typography.subhead, { color: measurementMethod === 'combined' ? colors.primary : colors.text, fontWeight: '800' }]}>
+                <Text style={[Typography.subhead, { color: measurementMethod === 'combined' ? colors.primary : colors.text, fontWeight: '800', textAlign: 'center' }]}>
                   Combined Route
                 </Text>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 10 }]}>
+                <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 11, textAlign: 'center', marginTop: 3 }]}>
                   Bulk Can Batch
                 </Text>
               </View>
-              <Ionicons 
-                name={measurementMethod === 'combined' ? "radio-button-on" : "radio-button-off"} 
-                size={18} 
-                color={measurementMethod === 'combined' ? colors.primary : colors.textMuted} 
-              />
             </Pressable>
           </View>
         </Card>
@@ -451,25 +427,37 @@ export default function RecordMilkScreen() {
             )}
 
             {/* Delivery Route Selector */}
-            <View style={styles.routeSection}>
-              <Text style={[Typography.caption1, { color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }]}>
-                Delivery Handover Method
+            <View style={[styles.routeSection, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+              <View style={styles.routeHeaderRow}>
+                <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
+                  Delivery Handover Method
+                </Text>
+              </View>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
+                Specify how the milk batch physically reached the booth
               </Text>
+
               <View style={styles.routeToggleRow}>
                 <Pressable
                   onPress={() => setRoute('direct')}
                   style={[
                     styles.routeToggleBtn,
                     {
-                      backgroundColor: route === 'direct' ? (isDark ? '#1E293B' : '#EFF6FF') : (isDark ? '#0F172A' : '#F8FAFC'),
+                      backgroundColor: route === 'direct' ? (isDark ? '#0F172A' : '#EFF6FF') : (isDark ? '#1E293B' : '#FFFFFF'),
                       borderColor: route === 'direct' ? colors.primary : colors.border,
                     },
                   ]}
                 >
-                  <Ionicons name="walk" size={16} color={route === 'direct' ? colors.primary : colors.textSecondary} />
-                  <Text style={[styles.routeToggleBtnText, { color: route === 'direct' ? colors.primary : colors.text }]}>
-                    Direct Producer Supply
-                  </Text>
+                  <Ionicons name="walk" size={18} color={route === 'direct' ? colors.primary : colors.textSecondary} />
+                  <View style={styles.routeBtnTextCol}>
+                    <Text style={[styles.routeToggleBtnText, { color: route === 'direct' ? colors.primary : colors.text }]}>
+                      Direct Producer Supply
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 10, textAlign: 'center', marginTop: 2 }]}>
+                      Producer Handover
+                    </Text>
+                  </View>
                 </Pressable>
 
                 <Pressable
@@ -477,15 +465,20 @@ export default function RecordMilkScreen() {
                   style={[
                     styles.routeToggleBtn,
                     {
-                      backgroundColor: route === 'vendor' ? (isDark ? '#1E293B' : '#EFF6FF') : (isDark ? '#0F172A' : '#F8FAFC'),
+                      backgroundColor: route === 'vendor' ? (isDark ? '#0F172A' : '#EFF6FF') : (isDark ? '#1E293B' : '#FFFFFF'),
                       borderColor: route === 'vendor' ? colors.primary : colors.border,
                     },
                   ]}
                 >
-                  <Ionicons name="bus" size={16} color={route === 'vendor' ? colors.primary : colors.textSecondary} />
-                  <Text style={[styles.routeToggleBtnText, { color: route === 'vendor' ? colors.primary : colors.text }]}>
-                    Route Transport Vehicle
-                  </Text>
+                  <Ionicons name="bus" size={18} color={route === 'vendor' ? colors.primary : colors.textSecondary} />
+                  <View style={styles.routeBtnTextCol}>
+                    <Text style={[styles.routeToggleBtnText, { color: route === 'vendor' ? colors.primary : colors.text }]}>
+                      Route Transport Vehicle
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 10, textAlign: 'center', marginTop: 2 }]}>
+                      Vendor Can Route
+                    </Text>
+                  </View>
                 </Pressable>
               </View>
 
@@ -830,23 +823,17 @@ const styles = StyleSheet.create({
   },
   modeToggleCard: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1.5,
   },
-  modeIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  modeTextCol: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  modeTextCol: {
-    flex: 1,
-    marginLeft: 8,
-    marginRight: 4,
+    width: '100%',
   },
   errorBox: {
     flexDirection: 'row',
@@ -978,10 +965,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   routeSection: {
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  routeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   routeToggleRow: {
     flexDirection: 'row',
@@ -992,15 +984,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 8,
+  },
+  routeBtnTextCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   routeToggleBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
+    textAlign: 'center',
   },
   vendorSelectContainer: {
     marginTop: 10,
