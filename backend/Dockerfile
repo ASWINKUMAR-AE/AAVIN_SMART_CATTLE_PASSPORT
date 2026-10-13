@@ -25,6 +25,7 @@ RUN groupadd --system aavin \
 COPY --chown=aavin:aavin manage.py ./manage.py
 COPY --chown=aavin:aavin config/ ./config/
 COPY --chown=aavin:aavin accounts/ ./accounts/
+COPY --chown=aavin:aavin milk_collections/ ./milk_collections/
 
 USER aavin
 
