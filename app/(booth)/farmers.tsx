@@ -23,7 +23,7 @@ import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { Farmer } from '../../types/aavin';
+import { Farmer, Cow } from '../../types/aavin';
 
 export default function BoothFarmersScreen() {
   const { user } = useAuth();
@@ -81,6 +81,16 @@ export default function BoothFarmersScreen() {
   const [formBankAccNum, setFormBankAccNum] = useState('');
   const [formBankIfsc, setFormBankIfsc] = useState('');
   const [formUpiId, setFormUpiId] = useState('');
+  const [editingFarmerCows, setEditingFarmerCows] = useState<Array<{
+    id: string;
+    cowId: string;
+    tagId: string;
+    breed: string;
+    name: string;
+    dailyMilkYield: number;
+    originalCow: Cow | null;
+  }>>([]);
+  const [activeEditCowSlide, setActiveEditCowSlide] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -128,11 +138,46 @@ export default function BoothFarmersScreen() {
     setFormBankAccNum(farmer.bankAccountNumber || '');
     setFormBankIfsc(farmer.bankIfsc || 'CNRB0001092');
     setFormUpiId(farmer.upiId || '');
+
+    // Load cows belonging to this farmer so the operator can edit cow name and capacity
+    const farmerCows = cows.filter(c => c.farmerId === farmer.id);
+    if (farmerCows.length > 0) {
+      setEditingFarmerCows(farmerCows.map(c => ({
+        id: c.id,
+        cowId: c.cowId,
+        tagId: c.tagId,
+        breed: c.breed,
+        name: c.name || `Cow (${c.breed})`,
+        dailyMilkYield: c.dailyMilkYield || 10,
+        originalCow: c,
+      })));
+    } else {
+      setEditingFarmerCows([{
+        id: `COW_DRAFT_${farmer.id}_1`,
+        cowId: `COW-${farmer.farmerIdCode}-01`,
+        tagId: `10010000${Math.floor(1000 + Math.random() * 9000)}`,
+        breed: 'Jersey Cross',
+        name: 'Lakshmi',
+        dailyMilkYield: 12,
+        originalCow: null,
+      }]);
+    }
+    setActiveEditCowSlide(0);
     setErrors({});
+  };
+
+  const handleUpdateEditingCow = (cowId: string, field: 'name' | 'dailyMilkYield', value: any) => {
+    setEditingFarmerCows(prev => prev.map(c => {
+      if (c.id === cowId) {
+        return { ...c, [field]: value };
+      }
+      return c;
+    }));
   };
 
   const handleCloseModal = () => {
     setEditingFarmer(null);
+    setEditingFarmerCows([]);
     setErrors({});
   };
 
@@ -326,7 +371,7 @@ export default function BoothFarmersScreen() {
         address: formAddress.trim(),
         community: formCommunity.trim() || 'Melur Taluk',
         assignedBoothId: formBoothId,
-        numberOfCows: parsedCows,
+        numberOfCows: editingFarmerCows.length || parsedCows,
         verificationStatus: formStatus,
         bankAccountName: formBankAccName.trim() || undefined,
         bankName: formBankName.trim() || undefined,
@@ -335,13 +380,47 @@ export default function BoothFarmersScreen() {
         upiId: formUpiId.trim() || undefined,
       };
 
-      updateFarmer(updatedFarmerData);
+      const updatedCowsToSave: Cow[] = editingFarmerCows.map((ec, idx) => {
+        if (ec.originalCow) {
+          return {
+            ...ec.originalCow,
+            name: ec.name.trim() || ec.originalCow.name,
+            dailyMilkYield: typeof ec.dailyMilkYield === 'number' ? ec.dailyMilkYield : parseFloat(String(ec.dailyMilkYield)) || 10,
+          };
+        } else {
+          return {
+            id: `COW${String(cows.length + idx + 1).padStart(3, '0')}`,
+            cowId: ec.cowId,
+            tagId: ec.tagId,
+            farmerId: editingFarmer.id,
+            farmerName: formName.trim(),
+            breed: ec.breed,
+            name: ec.name.trim() || `Cow (${ec.breed})`,
+            dateOfBirth: '2023-04-15',
+            approxAgeMonths: 36,
+            sex: 'female' as const,
+            currentStatus: 'lactating' as const,
+            dailyMilkYield: typeof ec.dailyMilkYield === 'number' ? ec.dailyMilkYield : parseFloat(String(ec.dailyMilkYield)) || 10,
+            healthStatus: 'healthy' as const,
+            lactationStage: 'peak' as const,
+            identificationMarks: 'Govt 12-digit RFID Tag',
+            verificationStatus: 'verified' as const,
+            medicalHistory: [],
+            vaccinationHistory: [],
+            inseminationHistory: [],
+            treatmentRecords: [],
+            createdAt: new Date().toISOString(),
+          };
+        }
+      });
+
+      updateFarmer(updatedFarmerData, updatedCowsToSave);
       setIsSaving(false);
       handleCloseModal();
 
       Alert.alert(
-        'Farmer Data Updated',
-        `Successfully updated profile for ${updatedFarmerData.name} (${updatedFarmerData.farmerIdCode}). Changes have been saved to the booth database and synced.`
+        'Farmer & Cattle Data Updated',
+        `Successfully updated profile for ${updatedFarmerData.name} and ${updatedCowsToSave.length} cattle passports (name & capacity synced).`
       );
     } catch (err: any) {
       setIsSaving(false);
@@ -887,19 +966,212 @@ export default function BoothFarmersScreen() {
                   </Pressable>
                 </View>
 
-                {/* Number of Cows */}
-                <TextField
-                  label="Number of Registered Cattle"
-                  value={formCowsCount}
-                  onChangeText={(val) => {
-                    setFormCowsCount(val);
-                    if (errors.cows) setErrors(prev => ({ ...prev, cows: '' }));
-                  }}
-                  keyboardType="numeric"
-                  placeholder="e.g. 2"
-                  error={errors.cows}
-                  icon="fitness-outline"
-                />
+                {/* Section 4: Registered Cattle Passports (Edit Name & Capacity Only) */}
+                <View style={[styles.editCowsSection, { backgroundColor: isDark ? '#0F172A' : '#F0FDF4', borderColor: '#86EFAC' }]}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Ionicons name="paw" size={18} color="#15803D" />
+                    <View style={{ flex: 1, marginLeft: 6 }}>
+                      <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+                        Registered Cattle Passports ({editingFarmerCows.length} Cattle)
+                      </Text>
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                        RFID Tag & Breed are locked permanent records. Change Name & Milk Capacity below:
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Cattle Slide Tabs if multiple cows */}
+                  {editingFarmerCows.length > 1 && (
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false} 
+                      contentContainerStyle={styles.sliderTabsRow}
+                    >
+                      {editingFarmerCows.map((c, idx) => {
+                        const isActive = idx === activeEditCowSlide;
+                        return (
+                          <Pressable
+                            key={c.id}
+                            onPress={() => setActiveEditCowSlide(idx)}
+                            style={[
+                              styles.sliderTabPill,
+                              {
+                                backgroundColor: isActive ? colors.primary : (isDark ? '#1E293B' : '#FFFFFF'),
+                                borderColor: isActive ? colors.primary : colors.border,
+                              }
+                            ]}
+                          >
+                            <Ionicons 
+                              name="paw" 
+                              size={13} 
+                              color={isActive ? "#FFFFFF" : colors.textSecondary} 
+                            />
+                            <Text style={[
+                              styles.sliderTabPillText, 
+                              { color: isActive ? "#FFFFFF" : colors.text, fontWeight: isActive ? '800' : '600' }
+                            ]}>
+                              {c.name || `Cow #${idx + 1}`}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+
+                  {/* Active Cow Slide Card */}
+                  {editingFarmerCows[activeEditCowSlide] && (() => {
+                    const cow = editingFarmerCows[activeEditCowSlide];
+                    return (
+                      <View style={[styles.activeSlideCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        {/* Immutable Identity Header (Locked) */}
+                        <View style={styles.slideHeader}>
+                          <View style={[styles.slideIndexBadge, { backgroundColor: colors.primaryLight }]}>
+                            <Text style={[styles.slideIndexBadgeText, { color: colors.primary }]}>
+                              {cow.cowId || `Cattle #${activeEditCowSlide + 1}`}
+                            </Text>
+                          </View>
+
+                          <View style={styles.lockedPill}>
+                            <Ionicons name="lock-closed" size={11} color="#15803D" />
+                            <Text style={styles.lockedPillText}>RFID IMMUTABLE</Text>
+                          </View>
+                        </View>
+
+                        {/* Locked RFID Tag & Breed info row */}
+                        <View style={styles.lockedFieldsRow}>
+                          <View style={[styles.lockedInfoChip, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                            <Ionicons name="barcode-outline" size={14} color={colors.textSecondary} />
+                            <View style={{ marginLeft: 6 }}>
+                              <Text style={[Typography.caption2, { color: colors.textMuted }]}>Pashu Aadhaar (Tag)</Text>
+                              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800' }]}>
+                                {cow.tagId}
+                              </Text>
+                            </View>
+                            <Ionicons name="lock-closed" size={12} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
+                          </View>
+
+                          <View style={[styles.lockedInfoChip, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                            <Ionicons name="fitness-outline" size={14} color="#0284C7" />
+                            <View style={{ marginLeft: 6 }}>
+                              <Text style={[Typography.caption2, { color: colors.textMuted }]}>Registered Breed</Text>
+                              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800' }]}>
+                                {cow.breed}
+                              </Text>
+                            </View>
+                            <Ionicons name="lock-closed" size={12} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
+                          </View>
+                        </View>
+
+                        {/* Editable Field 1: Cow Name / Call Name */}
+                        <View style={{ marginBottom: 12 }}>
+                          <TextField
+                            label="Cattle Call Name / Nickname (Editable)"
+                            value={cow.name}
+                            onChangeText={(val) => handleUpdateEditingCow(cow.id, 'name', val)}
+                            placeholder="e.g. Lakshmi / Kamadhenu"
+                            icon="happy-outline"
+                          />
+                        </View>
+
+                        {/* Editable Field 2: Daily Milk Capacity */}
+                        <View style={{ marginBottom: 10 }}>
+                          <View style={styles.capacityHeaderRow}>
+                            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
+                              Daily Milk Capacity (Editable) *
+                            </Text>
+                            <View style={styles.capacityValuePill}>
+                              <Text style={styles.capacityValueText}>
+                                {Number(cow.dailyMilkYield || 0).toFixed(1)} L / day
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Steppers & Interactive Track */}
+                          <View style={styles.sliderControlRow}>
+                            <Pressable 
+                              onPress={() => {
+                                const nextVal = Math.max(1, Number(cow.dailyMilkYield || 10) - 0.5);
+                                handleUpdateEditingCow(cow.id, 'dailyMilkYield', nextVal);
+                              }}
+                              style={[styles.stepperBtn, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}
+                              hitSlop={6}
+                            >
+                              <Ionicons name="remove" size={16} color={colors.text} />
+                            </Pressable>
+
+                            <View style={[styles.sliderTrackContainer, { backgroundColor: isDark ? '#0F172A' : '#E2E8F0' }]}>
+                              <View 
+                                style={[
+                                  styles.sliderTrackFill, 
+                                  { width: `${Math.min(100, Math.max(4, (Number(cow.dailyMilkYield || 0) / 25) * 100))}%` }
+                                ]} 
+                              />
+                            </View>
+
+                            <Pressable 
+                              onPress={() => {
+                                const nextVal = Math.min(35, Number(cow.dailyMilkYield || 10) + 0.5);
+                                handleUpdateEditingCow(cow.id, 'dailyMilkYield', nextVal);
+                              }}
+                              style={[styles.stepperBtn, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}
+                              hitSlop={6}
+                            >
+                              <Ionicons name="add" size={16} color={colors.text} />
+                            </Pressable>
+                          </View>
+
+                          {/* Presets */}
+                          <View style={styles.presetsRow}>
+                            {['6', '8', '10', '12', '15', '18', '22'].map((preset) => {
+                              const isPresetActive = Math.abs(Number(cow.dailyMilkYield) - parseFloat(preset)) < 0.1;
+                              return (
+                                <Pressable
+                                  key={preset}
+                                  onPress={() => handleUpdateEditingCow(cow.id, 'dailyMilkYield', parseFloat(preset))}
+                                  style={[
+                                    styles.presetChip,
+                                    {
+                                      backgroundColor: isPresetActive ? '#DCFCE7' : (isDark ? '#0F172A' : '#F8FAFC'),
+                                      borderColor: isPresetActive ? '#16A34A' : colors.border,
+                                    }
+                                  ]}
+                                >
+                                  <Text style={[
+                                    styles.presetChipText,
+                                    { color: isPresetActive ? '#15803D' : colors.textSecondary }
+                                  ]}>
+                                    {preset}L
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                        </View>
+
+                        {/* Slide Navigation if multiple cows */}
+                        {editingFarmerCows.length > 1 && (
+                          <View style={styles.slideFooterNav}>
+                            <Button
+                              title="< Prev Cow"
+                              variant="outline"
+                              size="sm"
+                              disabled={activeEditCowSlide === 0}
+                              onPress={() => setActiveEditCowSlide(prev => Math.max(0, prev - 1))}
+                              style={{ flex: 1, marginRight: 6 }}
+                            />
+                            <Button
+                              title="Next Cow >"
+                              size="sm"
+                              disabled={activeEditCowSlide === editingFarmerCows.length - 1}
+                              onPress={() => setActiveEditCowSlide(prev => Math.min(editingFarmerCows.length - 1, prev + 1))}
+                              style={{ flex: 1, marginLeft: 6 }}
+                            />
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })()}
+                </View>
               </View>
 
               {/* Section 4: Direct Benefit Transfer (DBT) & Banking */}
@@ -1952,5 +2224,38 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#E2E8F0',
+  },
+  editCowsSection: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 16,
+  },
+  lockedFieldsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  lockedInfoChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  lockedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+  },
+  lockedPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#15803D',
   },
 });

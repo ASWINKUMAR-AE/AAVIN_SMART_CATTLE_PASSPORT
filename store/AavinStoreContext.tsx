@@ -64,7 +64,7 @@ interface AavinStoreContextType extends AavinState {
       name?: string;
     }>
   ) => Farmer;
-  updateFarmer: (farmer: Farmer) => void;
+  updateFarmer: (farmer: Farmer, updatedCows?: Cow[]) => void;
   verifyFarmer: (farmerId: string, status: 'verified' | 'pending') => void;
   
   // Cow actions
@@ -290,20 +290,27 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newFarmer;
   }, [state, persistState]);
 
-  const updateFarmer = useCallback((farmer: Farmer) => {
+  const updateFarmer = useCallback((farmer: Farmer, updatedCows?: Cow[]) => {
     const newNotification: InAppNotification = {
       id: `NOTIF-${Date.now()}`,
       recipientRole: 'admin',
-      title: 'Farmer Profile Updated',
-      message: `Farmer record for ${farmer.name} (${farmer.farmerIdCode}) was updated.`,
+      title: 'Farmer Profile & Cattle Updated',
+      message: `Farmer record for ${farmer.name} (${farmer.farmerIdCode}) and cattle details were updated.`,
       type: 'system',
       timestamp: 'Just now',
       isRead: false,
     };
 
+    let updatedCowsList = state.cows;
+    if (updatedCows && updatedCows.length > 0) {
+      const cowMap = new Map(updatedCows.map(c => [c.id, c]));
+      updatedCowsList = state.cows.map(c => cowMap.has(c.id) ? cowMap.get(c.id)! : c);
+    }
+
     const updated = {
       ...state,
       farmers: state.farmers.map(f => f.id === farmer.id ? farmer : f),
+      cows: updatedCowsList,
       notifications: [newNotification, ...state.notifications],
     };
     persistState(updated);
