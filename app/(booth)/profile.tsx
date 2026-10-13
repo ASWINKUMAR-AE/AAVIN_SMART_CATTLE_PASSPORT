@@ -92,10 +92,18 @@ export default function BoothProfileScreen() {
         {/* 1. Official Staff Credential Card */}
         <Card style={styles.credentialCard}>
           <View style={styles.credentialHeader}>
-            <View style={styles.staffAvatar}>
-              <Text style={styles.avatarInitials}>
-                {(user?.fullName || "K. Murugan").split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-              </Text>
+            {/* Verified Profile Avatar with Green Circle & Badge */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.verifiedGreenCircle}>
+                <View style={styles.staffAvatar}>
+                  <Text style={styles.avatarInitials}>
+                    {(user?.fullName || "K. Murugan").split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.verifiedCheckBadge}>
+                <Ionicons name="checkmark-sharp" size={12} color="#FFFFFF" />
+              </View>
             </View>
 
             <View style={{ flex: 1, marginLeft: 14 }}>
@@ -146,42 +154,68 @@ export default function BoothProfileScreen() {
           </View>
         </Card>
 
-        {/* 2. Key Operational Counter Metrics (4 Grid Tiles) */}
-        <View style={styles.statsGrid}>
-          <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
-            <View style={[styles.statIconBadge, { backgroundColor: '#DCFCE7' }]}>
-              <Ionicons name="people" size={18} color="#15803D" />
+        {/* 2. Key Operational Counter Metrics (Organized into Two Distinct Rows) */}
+        <View style={styles.twoRowsContainer}>
+          {/* Row 1: Producers & Livestock */}
+          <View style={styles.statsRow}>
+            <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
+              <View style={styles.statTileTop}>
+                <View style={[styles.statIconBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="people" size={18} color="#15803D" />
+                </View>
+                <View style={styles.miniTagGreen}>
+                  <Text style={styles.miniTagGreenText}>Active</Text>
+                </View>
+              </View>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{assignedFarmers.length}</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Registered Producers</Text>
+              <Text style={[Typography.caption2, { color: '#16A34A', fontSize: 10, marginTop: 2 }]}>100% KYC Complete</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>{assignedFarmers.length}</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Registered Producers</Text>
-            <Text style={[Typography.caption2, { color: '#16A34A', fontSize: 10, marginTop: 2 }]}>100% KYC Complete</Text>
+
+            <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
+              <View style={styles.statTileTop}>
+                <View style={[styles.statIconBadge, { backgroundColor: '#E0F2FE' }]}>
+                  <Ionicons name="paw" size={18} color="#0284C7" />
+                </View>
+                <View style={styles.miniTagBlue}>
+                  <Text style={styles.miniTagBlueText}>RFID Sync</Text>
+                </View>
+              </View>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{totalCows}</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Monitored Cattle</Text>
+              <Text style={[Typography.caption2, { color: '#0284C7', fontSize: 10, marginTop: 2 }]}>Tag Registry Synced</Text>
+            </View>
           </View>
 
-          <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
-            <View style={[styles.statIconBadge, { backgroundColor: '#E0F2FE' }]}>
-              <Ionicons name="paw" size={18} color="#0284C7" />
+          {/* Row 2: Intake & Waybills */}
+          <View style={styles.statsRow}>
+            <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
+              <View style={styles.statTileTop}>
+                <View style={[styles.statIconBadge, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="water" size={18} color="#0072BC" />
+                </View>
+                <View style={styles.miniTagNavy}>
+                  <Text style={styles.miniTagNavyText}>Today</Text>
+                </View>
+              </View>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{todayLitres.toFixed(1)} L</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Today's Collection</Text>
+              <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>{todayRecords.length} Batch Entries</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>{totalCows}</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Monitored Cattle</Text>
-            <Text style={[Typography.caption2, { color: '#0284C7', fontSize: 10, marginTop: 2 }]}>Tag Registry Synced</Text>
-          </View>
 
-          <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
-            <View style={[styles.statIconBadge, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="water" size={18} color="#0072BC" />
+            <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
+              <View style={styles.statTileTop}>
+                <View style={[styles.statIconBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="receipt" size={18} color="#D97706" />
+                </View>
+                <View style={styles.miniTagAmber}>
+                  <Text style={styles.miniTagAmberText}>Dispatched</Text>
+                </View>
+              </View>
+              <Text style={[styles.statNumber, { color: '#B45309' }]}>{myReceipts.length}</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Dispatch Waybills</Text>
+              <Text style={[Typography.caption2, { color: '#16A34A', fontSize: 10, marginTop: 2 }]}>All Reconciled</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.primary }]}>{todayLitres.toFixed(1)} L</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Today's Collection</Text>
-            <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>{todayRecords.length} Batch Entries</Text>
-          </View>
-
-          <View style={[styles.statTile, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
-            <View style={[styles.statIconBadge, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="receipt" size={18} color="#D97706" />
-            </View>
-            <Text style={[styles.statNumber, { color: '#B45309' }]}>{myReceipts.length}</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Dispatch Waybills</Text>
-            <Text style={[Typography.caption2, { color: '#16A34A', fontSize: 10, marginTop: 2 }]}>All Reconciled</Text>
           </View>
         </View>
 
@@ -503,6 +537,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
+  avatarContainer: {
+    position: 'relative',
+  },
+  verifiedGreenCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: '#16A34A',
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   staffAvatar: {
     width: 52,
     height: 52,
@@ -515,6 +568,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '900',
+  },
+  verifiedCheckBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#16A34A',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 3,
   },
   statusVerifiedPill: {
     flexDirection: 'row',
@@ -545,16 +616,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
     marginVertical: 2,
   },
-  statsGrid: {
+  twoRowsContainer: {
+    gap: 10,
+  },
+  statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 10,
   },
   statTile: {
-    width: '48.5%',
+    flex: 1,
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
+  },
+  statTileTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
   statIconBadge: {
     width: 32,
@@ -562,7 +641,50 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+  },
+  miniTagGreen: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniTagGreenText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#15803D',
+  },
+  miniTagBlue: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniTagBlueText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#0284C7',
+  },
+  miniTagNavy: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniTagNavyText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  miniTagAmber: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniTagAmberText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#B45309',
   },
   statNumber: {
     fontSize: 20,
