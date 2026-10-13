@@ -7,7 +7,6 @@ import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
 
@@ -62,12 +61,6 @@ export default function FarmerCowsScreen() {
               </Pressable>
             )}
           </View>
-
-          <Button
-            title="+ Add Cow"
-            size="sm"
-            onPress={() => router.push('/(farmer)/register-cow')}
-          />
         </View>
 
         {/* Health Filter Chips */}

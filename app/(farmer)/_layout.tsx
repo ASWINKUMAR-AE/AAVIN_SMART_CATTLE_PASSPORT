@@ -74,14 +74,6 @@ export default function FarmerLayout() {
         }}
       />
       <Tabs.Screen
-        name="register-cow"
-        options={{
-          href: null,
-          title: 'Register Cow',
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
         name="milk-entry"
         options={{
           href: null,
