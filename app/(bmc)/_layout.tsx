@@ -1,59 +1,63 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { FloatingAavinTabBar } from '../../components/navigation/FloatingAavinTabBar';
 
 export default function BMCLayout() {
   const { colors } = useTheme();
 
   return (
     <Tabs
+      tabBar={(props) => <FloatingAavinTabBar {...props} />}
       screenOptions={{
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.primary,
         headerTitleStyle: { color: colors.text, fontWeight: '700' },
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        headerShown: false,
       }}
     >
+      {/* 1. Home */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'BMC Dashboard',
+          title: 'Home',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="snow-outline" size={size} color={color} />,
         }}
       />
+
+      {/* 2. Deliveries */}
       <Tabs.Screen
         name="receive-milk"
         options={{
-          title: 'Receive Intake',
+          title: 'Deliveries',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="investigations"
-        options={{
-          title: 'Discrepancies',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="search-outline" size={size} color={color} />,
-        }}
-      />
+
+      {/* 3. Verify Milk */}
       <Tabs.Screen
         name="daily-summary"
         options={{
-          title: 'Union Receipt',
+          title: 'Verify Milk',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />,
+        }}
+      />
+
+      {/* 4. Alerts */}
+      <Tabs.Screen
+        name="investigations"
+        options={{
+          title: 'Alerts',
+          headerShown: false,
+        }}
+      />
+
+      {/* 5. Profile */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerShown: false,
         }}
       />
     </Tabs>
