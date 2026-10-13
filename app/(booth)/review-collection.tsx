@@ -109,32 +109,60 @@ export default function ReviewDailyCollectionScreen() {
         {/* Existing Active Receipt Card (if already generated for today) */}
         {existingTodayReceipt && (
           <Card style={[styles.existingReceiptCard, { backgroundColor: isDark ? '#1E293B' : '#F0FDF4', borderColor: '#86EFAC' }]}>
-            <View style={styles.existingReceiptHeader}>
-              <View style={[styles.receiptIconBadge, { backgroundColor: '#DCFCE7' }]}>
-                <Ionicons name="receipt" size={18} color="#15803D" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={[Typography.subhead, { color: '#166534', fontWeight: '900' }]}>
-                    Today's Dispatch Receipt #{existingTodayReceipt.id}
-                  </Text>
-                  <View style={[styles.statusPill, { backgroundColor: existingTodayReceipt.status === 'sent_to_bmc' ? '#DCFCE7' : '#FEF3C7' }]}>
-                    <Text style={[styles.statusPillText, { color: existingTodayReceipt.status === 'sent_to_bmc' ? '#15803D' : '#B45309' }]}>
-                      {existingTodayReceipt.status === 'sent_to_bmc' ? 'SENT TO BMC' : 'READY TO SEND'}
-                    </Text>
-                  </View>
+            {/* Top Header Row with Title and Status Pill */}
+            <View style={styles.existingReceiptTopRow}>
+              <View style={styles.existingReceiptBadgeRow}>
+                <View style={[styles.receiptIconBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="receipt" size={18} color="#15803D" />
                 </View>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                  {existingTodayReceipt.dispatchQuantity.toFixed(2)} Litres • Destination: {existingTodayReceipt.bmcName}
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={[Typography.caption2, { color: '#15803D', fontWeight: '800', letterSpacing: 0.5 }]}>
+                    TODAY'S DISPATCH RECEIPT
+                  </Text>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900' }]} numberOfLines={1}>
+                    #{existingTodayReceipt.id}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.statusPill, { backgroundColor: existingTodayReceipt.status === 'sent_to_bmc' ? '#DCFCE7' : '#FEF3C7' }]}>
+                <Ionicons 
+                  name={existingTodayReceipt.status === 'sent_to_bmc' ? "checkmark-circle" : "paper-plane-outline"} 
+                  size={12} 
+                  color={existingTodayReceipt.status === 'sent_to_bmc' ? '#15803D' : '#B45309'} 
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={[styles.statusPillText, { color: existingTodayReceipt.status === 'sent_to_bmc' ? '#15803D' : '#B45309' }]}>
+                  {existingTodayReceipt.status === 'sent_to_bmc' ? 'SENT TO BMC' : 'READY TO SEND'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Metas Row: Dispatched Volume & Receiving BMC */}
+            <View style={[styles.existingReceiptMetaRow, { borderTopColor: isDark ? '#334155' : '#BBF7D0' }]}>
+              <View style={styles.existingMetaCol}>
+                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Dispatched Volume</Text>
+                <Text style={[Typography.headline, { color: colors.primary, fontWeight: '900' }]}>
+                  {existingTodayReceipt.dispatchQuantity.toFixed(2)} L
+                </Text>
+              </View>
+
+              <View style={[styles.existingMetaDivider, { backgroundColor: isDark ? '#334155' : '#BBF7D0' }]} />
+
+              <View style={[styles.existingMetaCol, { flex: 1.4 }]}>
+                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Receiving BMC Facility</Text>
+                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
+                  {existingTodayReceipt.bmcName}
                 </Text>
               </View>
             </View>
 
             <Button
               title={existingTodayReceipt.status === 'sent_to_bmc' ? "View Waybill & Transit Tracking" : "Send Receipt to BMC Now ➔"}
-              size="sm"
+              size="md"
+              icon={existingTodayReceipt.status === 'sent_to_bmc' ? "eye-outline" : "send"}
               onPress={() => router.push(`/(booth)/receipt-preview?receiptId=${existingTodayReceipt.id}` as any)}
-              style={{ marginTop: 10 }}
+              style={{ marginTop: 12 }}
             />
           </Card>
         )}
@@ -359,13 +387,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   existingReceiptCard: {
-    padding: 14,
-    borderRadius: 14,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1.5,
   },
-  existingReceiptHeader: {
+  existingReceiptTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  existingReceiptBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
   },
   receiptIconBadge: {
     width: 38,
@@ -375,13 +410,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   statusPillText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  existingReceiptMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  existingMetaCol: {
+    flex: 1,
+  },
+  existingMetaDivider: {
+    width: 1,
+    height: 28,
+    marginHorizontal: 12,
   },
   card: {
     padding: 16,
