@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -17,6 +17,7 @@ export default function RecordMilkScreen() {
   const { farmers, vendors, booths, recordMilk, cows } = useAavinStore();
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams<{ farmerId?: string }>();
 
   const boothId = user?.associatedId || 'BOOTH001';
   const booth = booths.find(b => b.id === boothId) || booths[0];
@@ -24,7 +25,7 @@ export default function RecordMilkScreen() {
 
   // Mode: 'farmer_wise' vs 'combined_vendor'
   const [measurementMethod, setMeasurementMethod] = useState<MeasurementMethod>('farmer_wise');
-  const [selectedFarmerId, setSelectedFarmerId] = useState(assignedFarmers[0]?.id || 'FARMER001');
+  const [selectedFarmerId, setSelectedFarmerId] = useState(params.farmerId || assignedFarmers[0]?.id || 'FARMER001');
   const [route, setRoute] = useState<CollectionRoute>('direct');
   const [selectedVendorId, setSelectedVendorId] = useState(vendors[0]?.id || 'VEND001');
   const [quantityLitres, setQuantityLitres] = useState('');

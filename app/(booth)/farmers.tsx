@@ -285,111 +285,223 @@ export default function BoothFarmersScreen() {
         }
         renderItem={({ item }) => {
           const farmerCows = cows.filter(c => c.farmerId === item.id);
+          const cowsWithHold = farmerCows.filter(c => c.activeWithdrawal?.hasActiveWithdrawal);
           const isVerified = item.verificationStatus === 'verified';
           const assignedBoothObj = booths.find(b => b.id === item.assignedBoothId);
 
           return (
-            <Card style={styles.farmerCard}>
-              {/* Card Header */}
-              <View style={styles.cardHeader}>
-                <View style={styles.avatarBox}>
-                  <Text style={{ fontSize: 24 }}>👨‍🌾</Text>
+            <Card style={[styles.farmerCard, { borderColor: colors.border }]}>
+              {/* 1. Header Zone: Avatar, Identification & Verification */}
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.avatarContainer}>
+                  <View style={[styles.avatarCircle, { backgroundColor: isVerified ? '#E0F2FE' : '#FEF3C7' }]}>
+                    <Text style={{ fontSize: 22 }}>👨‍🌾</Text>
+                  </View>
+                  {isVerified && (
+                    <View style={styles.verifiedCheckBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                    </View>
+                  )}
                 </View>
 
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <View style={styles.titleRow}>
-                    <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', flex: 1 }]}>
-                      {item.name}
-                    </Text>
-                    <View
-                      style={[
-                        styles.verifBadge,
-                        { backgroundColor: isVerified ? '#DCFCE7' : '#FEF3C7' },
-                      ]}
-                    >
-                      <Ionicons 
-                        name={isVerified ? 'checkmark-circle' : 'time'} 
-                        size={12} 
-                        color={isVerified ? '#15803D' : '#B45309'} 
-                      />
-                      <Text style={[styles.verifBadgeText, { color: isVerified ? '#15803D' : '#B45309' }]}>
-                        {isVerified ? 'VERIFIED' : 'PENDING'}
+                <View style={styles.farmerTitleCol}>
+                  <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+
+                  <View style={styles.subMetaRow}>
+                    <View style={[styles.idBadge, { backgroundColor: colors.primaryLight }]}>
+                      <Ionicons name="barcode-outline" size={12} color={colors.primary} />
+                      <Text style={[styles.idBadgeText, { color: colors.primary }]}>
+                        {item.farmerIdCode}
+                      </Text>
+                    </View>
+
+                    <View style={styles.phoneChip}>
+                      <Ionicons name="call" size={11} color={colors.textSecondary} />
+                      <Text style={[styles.phoneChipText, { color: colors.textSecondary }]}>
+                        +91 {item.mobileNumber}
                       </Text>
                     </View>
                   </View>
-
-                  <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
-                    {item.farmerIdCode} • +91 {item.mobileNumber}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Card Details */}
-              <View style={[styles.cardDetails, { borderTopColor: colors.border }]}>
-                <View style={styles.detailRow}>
-                  <View style={styles.detailLabelCol}>
-                    <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>Location:</Text>
-                  </View>
-                  <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', flex: 1, textAlign: 'right' }]}>
-                    {item.address}, {item.village} ({item.community || 'Melur Taluk'})
-                  </Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <View style={styles.detailLabelCol}>
-                    <Ionicons name="business-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>Assigned Booth:</Text>
-                  </View>
-                  <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', textAlign: 'right' }]}>
-                    {assignedBoothObj?.name || item.assignedBoothId}
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <View style={styles.detailLabelCol}>
-                    <Ionicons name="git-branch-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>Registered Cattle:</Text>
-                  </View>
-                  <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700' }]}>
-                    {farmerCows.length} Cows ({farmerCows.map(c => c.name).join(', ') || `${item.numberOfCows || 0} registered`})
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <View style={styles.detailLabelCol}>
-                    <Ionicons name="card-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>DBT Bank Account:</Text>
-                  </View>
-                  <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600' }]}>
-                    {item.bankName || 'Canara Bank'} • {item.bankAccountNumber ? `•••• ${item.bankAccountNumber.slice(-4)}` : 'Linked'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Action Buttons: Edit Farmer & Toggle Verification */}
-              <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
                 <Pressable
                   onPress={() => handleToggleVerification(item.id, item.verificationStatus)}
-                  style={[styles.actionBtnSecondary, { borderColor: colors.border }]}
+                  style={[
+                    styles.statusPill,
+                    { 
+                      backgroundColor: isVerified ? '#DCFCE7' : '#FEF3C7',
+                      borderColor: isVerified ? '#86EFAC' : '#FDE68A'
+                    }
+                  ]}
                 >
                   <Ionicons 
-                    name={isVerified ? 'alert-circle-outline' : 'checkmark-done'} 
-                    size={14} 
-                    color={isVerified ? '#B45309' : '#15803D'} 
+                    name={isVerified ? 'checkmark-circle' : 'time'} 
+                    size={12} 
+                    color={isVerified ? '#15803D' : '#B45309'} 
                   />
-                  <Text style={[styles.actionBtnText, { color: isVerified ? '#B45309' : '#15803D' }]}>
-                    {isVerified ? 'Flag Pending' : 'Verify KYC'}
+                  <Text style={[styles.statusPillText, { color: isVerified ? '#15803D' : '#B45309' }]}>
+                    {isVerified ? 'VERIFIED' : 'PENDING'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* 2. Key Metrics Strip (3 Easy-to-Scan Tiles) */}
+              <View style={styles.metricsStrip}>
+                <View style={[styles.metricTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                  <View style={styles.metricIconRow}>
+                    <Text style={{ fontSize: 16 }}>🐄</Text>
+                    <Text style={[styles.metricValue, { color: colors.text }]}>
+                      {farmerCows.length} <Text style={{ fontSize: 11, fontWeight: '600' }}>Cows</Text>
+                    </Text>
+                  </View>
+                  <Text style={[styles.metricLabel, { color: cowsWithHold.length > 0 ? '#DC2626' : colors.textSecondary }]}>
+                    {cowsWithHold.length > 0 ? '⚠️ Withdrawal Hold' : 'Registered Cattle'}
+                  </Text>
+                </View>
+
+                <View style={[styles.metricTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                  <View style={styles.metricIconRow}>
+                    <Text style={{ fontSize: 16 }}>📍</Text>
+                    <Text style={[styles.metricValue, { color: colors.text }]} numberOfLines={1}>
+                      {item.village}
+                    </Text>
+                  </View>
+                  <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {item.community || 'Melur Taluk'}
+                  </Text>
+                </View>
+
+                <View style={[styles.metricTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                  <View style={styles.metricIconRow}>
+                    <Text style={{ fontSize: 16 }}>🏦</Text>
+                    <Text style={[styles.metricValue, { color: item.bankName ? '#16A34A' : '#D97706' }]}>
+                      {item.bankName ? 'Linked' : 'Pending'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+                    DBT Bank Account
+                  </Text>
+                </View>
+              </View>
+
+              {/* 3. Structured Information Box */}
+              <View style={[styles.infoBox, { backgroundColor: isDark ? '#162032' : '#F1F5F9', borderColor: colors.border }]}>
+                {/* Location row */}
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconCol}>
+                    <Ionicons name="home-outline" size={15} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                      RESIDENTIAL ADDRESS & BOOTH
+                    </Text>
+                    <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', marginTop: 1 }]}>
+                      {item.address}, {item.village} • {assignedBoothObj?.name || item.assignedBoothId}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Registered Cattle row */}
+                <View style={[styles.infoRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
+                  <View style={styles.infoIconCol}>
+                    <Ionicons name="git-network-outline" size={15} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                      REGISTERED CATTLE PASSPORT ({farmerCows.length})
+                    </Text>
+                    {farmerCows.length > 0 ? (
+                      <View style={styles.cowsPillRow}>
+                        {farmerCows.map(cow => {
+                          const hasHold = cow.activeWithdrawal?.hasActiveWithdrawal;
+                          return (
+                            <View 
+                              key={cow.id} 
+                              style={[
+                                styles.cowTag, 
+                                { 
+                                  backgroundColor: hasHold ? '#FEE2E2' : (isDark ? '#1E293B' : '#FFFFFF'), 
+                                  borderColor: hasHold ? '#EF4444' : colors.border 
+                                }
+                              ]}
+                            >
+                              <Text style={[styles.cowTagText, { color: hasHold ? '#B91C1C' : colors.text }]}>
+                                {hasHold ? '⚠️ ' : '🐄 '}{cow.name} ({cow.breed})
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <Text style={[Typography.caption1, { color: colors.textMuted, marginTop: 1 }]}>
+                        No cows registered under digital passport yet.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                {/* Banking & DBT row */}
+                <View style={[styles.infoRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
+                  <View style={styles.infoIconCol}>
+                    <Ionicons name="card-outline" size={15} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                      DBT DIRECT BENEFIT TRANSFER ACCOUNT
+                    </Text>
+                    <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', marginTop: 1 }]}>
+                      {item.bankName || 'Canara Bank'} • A/C: {item.bankAccountNumber ? `•••• •••• ${item.bankAccountNumber.slice(-4)}` : 'Linked'} • IFSC: {item.bankIfsc || 'CNRB0001092'}
+                    </Text>
+                    {item.upiId ? (
+                      <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
+                        UPI ID: {item.upiId}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+
+              {/* 4. Action Command Bar: Record Milk | Edit Details | Verify KYC */}
+              <View style={styles.cardActionsRow}>
+                <Pressable
+                  onPress={() => router.push({ pathname: '/(booth)/record-milk', params: { farmerId: item.id } })}
+                  style={[styles.recordMilkBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Ionicons name="water" size={14} color="#FFFFFF" />
+                  <Text style={styles.recordMilkBtnText}>
+                    + Record Milk
                   </Text>
                 </Pressable>
 
                 <Pressable
                   onPress={() => handleOpenEditModal(item)}
-                  style={[styles.actionBtnPrimary, { backgroundColor: colors.primaryLight }]}
+                  style={[styles.editFarmerBtn, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
                 >
-                  <Ionicons name="create-outline" size={15} color={colors.primary} />
-                  <Text style={[styles.actionBtnPrimaryText, { color: colors.primary }]}>
-                    Edit Farmer Data
+                  <Ionicons name="create-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.editFarmerBtnText, { color: colors.primary }]}>
+                    Edit Details
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => handleToggleVerification(item.id, item.verificationStatus)}
+                  style={[
+                    styles.kycToggleBtn,
+                    { 
+                      borderColor: isVerified ? '#FCA5A5' : '#86EFAC',
+                      backgroundColor: isVerified ? '#FEF2F2' : '#F0FDF4'
+                    }
+                  ]}
+                >
+                  <Ionicons 
+                    name={isVerified ? 'alert-circle-outline' : 'checkmark-done'} 
+                    size={14} 
+                    color={isVerified ? '#DC2626' : '#16A34A'} 
+                  />
+                  <Text style={[styles.kycToggleBtnText, { color: isVerified ? '#DC2626' : '#16A34A' }]}>
+                    {isVerified ? 'Flag' : 'Verify'}
                   </Text>
                 </Pressable>
               </View>
@@ -764,85 +876,184 @@ const styles = StyleSheet.create({
   },
   farmerCard: {
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 12,
   },
-  cardHeader: {
+  cardHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    gap: 12,
   },
-  avatarBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EEF2F6',
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  verifiedCheckBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
   },
-  verifBadge: {
+  farmerTitleCol: {
+    flex: 1,
+    gap: 3,
+  },
+  subMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  idBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+  },
+  idBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  phoneChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  phoneChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 4,
-    marginLeft: 6,
-  },
-  verifBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  cardDetails: {
-    gap: 8,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-  },
-  detailLabelCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  actionBtnSecondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 4,
   },
-  actionBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
-  actionBtnPrimary: {
+
+  // Metrics Strip
+  metricsStrip: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metricTile: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 2,
+  },
+  metricIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
     gap: 5,
   },
-  actionBtnPrimaryText: {
+  metricValue: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  // Structured Info Box
+  infoBox: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingTop: 4,
+  },
+  infoIconCol: {
+    marginTop: 2,
+  },
+  cowsPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  cowTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  cowTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // Action Row
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  recordMilkBtn: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 5,
+  },
+  recordMilkBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  editFarmerBtn: {
+    flex: 1.1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 4,
+  },
+  editFarmerBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  kycToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 4,
+  },
+  kycToggleBtnText: {
     fontSize: 12,
     fontWeight: '800',
   },
