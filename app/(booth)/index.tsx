@@ -127,6 +127,24 @@ export default function BoothDashboard() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
+
+          <Pressable 
+            onPress={() => router.push(todayReceipt ? `/(booth)/receipt-preview?receiptId=${todayReceipt.id}` as any : '/(booth)/review-collection')}
+            style={[styles.quickActionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <View style={[styles.quickActionIconCircle, { backgroundColor: todayReceipt ? '#DCFCE7' : '#FEF3C7' }]}>
+              <Ionicons name="paper-plane" size={20} color={todayReceipt ? '#15803D' : '#D97706'} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                Send Dispatch Receipts
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                {todayReceipt ? `Waybill #${todayReceipt.id} • ${todayReceipt.dispatchQuantity.toFixed(1)} L` : 'Audit Batch & Transmit to BMC'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
         </View>
 
         {/* Today's Recorded Entries List */}
@@ -237,7 +255,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   actionBtnRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 10,
     marginTop: 2,
     marginBottom: 6,
