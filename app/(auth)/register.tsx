@@ -37,7 +37,7 @@ const POPULAR_BREEDS = [
   'Sindhi Cross',
 ];
 
-const MILK_PRESETS = ['8', '12', '15', '20'];
+const MILK_PRESETS = ['6', '8', '10', '12', '15', '18', '22'];
 
 export default function RegisterFarmerScreen() {
   const { user } = useAuth();
@@ -49,11 +49,11 @@ export default function RegisterFarmerScreen() {
     ? user.associatedId 
     : (booths[0]?.id || 'BOOTH001');
 
-  // Farmer Details State
+  // Farmer Details State (Entered by Booth Operator)
   const [name, setName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [address, setAddress] = useState('');
-  const [village, setVillage] = useState('');
+  const [village, setVillage] = useState('Melur Rural');
   const [community, setCommunity] = useState('Melur Taluk');
   const [assignedBoothId, setAssignedBoothId] = useState(defaultBoothId);
   const [farmerIdCode, setFarmerIdCode] = useState(`FARM-MDU-${Math.floor(105 + Math.random() * 800)}`);
@@ -65,16 +65,17 @@ export default function RegisterFarmerScreen() {
   const [bankIfsc, setBankIfsc] = useState('');
   const [upiId, setUpiId] = useState('');
 
-  // N-Cattle Registration State
+  // N-Cattle Slider State
   const [cowEntries, setCowEntries] = useState<CowFormItem[]>([
     { id: 'cow_1', pashuAadhaar: '', breed: 'Jersey Cross', milkCapacity: '12.0', name: '' },
   ]);
+  const [activeCowSlide, setActiveCowSlide] = useState(0);
 
   // Form Validation & Submitting State
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Helper to add a new cow card
+  // Helper to add a new cow card to slider and slide to it
   const handleAddCow = () => {
     const nextIdx = cowEntries.length + 1;
     const newCow: CowFormItem = {
@@ -85,15 +86,20 @@ export default function RegisterFarmerScreen() {
       name: '',
     };
     setCowEntries(prev => [...prev, newCow]);
+    setActiveCowSlide(cowEntries.length);
   };
 
   // Helper to remove a cow card
   const handleRemoveCow = (id: string) => {
     if (cowEntries.length <= 1) {
-      Alert.alert('Cannot Remove', 'A farmer must have at least one cow registered.');
+      Alert.alert('Cannot Remove', 'Every registered farmer must have at least one cow.');
       return;
     }
+    const idxToRemove = cowEntries.findIndex(c => c.id === id);
     setCowEntries(prev => prev.filter(c => c.id !== id));
+    if (activeCowSlide >= idxToRemove && activeCowSlide > 0) {
+      setActiveCowSlide(prev => prev - 1);
+    }
   };
 
   // Helper to update a field in a specific cow card
@@ -134,7 +140,7 @@ export default function RegisterFarmerScreen() {
     if (!village.trim()) errs.village = 'Village name is required.';
     if (!farmerIdCode.trim()) errs.farmerIdCode = 'Farmer ID Code is required.';
 
-    // 2. Cows Validation (N Cows)
+    // 2. Cows Validation (N Cows in Slider)
     if (cowEntries.length === 0) {
       errs.cowsGeneral = 'At least 1 cow must be registered.';
     }
@@ -153,7 +159,7 @@ export default function RegisterFarmerScreen() {
       } else if (seenFormTags.has(cleanTag)) {
         errs[`cow_${c.id}_pashuAadhaar`] = `Cow #${cowNum}: Duplicate Pashu Aadhaar #${cleanTag} entered for multiple cows.`;
       } else if (cows.some(existing => existing.tagId === cleanTag)) {
-        errs[`cow_${c.id}_pashuAadhaar`] = `Cow #${cowNum}: Pashu Aadhaar #${cleanTag} already exists in Aavin database.`;
+        errs[`cow_${c.id}_pashuAadhaar`] = `Cow #${cowNum}: Pashu Aadhaar #${cleanTag} is already registered in Aavin database.`;
       }
       seenFormTags.add(cleanTag);
 
@@ -165,7 +171,7 @@ export default function RegisterFarmerScreen() {
       // Mandatory Milk Capacity Validation
       const milkNum = parseFloat(c.milkCapacity);
       if (isNaN(milkNum) || milkNum <= 0) {
-        errs[`cow_${c.id}_milkCapacity`] = `Cow #${cowNum}: Enter a valid daily milk yield (e.g. 12.5 L).`;
+        errs[`cow_${c.id}_milkCapacity`] = `Cow #${cowNum}: Enter a valid daily milk yield (e.g. 12.0 L).`;
       }
     });
 
@@ -216,10 +222,10 @@ export default function RegisterFarmerScreen() {
 
       Alert.alert(
         'Farmer & Cattle Enrolled Successfully!',
-        `Farmer ${created.name} (${created.farmerIdCode}) and ${cowEntries.length} cattle passports with 12-digit Pashu Aadhaar RFID tags have been registered under ${boothName}.`,
+        `Booth operator successfully enrolled farmer ${created.name} (${created.farmerIdCode}) and ${cowEntries.length} cattle passports with 12-digit Pashu Aadhaar RFID tags under ${boothName}.`,
         [
           {
-            text: 'View in Farmers Directory',
+            text: 'Return to Farmers Directory',
             onPress: () => {
               if (router.canGoBack()) {
                 router.back();
@@ -237,27 +243,30 @@ export default function RegisterFarmerScreen() {
     }
   };
 
+  const currentCow = cowEntries[activeCowSlide] || cowEntries[0];
+  const isCurrentComplete = currentCow && currentCow.pashuAadhaar.length === 12 && !!currentCow.breed && parseFloat(currentCow.milkCapacity) > 0;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <DemoHeader 
-        title="New Farmer Registration"
-        subtitle={`Enroll Producer & Cattle Passports • ${booths.find(b => b.id === assignedBoothId)?.name || 'Booth'}`}
+        title="New Farmer & Cattle Enrollment"
+        subtitle={`Booth Operator Intake • ${booths.find(b => b.id === assignedBoothId)?.name || 'Booth Center'}`}
         showBack
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Intro Banner */}
+        {/* Operator Guidance Banner */}
         <View style={[styles.govBanner, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF', borderColor: '#93C5FD' }]}>
           <Ionicons name="shield-checkmark" size={20} color="#1D4ED8" style={{ marginTop: 2 }} />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={[Typography.subhead, { color: '#1E40AF', fontWeight: '800' }]}>
-              Aavin Digital Cattle Twin & DBT Enrollment
+              Booth Operator Member Registration
             </Text>
             <Text style={[Typography.caption2, { color: '#1E3A8A', marginTop: 2, lineHeight: 16 }]}>
-              Enroll dairy farmer credentials along with official 12-digit Pashu Aadhaar RFID tags for full dairy traceability and daily milk intake.
+              Enter producer details and slide through the cattle passport cards to register 12-digit Pashu Aadhaar tags, breed, and milk capacity.
             </Text>
           </View>
         </View>
@@ -304,7 +313,7 @@ export default function RegisterFarmerScreen() {
           />
         </Card>
 
-        {/* 2. Cattle (Cow) Passport Enrollment - N Cows Section */}
+        {/* 2. Cattle Passport Enrollment - SLIDER CAROUSEL */}
         <Card style={[styles.card, { borderColor: '#86EFAC', borderWidth: 1.5 }]}>
           <View style={styles.cardHeaderRow}>
             <View style={[styles.sectionIconBadge, { backgroundColor: '#DCFCE7' }]}>
@@ -312,203 +321,282 @@ export default function RegisterFarmerScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: 8 }}>
               <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                2. Cattle Passport Enrollment ({cowEntries.length} {cowEntries.length === 1 ? 'Cow' : 'Cows'})
+                2. Cattle Passports Slider ({cowEntries.length} {cowEntries.length === 1 ? 'Cow' : 'Cows'})
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Mandatory 12-digit Pashu Aadhaar RFID ear tag, type & milk yield
+                Slide across tabs to configure 12-digit Pashu Aadhaar, breed & capacity
               </Text>
             </View>
-
-            <Pressable 
-              onPress={handleAddCow}
-              style={[styles.addCowMiniBtn, { backgroundColor: colors.primary }]}
-            >
-              <Ionicons name="add" size={16} color="#FFFFFF" />
-              <Text style={styles.addCowMiniBtnText}>Add Cow</Text>
-            </Pressable>
           </View>
 
-          {/* RFID Requirement Notice */}
-          <View style={[styles.pashuNoticeBox, { backgroundColor: isDark ? '#0F172A' : '#F0FDF4', borderColor: '#BBF7D0' }]}>
-            <Ionicons name="qr-code-outline" size={18} color="#16A34A" />
-            <Text style={[Typography.caption2, { color: '#166534', flex: 1, marginLeft: 8, lineHeight: 16 }]}>
-              Govt. Pashu Aadhaar (*): Every registered cow requires a unique 12-digit numeric tag number (e.g. 100100001055) for cattle health passports and direct procurement.
-            </Text>
-          </View>
-
-          {/* List of Cow Cards */}
-          <View style={styles.cowsListContainer}>
-            {cowEntries.map((cow, index) => {
-              const cowNum = index + 1;
-              const tagError = errors[`cow_${cow.id}_pashuAadhaar`];
-              const breedError = errors[`cow_${cow.id}_breed`];
-              const milkError = errors[`cow_${cow.id}_milkCapacity`];
-              const cleanTag = cow.pashuAadhaar.replace(/\D/g, '');
-              const isTagComplete = cleanTag.length === 12;
-
+          {/* Slider Tabs Navigation */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.sliderTabsRow}
+          >
+            {cowEntries.map((c, idx) => {
+              const isActive = idx === activeCowSlide;
+              const isComplete = c.pashuAadhaar.length === 12 && !!c.breed && parseFloat(c.milkCapacity) > 0;
               return (
-                <View 
-                  key={cow.id} 
+                <Pressable
+                  key={c.id}
+                  onPress={() => setActiveCowSlide(idx)}
                   style={[
-                    styles.cowItemCard, 
-                    { 
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF', 
-                      borderColor: tagError ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0') 
+                    styles.sliderTabPill,
+                    {
+                      backgroundColor: isActive ? colors.primary : (isDark ? '#0F172A' : '#F1F5F9'),
+                      borderColor: isActive ? colors.primary : (isComplete ? '#86EFAC' : colors.border),
                     }
                   ]}
                 >
-                  {/* Cow Card Top Bar */}
-                  <View style={styles.cowItemHeader}>
-                    <View style={styles.cowBadgeRow}>
-                      <View style={[styles.cowIndexPill, { backgroundColor: colors.primaryLight }]}>
-                        <Ionicons name="paw" size={12} color={colors.primary} />
-                        <Text style={[styles.cowIndexPillText, { color: colors.primary }]}>
-                          Cattle #{cowNum}
-                        </Text>
-                      </View>
-
-                      {isTagComplete ? (
-                        <View style={styles.tagVerifiedPill}>
-                          <Ionicons name="checkmark-circle" size={12} color="#15803D" />
-                          <Text style={styles.tagVerifiedPillText}>12/12 DIGITS</Text>
-                        </View>
-                      ) : (
-                        <View style={styles.tagPendingPill}>
-                          <Text style={styles.tagPendingPillText}>
-                            {cleanTag.length}/12 Digits
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {cowEntries.length > 1 && (
-                      <Pressable 
-                        onPress={() => handleRemoveCow(cow.id)}
-                        hitSlop={8}
-                        style={styles.removeCowBtn}
-                      >
-                        <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                        <Text style={styles.removeCowBtnText}>Remove</Text>
-                      </Pressable>
-                    )}
-                  </View>
-
-                  {/* 1. Pashu Aadhaar Input (Mandatory *) */}
-                  <View style={{ marginBottom: 10 }}>
-                    <TextField
-                      label={`Pashu Aadhaar Number (12 Digits) *`}
-                      placeholder="e.g. 100100001055"
-                      value={cow.pashuAadhaar}
-                      onChangeText={(val) => {
-                        const numericOnly = val.replace(/\D/g, '').slice(0, 12);
-                        handleUpdateCow(cow.id, 'pashuAadhaar', numericOnly);
-                      }}
-                      keyboardType="number-pad"
-                      maxLength={12}
-                      error={tagError}
-                      icon="barcode-outline"
-                    />
-                    <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: -4, marginLeft: 2 }]}>
-                      Official INAPH / Bharat Pashudhan 12-digit ear tag number
-                    </Text>
-                  </View>
-
-                  {/* 2. Cattle Type / Breed Selection (Mandatory *) */}
-                  <View style={{ marginBottom: 12 }}>
-                    <Text style={[Typography.subhead, { color: breedError ? colors.hold : colors.text, fontWeight: '700', marginBottom: 6 }]}>
-                      Cattle Type / Breed *
-                    </Text>
-                    <View style={styles.breedChipsWrap}>
-                      {POPULAR_BREEDS.map((breedOption) => {
-                        const isSelected = cow.breed === breedOption;
-                        return (
-                          <Pressable
-                            key={breedOption}
-                            onPress={() => handleUpdateCow(cow.id, 'breed', breedOption)}
-                            style={[
-                              styles.breedChip,
-                              {
-                                backgroundColor: isSelected ? colors.primary : (isDark ? '#0F172A' : '#F1F5F9'),
-                                borderColor: isSelected ? colors.primary : colors.border,
-                              }
-                            ]}
-                          >
-                            <Text style={[
-                              styles.breedChipText,
-                              { color: isSelected ? '#FFFFFF' : colors.text }
-                            ]}>
-                              {breedOption}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                    {breedError && (
-                      <Text style={[Typography.caption2, { color: colors.hold, marginTop: 4 }]}>
-                        {breedError}
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* 3. Daily Milk Yield Capacity (Mandatory *) */}
-                  <View style={{ marginBottom: 10 }}>
-                    <TextField
-                      label="Daily Milk Capacity (Litres/Day) *"
-                      placeholder="e.g. 12.0"
-                      value={cow.milkCapacity}
-                      onChangeText={(val) => handleUpdateCow(cow.id, 'milkCapacity', val)}
-                      keyboardType="decimal-pad"
-                      error={milkError}
-                      icon="water-outline"
-                    />
-                    {/* Quick Milk Presets */}
-                    <View style={styles.presetRow}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary, marginRight: 6 }]}>
-                        Presets:
-                      </Text>
-                      {MILK_PRESETS.map((preset) => (
-                        <Pressable
-                          key={preset}
-                          onPress={() => handleUpdateCow(cow.id, 'milkCapacity', preset)}
-                          style={[
-                            styles.presetPill,
-                            {
-                              backgroundColor: cow.milkCapacity === preset ? '#DCFCE7' : (isDark ? '#0F172A' : '#F8FAFC'),
-                              borderColor: cow.milkCapacity === preset ? '#16A34A' : colors.border,
-                            }
-                          ]}
-                        >
-                          <Text style={[
-                            styles.presetPillText,
-                            { color: cow.milkCapacity === preset ? '#15803D' : colors.textSecondary }
-                          ]}>
-                            {preset} L
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* 4. Optional Nickname */}
-                  <TextField
-                    label="Cattle Nickname / Call Name (Optional)"
-                    placeholder="e.g. Lakshmi / Kamadhenu"
-                    value={cow.name}
-                    onChangeText={(val) => handleUpdateCow(cow.id, 'name', val)}
-                    icon="happy-outline"
+                  <Ionicons 
+                    name={isComplete ? "checkmark-circle" : "paw"} 
+                    size={14} 
+                    color={isActive ? "#FFFFFF" : (isComplete ? "#15803D" : colors.textSecondary)} 
                   />
-                </View>
+                  <Text style={[
+                    styles.sliderTabPillText, 
+                    { color: isActive ? "#FFFFFF" : colors.text, fontWeight: isActive ? '800' : '600' }
+                  ]}>
+                    Cow #{idx + 1}
+                  </Text>
+                  {isComplete && !isActive && (
+                    <View style={styles.tabGreenDot} />
+                  )}
+                </Pressable>
               );
             })}
-          </View>
 
-          {/* Add Another Cow Button */}
-          <Button
-            title={`+ Add Another Cow (#${cowEntries.length + 1})`}
-            variant="outline"
-            onPress={handleAddCow}
-            style={{ marginTop: 8 }}
-          />
+            <Pressable 
+              onPress={handleAddCow}
+              style={[styles.sliderAddTabBtn, { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+            >
+              <Ionicons name="add" size={14} color={colors.primary} />
+              <Text style={[styles.sliderAddTabBtnText, { color: colors.primary }]}>
+                + Add Cow
+              </Text>
+            </Pressable>
+          </ScrollView>
+
+          {/* Active Cow Slide Card */}
+          {currentCow && (
+            <View style={[styles.activeSlideCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+              {/* Slide Top Bar */}
+              <View style={styles.slideHeader}>
+                <View style={[styles.slideIndexBadge, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.slideIndexBadgeText, { color: colors.primary }]}>
+                    Cattle #{activeCowSlide + 1} of {cowEntries.length}
+                  </Text>
+                </View>
+
+                {isCurrentComplete ? (
+                  <View style={styles.tagVerifiedPill}>
+                    <Ionicons name="checkmark-circle" size={12} color="#15803D" />
+                    <Text style={styles.tagVerifiedPillText}>READY</Text>
+                  </View>
+                ) : (
+                  <View style={styles.tagPendingPill}>
+                    <Text style={styles.tagPendingPillText}>
+                      {currentCow.pashuAadhaar.length}/12 Digits
+                    </Text>
+                  </View>
+                )}
+
+                {cowEntries.length > 1 && (
+                  <Pressable 
+                    onPress={() => handleRemoveCow(currentCow.id)}
+                    style={styles.removeSlideBtn}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                    <Text style={styles.removeSlideBtnText}>Remove</Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {/* 1. Pashu Aadhaar 12-Digit Input (Mandatory *) */}
+              <View style={{ marginBottom: 12 }}>
+                <TextField
+                  label={`Cow #${activeCowSlide + 1} Pashu Aadhaar Number (12 Digits) *`}
+                  placeholder="e.g. 100100001055"
+                  value={currentCow.pashuAadhaar}
+                  onChangeText={(val) => {
+                    const numericOnly = val.replace(/\D/g, '').slice(0, 12);
+                    handleUpdateCow(currentCow.id, 'pashuAadhaar', numericOnly);
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={12}
+                  error={errors[`cow_${currentCow.id}_pashuAadhaar`]}
+                  icon="barcode-outline"
+                />
+                <View style={styles.aadhaarCounterRow}>
+                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                    Official Govt. 12-digit RFID Tag
+                  </Text>
+                  <Text style={[
+                    Typography.caption2, 
+                    { 
+                      fontWeight: '700', 
+                      color: currentCow.pashuAadhaar.length === 12 ? '#15803D' : (currentCow.pashuAadhaar.length > 0 ? '#D97706' : colors.textMuted) 
+                    }
+                  ]}>
+                    {currentCow.pashuAadhaar.length} / 12 digits {currentCow.pashuAadhaar.length === 12 ? '✓' : ''}
+                  </Text>
+                </View>
+              </View>
+
+              {/* 2. Cattle Type / Breed Selection (Mandatory *) */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginBottom: 6 }]}>
+                  Cattle Type / Breed *
+                </Text>
+                <View style={styles.breedChipsWrap}>
+                  {POPULAR_BREEDS.map((breed) => {
+                    const isSelected = currentCow.breed === breed;
+                    return (
+                      <Pressable
+                        key={breed}
+                        onPress={() => handleUpdateCow(currentCow.id, 'breed', breed)}
+                        style={[
+                          styles.breedChip,
+                          {
+                            backgroundColor: isSelected ? colors.primary : (isDark ? '#0F172A' : '#F1F5F9'),
+                            borderColor: isSelected ? colors.primary : colors.border,
+                          }
+                        ]}
+                      >
+                        <Text style={[
+                          styles.breedChipText,
+                          { color: isSelected ? '#FFFFFF' : colors.text, fontWeight: isSelected ? '800' : '600' }
+                        ]}>
+                          {breed}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* 3. Milk Capacity Slider (Mandatory *) */}
+              <View style={{ marginBottom: 14 }}>
+                <View style={styles.capacityHeaderRow}>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
+                    Daily Milk Capacity *
+                  </Text>
+                  <View style={styles.capacityValuePill}>
+                    <Text style={styles.capacityValueText}>
+                      {parseFloat(currentCow.milkCapacity || '0').toFixed(1)} L / day
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Interactive Slider Bar with Steppers */}
+                <View style={styles.sliderControlRow}>
+                  <Pressable 
+                    onPress={() => {
+                      const current = parseFloat(currentCow.milkCapacity) || 10;
+                      const nextVal = Math.max(1, current - 0.5);
+                      handleUpdateCow(currentCow.id, 'milkCapacity', nextVal.toFixed(1));
+                    }}
+                    style={[styles.stepperBtn, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}
+                    hitSlop={6}
+                  >
+                    <Ionicons name="remove" size={16} color={colors.text} />
+                  </Pressable>
+
+                  {/* Visual Slider Bar Track */}
+                  <View style={[styles.sliderTrackContainer, { backgroundColor: isDark ? '#0F172A' : '#E2E8F0' }]}>
+                    <View 
+                      style={[
+                        styles.sliderTrackFill, 
+                        { width: `${Math.min(100, Math.max(4, ((parseFloat(currentCow.milkCapacity) || 0) / 25) * 100))}%` }
+                      ]} 
+                    />
+                  </View>
+
+                  <Pressable 
+                    onPress={() => {
+                      const current = parseFloat(currentCow.milkCapacity) || 10;
+                      const nextVal = Math.min(35, current + 0.5);
+                      handleUpdateCow(currentCow.id, 'milkCapacity', nextVal.toFixed(1));
+                    }}
+                    style={[styles.stepperBtn, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}
+                    hitSlop={6}
+                  >
+                    <Ionicons name="add" size={16} color={colors.text} />
+                  </Pressable>
+                </View>
+
+                {/* Milk Capacity Presets */}
+                <View style={styles.presetsRow}>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginRight: 6 }]}>
+                    Presets:
+                  </Text>
+                  {MILK_PRESETS.map((preset) => {
+                    const isPresetActive = parseFloat(currentCow.milkCapacity) === parseFloat(preset);
+                    return (
+                      <Pressable
+                        key={preset}
+                        onPress={() => handleUpdateCow(currentCow.id, 'milkCapacity', preset)}
+                        style={[
+                          styles.presetChip,
+                          {
+                            backgroundColor: isPresetActive ? '#DCFCE7' : (isDark ? '#0F172A' : '#F8FAFC'),
+                            borderColor: isPresetActive ? '#16A34A' : colors.border,
+                          }
+                        ]}
+                      >
+                        <Text style={[
+                          styles.presetChipText,
+                          { color: isPresetActive ? '#15803D' : colors.textSecondary }
+                        ]}>
+                          {preset}L
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* 4. Cow Nickname (Optional) */}
+              <TextField
+                label="Cattle Nickname (Optional)"
+                placeholder="e.g. Lakshmi / Kamadhenu"
+                value={currentCow.name}
+                onChangeText={(val) => handleUpdateCow(currentCow.id, 'name', val)}
+                icon="happy-outline"
+              />
+
+              {/* Slide Navigation Footer: Prev / Next */}
+              <View style={styles.slideFooterNav}>
+                <Button
+                  title="< Prev Cow"
+                  variant="outline"
+                  size="sm"
+                  disabled={activeCowSlide === 0}
+                  onPress={() => setActiveCowSlide(prev => Math.max(0, prev - 1))}
+                  style={{ flex: 1, marginRight: 6 }}
+                />
+
+                {activeCowSlide < cowEntries.length - 1 ? (
+                  <Button
+                    title="Next Cow >"
+                    size="sm"
+                    onPress={() => setActiveCowSlide(prev => Math.min(cowEntries.length - 1, prev + 1))}
+                    style={{ flex: 1, marginLeft: 6 }}
+                  />
+                ) : (
+                  <Button
+                    title="+ Add Next Cow"
+                    size="sm"
+                    onPress={handleAddCow}
+                    style={{ flex: 1, marginLeft: 6 }}
+                  />
+                )}
+              </View>
+            </View>
+          )}
         </Card>
 
         {/* 3. Location & Booth Assignment Card */}
@@ -642,7 +730,7 @@ export default function RegisterFarmerScreen() {
 
         {/* Submit & Cancel Buttons */}
         <Button
-          title={`Enroll Farmer with ${cowEntries.length} ${cowEntries.length === 1 ? 'Cow' : 'Cows'}`}
+          title={`Enroll Farmer & ${cowEntries.length} ${cowEntries.length === 1 ? 'Cow' : 'Cows'} Passports`}
           onPress={handleRegister}
           loading={submitting}
           size="lg"
@@ -650,7 +738,7 @@ export default function RegisterFarmerScreen() {
         />
 
         <Button
-          title="Cancel & Return"
+          title="Cancel & Return to Farmers Directory"
           variant="outline"
           onPress={() => router.back()}
           style={{ marginTop: 10, marginBottom: 36 }}
@@ -693,56 +781,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addCowMiniBtn: {
+  sliderTabsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 12,
+  },
+  sliderTabPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  sliderTabPillText: {
+    fontSize: 12,
+  },
+  tabGreenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  sliderAddTabBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
     gap: 4,
   },
-  addCowMiniBtnText: {
-    color: '#FFFFFF',
+  sliderAddTabBtnText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
-  pashuNoticeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginBottom: 14,
-  },
-  cowsListContainer: {
-    gap: 14,
-    marginBottom: 10,
-  },
-  cowItemCard: {
+  activeSlideCard: {
     padding: 14,
     borderRadius: 14,
     borderWidth: 1.5,
   },
-  cowItemHeader: {
+  slideHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  cowBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  cowIndexPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  slideIndexBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    gap: 4,
   },
-  cowIndexPillText: {
+  slideIndexBadgeText: {
     fontSize: 11,
     fontWeight: '800',
   },
@@ -771,7 +863,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#64748B',
   },
-  removeCowBtn: {
+  removeSlideBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEE2E2',
@@ -780,10 +872,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     gap: 4,
   },
-  removeCowBtnText: {
+  removeSlideBtnText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#DC2626',
+  },
+  aadhaarCounterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: -4,
+    paddingHorizontal: 2,
   },
   breedChipsWrap: {
     flexDirection: 'row',
@@ -798,23 +896,73 @@ const styles = StyleSheet.create({
   },
   breedChipText: {
     fontSize: 12,
-    fontWeight: '700',
   },
-  presetRow: {
+  capacityHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  capacityValuePill: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  capacityValueText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#15803D',
+  },
+  sliderControlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  stepperBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sliderTrackContainer: {
+    flex: 1,
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  sliderTrackFill: {
+    height: 10,
+    backgroundColor: '#16A34A',
+    borderRadius: 5,
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
   },
-  presetPill: {
+  presetChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
   },
-  presetPillText: {
+  presetChipText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  slideFooterNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E2E8F0',
   },
   boothPickerRow: {
     gap: 8,
