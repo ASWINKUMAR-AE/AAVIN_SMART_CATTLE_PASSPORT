@@ -107,15 +107,9 @@ export default function BoothProfileScreen() {
             </View>
 
             <View style={{ flex: 1, marginLeft: 14 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={[Typography.title2, { color: colors.text, fontWeight: '900' }]}>
-                  {user?.fullName || "K. Murugan"}
-                </Text>
-                <View style={styles.statusVerifiedPill}>
-                  <Ionicons name="checkmark-circle" size={12} color="#15803D" />
-                  <Text style={styles.statusVerifiedText}>VERIFIED</Text>
-                </View>
-              </View>
+              <Text style={[Typography.title2, { color: colors.text, fontWeight: '900' }]}>
+                {user?.fullName || "K. Murugan"}
+              </Text>
 
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
                 Intake Station Lead • Operator ID: {user?.associatedId || "BOOTH_OPERATOR"}
@@ -586,20 +580,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 2,
     elevation: 3,
-  },
-  statusVerifiedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 4,
-  },
-  statusVerifiedText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#15803D',
   },
   facilityStrip: {
     padding: 12,
