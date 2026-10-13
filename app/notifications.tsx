@@ -112,7 +112,7 @@ export default function NotificationsScreen() {
         ListEmptyComponent={
           <EmptyState
             title="No Notifications"
-            message={`You have no ${filterMode === 'unread' ? 'unread ' : ''}notifications for the ${activeRole} role.`}
+            message={`You have no ${filterMode === 'unread' ? 'unread ' : ''}notifications for the ${activeRole === 'booth' ? 'society' : activeRole} role.`}
             icon="notifications-off-outline"
           />
         }
@@ -143,7 +143,7 @@ export default function NotificationsScreen() {
                       { color: colors.text, fontWeight: item.isRead ? '600' : '800', flex: 1 },
                     ]}
                   >
-                    {item.title}
+                    {item.title?.replace(/booth/gi, 'Society')}
                   </Text>
                   {!item.isRead && (
                     <View style={[styles.unreadDot, { backgroundColor: icon.color }]} />
@@ -151,7 +151,7 @@ export default function NotificationsScreen() {
                 </View>
 
                 <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 4, lineHeight: 20 }]}>
-                  {item.message}
+                  {item.message?.replace(/booth weigh-scale/gi, 'society weigh-scale').replace(/booth weigh scale/gi, 'society weigh-scale').replace(/booth staff/gi, 'society staff').replace(/booth/gi, 'society').replace(/Booth/g, 'Society')}
                 </Text>
 
                 <View style={styles.timeRow}>
@@ -216,6 +216,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -228,9 +229,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    flexShrink: 0,
   },
   itemTextContainer: {
     flex: 1,
+    minWidth: 0,
   },
   titleRow: {
     flexDirection: 'row',

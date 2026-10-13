@@ -62,6 +62,16 @@ export default function UnionLayout() {
           headerShown: false,
         }}
       />
+
+      {/* Subroutes (Hidden from Bottom Floating Tab Bar) */}
+      <Tabs.Screen
+        name="bmc-analytics"
+        options={{
+          href: null,
+          title: 'BMC Production Analytics',
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }

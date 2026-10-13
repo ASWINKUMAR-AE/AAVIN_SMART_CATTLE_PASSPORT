@@ -94,7 +94,7 @@ export default function AdminDashboard() {
               <Ionicons name="business" size={20} color="#9333EA" />
             </View>
             <Text style={[styles.gridNum, { color: colors.text }]}>{booths.length}</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Collection Booths</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Collection Societies</Text>
             <Text style={[Typography.caption2, { color: colors.textMuted }]}>Feeder Societies</Text>
           </Card>
 

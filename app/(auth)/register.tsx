@@ -92,7 +92,7 @@ export default function RegisterFarmerScreen() {
 
       Alert.alert(
         'Farmer Created Successfully',
-        `Farmer ${created.name} (${created.farmerIdCode}) has been successfully enrolled under ${booths.find(b => b.id === assignedBoothId)?.name || 'Booth'}.`,
+        `Farmer ${created.name} (${created.farmerIdCode}) has been successfully enrolled under ${booths.find(b => b.id === assignedBoothId)?.name || 'Society'}.`,
         [
           {
             text: 'Done',
@@ -124,7 +124,7 @@ export default function RegisterFarmerScreen() {
             New Farmer Registration
           </Text>
           <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 4 }]}>
-            Booth Member Portal: Enroll and register a new farmer into Aavin Madurai Milk Safety Twin.
+            Society Member Portal: Enroll and register a new farmer into Aavin Madurai Milk Safety Twin.
           </Text>
         </View>
 
@@ -176,7 +176,7 @@ export default function RegisterFarmerScreen() {
 
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, marginBottom: 12, fontWeight: '700' }]}>
-            2. Location & Booth Assignment
+            2. Location & Society Assignment
           </Text>
 
           <TextField
@@ -206,7 +206,7 @@ export default function RegisterFarmerScreen() {
           />
 
           <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600', marginBottom: 8, marginTop: 4 }]}>
-            Assigned Collection Booth *
+            Assigned Collection Society *
           </Text>
           <View style={styles.boothPickerRow}>
             {booths.map((b) => {

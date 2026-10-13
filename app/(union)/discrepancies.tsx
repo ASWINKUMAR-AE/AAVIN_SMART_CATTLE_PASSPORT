@@ -81,16 +81,21 @@ export default function UnionDiscrepanciesScreen() {
           return (
             <Card style={[styles.card, (isOpen || isEscalated) && { borderColor: '#EF4444', borderWidth: 1.5 }]}>
               <View style={styles.cardHeader}>
-                <View>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
                     Case #{item.id}
                   </Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Origin: {item.boothName} → Destination: {item.bmcName}
-                  </Text>
+                  <View style={styles.routeBox}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]} numberOfLines={2}>
+                      Origin: <Text style={{ color: colors.text, fontWeight: '600' }}>{item.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}</Text>
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={2}>
+                      Destination: <Text style={{ color: colors.text, fontWeight: '600' }}>{item.bmcName}</Text>
+                    </Text>
+                  </View>
                 </View>
 
-                <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                <View style={[styles.badge, { backgroundColor: badge.bg, flexShrink: 0 }]}>
                   <Text style={[styles.badgeText, { color: badge.color }]}>{badge.label}</Text>
                 </View>
               </View>
@@ -98,16 +103,26 @@ export default function UnionDiscrepanciesScreen() {
               {/* Quantities Table */}
               <View style={[styles.varianceBox, { backgroundColor: colors.background }]}>
                 <View style={styles.vRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Society Declared Quantity:</Text>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{item.declaredQuantity.toFixed(1)} L</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>
+                    Society Declared Quantity:
+                  </Text>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>
+                    {item.declaredQuantity.toFixed(1)} L
+                  </Text>
                 </View>
                 <View style={styles.vRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>BMC Intake Measured:</Text>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{item.measuredQuantity.toFixed(1)} L</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>
+                    BMC Intake Measured:
+                  </Text>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>
+                    {item.measuredQuantity.toFixed(1)} L
+                  </Text>
                 </View>
-                <View style={[styles.vRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 4, marginTop: 4 }]}>
-                  <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800' }]}>Transit Variance:</Text>
-                  <Text style={[Typography.headline, { color: '#DC2626', fontWeight: '900' }]}>
+                <View style={[styles.vRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, marginTop: 4 }]}>
+                  <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800', flex: 1, minWidth: 0 }]}>
+                    Transit Variance:
+                  </Text>
+                  <Text style={[Typography.headline, { color: '#DC2626', fontWeight: '900', flexShrink: 0 }]}>
                     -{item.differenceLitres.toFixed(1)} L ({item.differencePercent}%)
                   </Text>
                 </View>
@@ -121,10 +136,10 @@ export default function UnionDiscrepanciesScreen() {
                 {item.investigationNotes.map((n) => (
                   <View key={n.id} style={styles.noteItem}>
                     <Text style={[Typography.caption2, { color: '#8e1111ff', fontWeight: '700' }]}>
-                      {n.author} • {n.timestamp}
+                      {n.author?.replace(/booth staff/gi, 'Society Staff').replace(/booth/gi, 'Society')} • {n.timestamp}
                     </Text>
                     <Text style={[Typography.caption1, { color: '#1d1e52ff', marginTop: 2 }]}>
-                      {n.note}
+                      {n.note?.replace(/booth weigh-scale/gi, 'Society weigh-scale').replace(/booth weigh scale/gi, 'Society weigh-scale').replace(/booth/gi, 'society')}
                     </Text>
                     {n.evidenceReference && (
                       <Text style={[Typography.caption2, { color: '#059669', fontWeight: '600', marginTop: 2 }]}>
@@ -137,7 +152,7 @@ export default function UnionDiscrepanciesScreen() {
                 {item.resolutionReason && (
                   <View style={[styles.resolutionBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
                     <Text style={[Typography.caption1, { color: '#166534', fontWeight: '800' }]}>
-                      ✓ FINAL RESOLUTION: {item.resolutionReason}
+                      ✓ FINAL RESOLUTION: {item.resolutionReason?.replace(/booth/gi, 'society')}
                     </Text>
                     <Text style={[Typography.caption2, { color: '#15803D', marginTop: 2 }]}>
                       Closed by: {item.resolvedBy} on {item.resolvedAt?.split('T')[0]}
@@ -238,17 +253,22 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
+    overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  routeBox: {
+    marginTop: 4,
   },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    flexShrink: 0,
   },
   badgeText: {
     fontSize: 10,
@@ -258,12 +278,13 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginBottom: 10,
-    gap: 4,
+    gap: 6,
   },
   vRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   trailBox: {
     gap: 6,
@@ -285,6 +306,7 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 8,
+    flexWrap: 'wrap',
   },
   modalOverlay: {
     flex: 1,

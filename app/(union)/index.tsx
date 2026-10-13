@@ -205,15 +205,15 @@ export default function UnionDashboard() {
                   <Ionicons name="snow" size={22} color={colors.primary} />
                 </View>
 
-                <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={{ flex: 1, marginLeft: 12, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                    {b.name}
+                    {b.name?.replace(/cooling booth/gi, 'Bulk Milk Cooling Centre').replace(/booth/gi, 'Society')}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                     Location: {b.location} • In-Charge: {b.managerName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                    Feeders: {bmcBooths.map(bt => bt.name.split(' ')[0]).join(', ')} ({bmcBooths.length} Societies)
+                    Feeders: {bmcBooths.map(bt => bt.name?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society').split(' ')[0]).join(', ')} ({bmcBooths.length} Societies)
                   </Text>
 
                   <View style={styles.bmcBadgesRow}>
@@ -345,6 +345,7 @@ const styles = StyleSheet.create({
   },
   bmcBadgesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 6,
   },

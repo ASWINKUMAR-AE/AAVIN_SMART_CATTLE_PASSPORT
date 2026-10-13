@@ -65,7 +65,7 @@ export default function MilkEntryScreen() {
 
       Alert.alert(
         'Milking Logged!',
-        `Logged ${qty.toFixed(2)} L for ${selectedCow.name}. Updated on your dashboard and booth records.`,
+        `Logged ${qty.toFixed(2)} L for ${selectedCow.name}. Updated on your dashboard and society records.`,
         [
           {
             text: 'View History',

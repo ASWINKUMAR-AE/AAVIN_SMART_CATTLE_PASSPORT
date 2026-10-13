@@ -170,7 +170,7 @@ export default function BoothFarmersScreen() {
 
       Alert.alert(
         'Farmer Data Updated',
-        `Successfully updated profile for ${updatedFarmerData.name} (${updatedFarmerData.farmerIdCode}). Changes have been saved to the booth database and synced.`
+        `Successfully updated profile for ${updatedFarmerData.name} (${updatedFarmerData.farmerIdCode}). Changes have been saved to the society database and synced.`
       );
     } catch (err: any) {
       setIsSaving(false);
@@ -229,7 +229,7 @@ export default function BoothFarmersScreen() {
               styles.filterChipText,
               { color: filterScope === 'assigned' ? '#FFFFFF' : colors.textSecondary }
             ]}>
-              This Booth ({assignedCount})
+              This Society ({assignedCount})
             </Text>
           </Pressable>
 
@@ -339,7 +339,7 @@ export default function BoothFarmersScreen() {
                 <View style={styles.detailRow}>
                   <View style={styles.detailLabelCol}>
                     <Ionicons name="business-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>Assigned Booth:</Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>Assigned Society:</Text>
                   </View>
                   <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', textAlign: 'right' }]}>
                     {assignedBoothObj?.name || item.assignedBoothId}
@@ -524,13 +524,13 @@ export default function BoothFarmersScreen() {
                 <View style={styles.sectionHeaderRow}>
                   <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-                    Booth Assignment & KYC Status
+                    Society Assignment & KYC Status
                   </Text>
                 </View>
 
                 {/* Booth Selector */}
                 <Text style={[Typography.subhead, { color: colors.textSecondary, marginBottom: 8, fontWeight: '600' }]}>
-                  Assigned Collection Booth:
+                  Assigned Collection Society:
                 </Text>
                 <View style={styles.boothChipsRow}>
                   {booths.map(b => (

@@ -68,7 +68,7 @@ export default function AdminUsersScreen() {
                     )}
                   </View>
                   <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
-                    ID: {item.id} • Username: {item.username} • Role: {item.role.toUpperCase()}
+                    ID: {item.id} • Username: {item.username} • Role: {item.role === 'booth' ? 'SOCIETY' : item.role.toUpperCase()}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
                     {item.description}
@@ -81,7 +81,7 @@ export default function AdminUsersScreen() {
 
               <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
                 <Button
-                  title={isCurrent ? "Active Role" : `Switch to ${item.role.toUpperCase()}`}
+                  title={isCurrent ? "Active Role" : `Switch to ${item.role === 'booth' ? 'SOCIETY' : item.role.toUpperCase()}`}
                   variant={isCurrent ? "outline" : "secondary"}
                   size="sm"
                   onPress={() => handleSwitch(item.role)}

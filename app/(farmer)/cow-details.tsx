@@ -85,7 +85,7 @@ export default function CowDetailsScreen() {
                     Withholding End Date: {cow.activeWithdrawal?.withdrawalEndDate} ({cow.activeWithdrawal?.daysRemaining} days remaining)
                   </Text>
                   <Text style={[Typography.caption2, { color: '#7F1D1D', marginTop: 4, fontStyle: 'italic' }]}>
-                    Notice: Milk from this animal contains veterinary drug residues and must NOT be poured into the collection booth.
+                    Notice: Milk from this animal contains veterinary drug residues and must NOT be poured into the collection society.
                   </Text>
                 </View>
               </View>

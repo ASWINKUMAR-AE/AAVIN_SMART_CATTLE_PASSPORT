@@ -164,7 +164,7 @@ export default function LoginScreen() {
           <View style={styles.inputsGroup}>
             <TextField
               label={language === 'ta' ? 'பயனர் பெயர் / அலைபேசி எண்' : 'Username / Mobile Number'}
-              placeholder="e.g. farmer_murugan, booth_kannan, bmc_raman"
+              placeholder="e.g. farmer_murugan, society_kannan, bmc_raman"
               value={usernameOrPhone}
               onChangeText={(t) => { setUsernameOrPhone(t); setErrorMessage(null); }}
               autoCapitalize="none"
@@ -229,7 +229,7 @@ export default function LoginScreen() {
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={styles.accountRoleLabel}>{meta.title}</Text>
                         <View style={[styles.roleBadgePill, { backgroundColor: meta.badgeColor + '20' }]}>
-                          <Text style={[styles.roleBadgePillText, { color: meta.badgeColor }]}>{acc.role.toUpperCase()}</Text>
+                          <Text style={[styles.roleBadgePillText, { color: meta.badgeColor }]}>{acc.role === 'booth' ? 'SOCIETY' : acc.role.toUpperCase()}</Text>
                         </View>
                       </View>
                       <Text style={styles.accountNameLabel} numberOfLines={1}>

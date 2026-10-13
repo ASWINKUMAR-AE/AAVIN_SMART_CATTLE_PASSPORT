@@ -111,16 +111,16 @@ export default function BMCInvestigationsScreen() {
           return (
             <Card style={[styles.card, isOpen && { borderColor: '#EF4444', borderWidth: 1.5 }]}>
               <View style={styles.cardHeader}>
-                <View>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
                     Case #{item.id}
                   </Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Feeder: {item.boothName} • Date: {item.collectionDate}
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={2}>
+                    Feeder: <Text style={{ color: colors.text, fontWeight: '600' }}>{item.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}</Text> • Date: {item.collectionDate}
                   </Text>
                 </View>
 
-                <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+                <View style={[styles.statusBadge, { backgroundColor: badge.bg, flexShrink: 0 }]}>
                   <Text style={[styles.statusText, { color: badge.color }]}>{badge.label}</Text>
                 </View>
               </View>
@@ -128,16 +128,16 @@ export default function BMCInvestigationsScreen() {
               {/* Quantities & Difference Alert */}
               <View style={[styles.varianceBox, { backgroundColor: colors.background }]}>
                 <View style={styles.varianceRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Declared by Society:</Text>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{item.declaredQuantity.toFixed(1)} L</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>Declared by Society:</Text>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>{item.declaredQuantity.toFixed(1)} L</Text>
                 </View>
                 <View style={styles.varianceRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Measured by BMC:</Text>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{item.measuredQuantity.toFixed(1)} L</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>Measured by BMC:</Text>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>{item.measuredQuantity.toFixed(1)} L</Text>
                 </View>
-                <View style={[styles.varianceRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 4, marginTop: 4 }]}>
-                  <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800' }]}>Discrepancy / Variance:</Text>
-                  <Text style={[Typography.headline, { color: '#DC2626', fontWeight: '900' }]}>
+                <View style={[styles.varianceRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, marginTop: 4 }]}>
+                  <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800', flex: 1, minWidth: 0 }]}>Discrepancy / Variance:</Text>
+                  <Text style={[Typography.headline, { color: '#DC2626', fontWeight: '900', flexShrink: 0 }]}>
                     -{item.differenceLitres.toFixed(1)} L ({item.differencePercent}%)
                   </Text>
                 </View>
@@ -153,12 +153,12 @@ export default function BMCInvestigationsScreen() {
                   <View key={note.id} style={styles.noteItem}>
                     <View style={styles.noteAuthorRow}>
                       <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700' }]}>
-                        {note.author}
+                        {note.author?.replace(/booth staff/gi, 'Society Staff').replace(/booth/gi, 'Society')}
                       </Text>
                       <Text style={[Typography.caption2, { color: colors.textMuted }]}>{note.timestamp}</Text>
                     </View>
                     <Text style={[Typography.caption1, { color: colors.text, marginTop: 2 }]}>
-                      {note.note}
+                      {note.note?.replace(/booth weigh-scale/gi, 'Society weigh-scale').replace(/booth weigh scale/gi, 'Society weigh-scale').replace(/booth/gi, 'society')}
                     </Text>
                     {note.evidenceReference && (
                       <Text style={[Typography.caption2, { color: '#047857', fontWeight: '600', marginTop: 2 }]}>
@@ -320,6 +320,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
+    overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -331,6 +332,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    flexShrink: 0,
   },
   statusText: {
     fontSize: 10,
@@ -340,12 +342,13 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginBottom: 12,
-    gap: 4,
+    gap: 6,
   },
   varianceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   notesSection: {
     gap: 8,

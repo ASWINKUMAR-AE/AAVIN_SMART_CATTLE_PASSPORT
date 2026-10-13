@@ -51,7 +51,7 @@ export default function BoothDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={booth.name}
-        subtitle={`Booth #${booth.code} • Linked to BMC: ${assignedBmc.name}`}
+        subtitle={`Society #${booth.code} • Linked to BMC: ${assignedBmc.name}`}
       />
 
       <ScrollView 
@@ -84,7 +84,7 @@ export default function BoothDashboard() {
           <View style={styles.darkOverlayLayer}>
             <View style={styles.heroCardHeaderRow}>
               <View style={styles.heroHeaderPill}>
-                <Text style={styles.heroHeaderPillText}>Booth #{booth.code} ›</Text>
+                <Text style={styles.heroHeaderPillText}>Society #{booth.code} ›</Text>
               </View>
               <View style={[styles.heroStatusBadge, { backgroundColor: todayReceipt ? '#16A34A' : '#D97706' }]}>
                 <Text style={styles.heroStatusBadgeText}>
