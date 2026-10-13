@@ -12,8 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function ReviewDailyCollectionScreen() {
   const { user } = useAuth();
-  const { booths, bmcs, farmers, milkRecords, createBoothReceipt } = useAavinStore();
-  const { colors } = useTheme();
+  const { booths, bmcs, farmers, milkRecords, boothReceipts, createBoothReceipt } = useAavinStore();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
 
   const boothId = user?.associatedId || 'BOOTH001';
@@ -21,6 +21,11 @@ export default function ReviewDailyCollectionScreen() {
   const assignedBmc = bmcs.find(b => b.id === booth.assignedBmcId) || bmcs[0];
 
   const todayStr = '2026-10-12';
+
+  // Check if today's receipt is already generated
+  const existingTodayReceipt = boothReceipts.find(
+    r => r.boothId === booth.id && r.collectionDate === todayStr
+  );
 
   // Unprocessed or today's records eligible for dispatch
   const todayRecords = milkRecords.filter(
@@ -40,7 +45,7 @@ export default function ReviewDailyCollectionScreen() {
   const assignedFarmers = farmers.filter(f => f.assignedBoothId === booth.id);
   const missingFarmers = assignedFarmers.filter(f => !uniqueParticipatingFarmerIds.has(f.id));
 
-  const [notes, setNotes] = useState('Daily morning collection verified. Dispatched via insulated tanker.');
+  const [notes] = useState('Daily morning collection verified. Dispatched via insulated tanker.');
   const [generating, setGenerating] = useState(false);
 
   const handleGenerateReceipt = () => {
@@ -57,13 +62,13 @@ export default function ReviewDailyCollectionScreen() {
         todayStr,
         'morning',
         todayRecords.map(r => r.id),
-        user?.fullName || 'Booth Operator',
+        user?.fullName || 'Booth Officer',
         notes
       );
 
       Alert.alert(
-        'Digital Receipt Generated!',
-        `Receipt #${receipt.id} generated for ${receipt.dispatchQuantity} Litres. Review and send to ${assignedBmc.name}.`,
+        'Digital Dispatch Receipt Generated!',
+        `Receipt #${receipt.id} generated for ${receipt.dispatchQuantity} Litres. Review and transmit to ${assignedBmc.name}.`,
         [
           {
             text: 'Preview & Send to BMC',
@@ -81,76 +86,142 @@ export default function ReviewDailyCollectionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Review Daily Collection"
-        subtitle={`Closure Audit • Destination: ${assignedBmc.name}`}
+        title="Dispatch Receipts & Closure"
+        subtitle={`Daily Audit • Destination: ${assignedBmc.name}`}
         showBack
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Top Quick Links Bar */}
+        <View style={styles.topLinksRow}>
+          <Pressable 
+            style={[styles.archiveBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => router.push('/(booth)/sent-receipts')}
+          >
+            <Ionicons name="documents-outline" size={16} color={colors.primary} />
+            <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800', marginLeft: 6 }]}>
+              Sent Dispatches Ledger
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ marginLeft: 'auto' }} />
+          </Pressable>
+        </View>
+
+        {/* Existing Active Receipt Card (if already generated for today) */}
+        {existingTodayReceipt && (
+          <Card style={[styles.existingReceiptCard, { backgroundColor: isDark ? '#1E293B' : '#F0FDF4', borderColor: '#86EFAC' }]}>
+            <View style={styles.existingReceiptHeader}>
+              <View style={[styles.receiptIconBadge, { backgroundColor: '#DCFCE7' }]}>
+                <Ionicons name="receipt" size={18} color="#15803D" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={[Typography.subhead, { color: '#166534', fontWeight: '900' }]}>
+                    Today's Dispatch Receipt #{existingTodayReceipt.id}
+                  </Text>
+                  <View style={[styles.statusPill, { backgroundColor: existingTodayReceipt.status === 'sent_to_bmc' ? '#DCFCE7' : '#FEF3C7' }]}>
+                    <Text style={[styles.statusPillText, { color: existingTodayReceipt.status === 'sent_to_bmc' ? '#15803D' : '#B45309' }]}>
+                      {existingTodayReceipt.status === 'sent_to_bmc' ? 'SENT TO BMC' : 'READY TO SEND'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                  {existingTodayReceipt.dispatchQuantity.toFixed(2)} Litres • Destination: {existingTodayReceipt.bmcName}
+                </Text>
+              </View>
+            </View>
+
+            <Button
+              title={existingTodayReceipt.status === 'sent_to_bmc' ? "View Waybill & Transit Tracking" : "Send Receipt to BMC Now ➔"}
+              size="sm"
+              onPress={() => router.push(`/(booth)/receipt-preview?receiptId=${existingTodayReceipt.id}` as any)}
+              style={{ marginTop: 10 }}
+            />
+          </Card>
+        )}
+
         {/* Verification Summary Card */}
         <Card style={styles.card}>
-          <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-            OFFICIAL BATCH RECONCILIATION • {todayStr}
-          </Text>
-          <Text style={[styles.bigTotal, { color: colors.text }]}>
-            {eligibleReceiptTotal.toFixed(2)} <Text style={{ fontSize: 20 }}>Litres</Text>
-          </Text>
-          <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 2 }]}>
-            Total Net Quantity Eligible for BMC Dispatch Receipt
-          </Text>
-
-          {/* Double Counting Guard Note */}
-          <View style={[styles.guardBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-            <Ionicons name="shield-checkmark" size={18} color="#16A34A" style={{ marginRight: 8 }} />
-            <Text style={[Typography.caption1, { color: '#166534', flex: 1 }]}>
-              Double-Counting Guard Active: Vendor combined quantities and farmer-wise contributions represent distinct physical batches and are strictly audited.
+          <View style={styles.batchMetaRow}>
+            <View style={styles.sessionPill}>
+              <Text style={styles.sessionPillText}>MORNING BATCH</Text>
+            </View>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+              Date: {todayStr}
             </Text>
           </View>
 
-          {/* Breakdown Table */}
-          <View style={[styles.breakdownTable, { borderTopColor: colors.border }]}>
-            <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
-                1. Farmer-Wise Measured Litres:
+          <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', marginTop: 8 }]}>
+            ELIGIBLE QUANTITY FOR BMC DISPATCH
+          </Text>
+          <View style={styles.qtyRow}>
+            <Text style={[styles.bigTotal, { color: colors.text }]}>
+              {eligibleReceiptTotal.toFixed(2)}
+            </Text>
+            <Text style={[styles.bigTotalUnit, { color: colors.text }]}>Litres</Text>
+          </View>
+          <Text style={[Typography.footnote, { color: colors.textSecondary }]}>
+            Total Net Milk audited for certified tanker dispatch slip
+          </Text>
+
+          {/* Double Counting Guard Note */}
+          <View style={[styles.guardBox, { backgroundColor: isDark ? '#1E293B' : '#F0FDF4', borderColor: '#BBF7D0' }]}>
+            <Ionicons name="shield-checkmark" size={18} color="#16A34A" style={{ marginRight: 8 }} />
+            <Text style={[Typography.caption2, { color: '#166534', flex: 1, fontWeight: '600' }]}>
+              Double-Counting Guard Active: Vendor route can batches and farmer direct intake are audited separately to prevent duplication.
+            </Text>
+          </View>
+
+          {/* Breakdown Grid */}
+          <View style={[styles.breakdownGrid, { borderTopColor: colors.border }]}>
+            <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+              <Ionicons name="person" size={16} color="#15803D" />
+              <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
+                Farmer Direct Milk
               </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                {farmerWiseTotal.toFixed(2)} L
+                {farmerWiseTotal.toFixed(1)} L
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>
+                {farmerWiseRecords.length} direct entries
               </Text>
             </View>
 
-            <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
-                2. Combined Vendor Batches:
+            <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+              <Ionicons name="bus" size={16} color="#4F46E5" />
+              <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
+                Route Vendor Milk
               </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                {combinedVendorTotal.toFixed(2)} L
+                {combinedVendorTotal.toFixed(1)} L
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>
+                {combinedVendorRecords.length} bulk can route
               </Text>
             </View>
 
-            <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
-                3. Total Included Records:
+            <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+              <Ionicons name="people" size={16} color="#0284C7" />
+              <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
+                Farmer Attendance
               </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                {todayRecords.length} Entries
+                {uniqueParticipatingFarmerIds.size} / {assignedFarmers.length}
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>
+                {missingFarmers.length} not yet supplied
               </Text>
             </View>
 
-            <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
-                4. Participating Farmers:
+            <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+              <Ionicons name="water" size={16} color="#0072BC" />
+              <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
+                Receiving BMC
               </Text>
-              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                {uniqueParticipatingFarmerIds.size} of {assignedFarmers.length}
+              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]} numberOfLines={1}>
+                {assignedBmc.name}
               </Text>
-            </View>
-
-            <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
-                5. Receiving Facility (BMC):
-              </Text>
-              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
-                {assignedBmc.name} ({assignedBmc.id})
+              <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>
+                {assignedBmc.id}
               </Text>
             </View>
           </View>
@@ -159,47 +230,72 @@ export default function ReviewDailyCollectionScreen() {
         {/* Missing Expected Farmers Notice */}
         {missingFarmers.length > 0 && (
           <Card style={[styles.card, { borderColor: '#F59E0B' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
               <Ionicons name="time" size={18} color="#D97706" style={{ marginRight: 6 }} />
               <Text style={[Typography.headline, { color: '#B45309', fontWeight: '800' }]}>
                 Pending Expected Farmer Entries ({missingFarmers.length})
               </Text>
             </View>
-            <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 8 }]}>
-              The following registered booth farmers have not yet supplied milk today:
+            <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 8 }]}>
+              The following registered producers have not yet supplied milk this morning:
             </Text>
             {missingFarmers.map(mf => (
-              <View key={mf.id} style={styles.missingItem}>
-                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                  • {mf.name} ({mf.farmerIdCode})
-                </Text>
-                <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                  Expected ~{mf.numberOfCows * 12} L ({mf.village})
+              <View key={mf.id} style={[styles.missingItem, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
+                    • {mf.name} ({mf.farmerIdCode})
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                    {mf.village} • {mf.numberOfCows} cattle registered
+                  </Text>
+                </View>
+                <Text style={[Typography.caption1, { color: colors.textSecondary, fontWeight: '600' }]}>
+                  ~{mf.numberOfCows * 12} L exp.
                 </Text>
               </View>
             ))}
           </Card>
         )}
 
-        {/* Farmer Entries Breakdown */}
+        {/* Transactions List */}
         <Card style={styles.card}>
-          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Included Transactions List
-          </Text>
+          <View style={styles.transactionsHeader}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+              Eligible Transactions List ({todayRecords.length})
+            </Text>
+            <Pressable onPress={() => router.push('/(booth)/record-milk')}>
+              <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800' }]}>
+                + Add Record
+              </Text>
+            </Pressable>
+          </View>
 
           {todayRecords.length === 0 ? (
-            <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 14 }]}>
-              All today's entries have already been included in a generated receipt.
-            </Text>
+            <View style={styles.noRecordsBox}>
+              <Ionicons name="checkmark-done-circle" size={36} color="#10B981" />
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginTop: 8 }]}>
+                All Entries Reconciled
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, textAlign: 'center', marginTop: 2 }]}>
+                All today's recorded entries have already been packaged into an official dispatch receipt.
+              </Text>
+            </View>
           ) : (
             todayRecords.map((r, i) => (
               <View key={r.id} style={[styles.includedItem, { borderBottomColor: colors.border }]}>
-                <View style={{ flex: 1 }}>
+                <View style={[styles.itemTypeBadge, { backgroundColor: r.measurementMethod === 'farmer_wise' ? '#DCFCE7' : '#E0E7FF' }]}>
+                  <Ionicons 
+                    name={r.measurementMethod === 'farmer_wise' ? "person" : "bus"} 
+                    size={14} 
+                    color={r.measurementMethod === 'farmer_wise' ? "#15803D" : "#4338CA"} 
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
                     {i + 1}. {r.farmerName || r.vendorName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    {r.measurementMethod === 'farmer_wise' ? 'Individual Farmer Supply' : 'Vendor Bulk Batch (Individual N/A)'}
+                    {r.measurementMethod === 'farmer_wise' ? 'Individual Producer' : 'Vendor Consolidated Bulk'} • {r.session}
                   </Text>
                 </View>
                 <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800' }]}>
@@ -210,21 +306,32 @@ export default function ReviewDailyCollectionScreen() {
           )}
         </Card>
 
-        {/* Action Button */}
-        <Button
-          title={generating ? "Generating Digital Receipt..." : `Confirm Total (${eligibleReceiptTotal} L) & Generate Receipt`}
-          size="lg"
-          loading={generating}
-          disabled={todayRecords.length === 0}
-          onPress={handleGenerateReceipt}
-          style={{ marginTop: 8 }}
-        />
+        {/* Generate Receipt CTA */}
+        {todayRecords.length > 0 ? (
+          <Button
+            title={generating ? "Generating Digital Waybill..." : `Confirm Total (${eligibleReceiptTotal} L) & Send Receipt`}
+            size="lg"
+            loading={generating}
+            onPress={handleGenerateReceipt}
+            icon="receipt-outline"
+            style={{ marginTop: 6 }}
+          />
+        ) : (
+          existingTodayReceipt && (
+            <Button
+              title="Open Today's Generated Waybill"
+              size="lg"
+              onPress={() => router.push(`/(booth)/receipt-preview?receiptId=${existingTodayReceipt.id}` as any)}
+              style={{ marginTop: 6 }}
+            />
+          )
+        )}
 
         <Button
-          title="Back to Overview"
+          title="View Sent Dispatches History"
           variant="outline"
-          onPress={() => router.back()}
-          style={{ marginTop: 10, marginBottom: 30 }}
+          onPress={() => router.push('/(booth)/sent-receipts')}
+          style={{ marginTop: 8, marginBottom: 28 }}
         />
       </ScrollView>
     </View>
@@ -240,13 +347,77 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 40,
   },
+  topLinksRow: {
+    flexDirection: 'row',
+  },
+  archiveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  existingReceiptCard: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  existingReceiptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  receiptIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
   card: {
     padding: 16,
+    borderRadius: 16,
+  },
+  batchMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sessionPill: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  sessionPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0284C7',
+  },
+  qtyRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: 2,
+    marginBottom: 4,
   },
   bigTotal: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '900',
-    marginTop: 4,
+    letterSpacing: -0.5,
+  },
+  bigTotalUnit: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 6,
   },
   guardBox: {
     flexDirection: 'row',
@@ -256,29 +427,48 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 12,
   },
-  breakdownTable: {
+  breakdownGrid: {
     marginTop: 14,
-    paddingTop: 10,
+    paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  tableRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 2,
+  breakdownTile: {
+    width: '48.5%',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   missingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  includedItem: {
+  transactionsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  noRecordsBox: {
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  includedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  itemTypeBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
