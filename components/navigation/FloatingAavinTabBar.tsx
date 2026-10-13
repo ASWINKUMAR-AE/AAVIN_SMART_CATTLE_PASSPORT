@@ -184,7 +184,7 @@ export function FloatingAavinTabBar({
 }: FloatingAavinTabBarProps) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { isScrolled, barsVisible } = useScroll();
+  const { isScrolled } = useScroll();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   // Filter to only routes that have a registered icon and not hidden
@@ -220,7 +220,7 @@ export function FloatingAavinTabBar({
     };
   }, []);
 
-  if (isKeyboardVisible || !barsVisible) {
+  if (isKeyboardVisible) {
     return null;
   }
 
