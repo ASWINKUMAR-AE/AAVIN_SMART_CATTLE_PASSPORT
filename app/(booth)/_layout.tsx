@@ -43,16 +43,7 @@ export default function BoothLayout() {
         }}
       />
 
-      {/* 4. Receipts */}
-      <Tabs.Screen
-        name="review-collection"
-        options={{
-          title: 'Receipts',
-          headerShown: false,
-        }}
-      />
-
-      {/* 5. Profile */}
+      {/* 4. Profile */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -61,7 +52,15 @@ export default function BoothLayout() {
         }}
       />
 
-      {/* Subroutes (Hidden from Bottom Bar) */}
+      {/* Subroutes (Hidden from Bottom Tab Bar) */}
+      <Tabs.Screen
+        name="review-collection"
+        options={{
+          href: null,
+          title: 'Receipts',
+          headerShown: false,
+        }}
+      />
       <Tabs.Screen
         name="sent-receipts"
         options={{
