@@ -128,7 +128,7 @@ export default function BMCInvestigationsScreen() {
               {/* Quantities & Difference Alert */}
               <View style={[styles.varianceBox, { backgroundColor: colors.background }]}>
                 <View style={styles.varianceRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Declared by Booth:</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Declared by Society:</Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{item.declaredQuantity.toFixed(1)} L</Text>
                 </View>
                 <View style={styles.varianceRow}>
@@ -267,7 +267,7 @@ export default function BMCInvestigationsScreen() {
               </View>
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>Formal Resolution Justification *</Text>
               <TextInput
-                placeholder="e.g. Variance within normal 0.5% temperature expansion allowance. Booth records confirmed."
+                placeholder="e.g. Variance within normal 0.5% temperature expansion allowance. Society records confirmed."
                 placeholderTextColor={colors.textMuted}
                 value={resolutionReason}
                 onChangeText={setResolutionReason}

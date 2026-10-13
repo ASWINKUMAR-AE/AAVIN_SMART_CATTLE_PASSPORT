@@ -76,7 +76,7 @@ export default function BoothLayout() {
         name="receipt-preview"
         options={{
           href: null,
-          title: 'Digital Booth Receipt',
+          title: 'Digital Society Receipt',
           headerShown: false,
         }}
       />

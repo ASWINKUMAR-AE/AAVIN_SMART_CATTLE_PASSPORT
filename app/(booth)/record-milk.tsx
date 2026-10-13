@@ -63,7 +63,7 @@ export default function RecordMilkScreen() {
           vendorName: route === 'vendor' ? vendors.find(v => v.id === selectedVendorId)?.name : undefined,
           measurementMethod: 'farmer_wise',
           individualAllocation: 'measured',
-          createdBy: user?.fullName || 'Booth Operator',
+          createdBy: user?.fullName || 'Society Operator',
           notes: notes.trim() || undefined,
         });
 
@@ -99,13 +99,13 @@ export default function RecordMilkScreen() {
           vendorName: vendorObj?.name,
           measurementMethod: 'combined',
           individualAllocation: 'not_available',
-          createdBy: user?.fullName || 'Booth Operator',
+          createdBy: user?.fullName || 'Society Operator',
           notes: notes.trim() || 'Bulk intake batch from route vendor cans.',
         });
 
         Alert.alert(
           'Combined Route Intake Saved',
-          `Successfully recorded ${qty.toFixed(2)} Litres for Vendor ${vendorObj?.name} (Method: Combined Bulk Route, Individual Allocation: N/A). Total added to eligible booth dispatch receipt.`,
+          `Successfully recorded ${qty.toFixed(2)} Litres for Vendor ${vendorObj?.name} (Method: Combined Bulk Route, Individual Allocation: N/A). Total added to eligible society dispatch receipt.`,
           [
             {
               text: '+ Record Another Entry',

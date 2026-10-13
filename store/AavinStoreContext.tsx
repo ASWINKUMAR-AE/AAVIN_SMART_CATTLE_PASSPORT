@@ -391,7 +391,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       treatmentRecords: [newTreatment, ...targetCow.treatmentRecords],
     };
 
-    // Create notifications for farmer & booth staff
+    // Create notifications for farmer & society staff
     const notificationsToAdd: InAppNotification[] = [];
     if (hasWithdrawal) {
       notificationsToAdd.push({
@@ -456,7 +456,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         recipientRole: 'farmer',
         recipientId: newRecord.farmerId,
         title: 'Milk Supply Recorded',
-        message: `Your ${newRecord.session} supply of ${newRecord.quantityLitres.toFixed(2)} Litres was recorded at the booth.`,
+        message: `Your ${newRecord.session} supply of ${newRecord.quantityLitres.toFixed(2)} Litres was recorded at the society.`,
         type: 'milk_recorded',
         timestamp: 'Just now',
         isRead: false,
@@ -514,7 +514,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     persistState(updated);
   }, [state, persistState]);
 
-  // 4. Booth Actions
+  // 4. Society Actions
   const createBoothReceipt = useCallback((
     boothId: string, 
     bmcId: string, 
@@ -545,7 +545,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const newReceipt: BoothReceipt = {
       id: receiptId,
       boothId,
-      boothName: booth?.name || 'Aavin Booth',
+      boothName: booth?.name || 'Aavin Society',
       bmcId,
       bmcName: bmc?.name || 'Aavin BMC',
       collectionDate,
@@ -623,7 +623,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       session: receipt.session,
       notes: receipt.notes,
     }).catch(err => {
-      console.log('[WorkflowApi] Booth receipt dispatched locally. Offline/mock mode:', err?.message || err);
+      console.log('[WorkflowApi] Society receipt dispatched locally. Offline/mock mode:', err?.message || err);
     });
   }, [state, persistState]);
 
@@ -699,7 +699,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         linkRoute: '/(union)/discrepancies',
       });
     } else {
-      // Notification to Booth that delivery matched and confirmed
+      // Notification to Society that delivery matched and confirmed
       newNotifications.unshift({
         id: `NOTIF-MATCH-BOOTH-${Date.now()}`,
         recipientRole: 'booth',

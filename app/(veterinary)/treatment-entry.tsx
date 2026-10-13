@@ -105,7 +105,7 @@ export default function TreatmentEntryScreen() {
 
       Alert.alert(
         'Treatment Prescribed!',
-        `Prescription saved for ${selectedCow.name} (#${selectedCow.tagId}).\n\n${days > 0 ? `⚠️ Active Milk Withdrawal Period of ${days} days deployed until ${endDate}. Safety alert dispatched to farmer and booth.` : 'Zero milk discard medicine. Cow remains cleared for supply.'}`,
+        `Prescription saved for ${selectedCow.name} (#${selectedCow.tagId}).\n\n${days > 0 ? `⚠️ Active Milk Withdrawal Period of ${days} days deployed until ${endDate}. Safety alert dispatched to farmer and society.` : 'Zero milk discard medicine. Cow remains cleared for supply.'}`,
         [
           {
             text: 'View Passport',

@@ -12,11 +12,11 @@ export default function BoothProfileScreen() {
 
   return (
     <RoleProfileScreen
-      roleTitle="Booth Operator Profile"
+      roleTitle="Society Operator Profile"
       roleSubtitle="Milk Collection Center Staff"
       staffName={user?.fullName || "K. Murugan"}
       staffId={user?.associatedId || "BOOTH_OPERATOR"}
-      facilityTitle="Assigned Booth"
+      facilityTitle="Assigned Society"
       facilityValue={booth.name}
       jurisdictionTitle="Assigned BMC Hub"
       jurisdictionValue="Alanganallur BMC Center"

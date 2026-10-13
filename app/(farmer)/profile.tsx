@@ -85,18 +85,18 @@ export default function FarmerProfileScreen() {
           </View>
         </Card>
 
-        {/* Assigned Booth Card */}
+        {/* Assigned Society Card */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Assigned Collection Booth
+            Assigned Collection Society
           </Text>
 
           <View style={styles.row}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Booth Name:</Text>
+            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Society Name:</Text>
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{assignedBooth?.name || 'Melur Co-op Society'}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Booth Code:</Text>
+            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Society Code:</Text>
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{assignedBooth?.code}</Text>
           </View>
           <View style={styles.row}>

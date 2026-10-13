@@ -63,7 +63,7 @@ const ROUTE_META_MAP: Record<
     fallbackLabel: 'Profile',
   },
 
-  // Booth Staff
+  // Society Staff
   farmers: {
     outline: 'people-outline',
     filled: 'people',

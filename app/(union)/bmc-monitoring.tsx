@@ -65,10 +65,10 @@ export default function BMCMonitoringScreen() {
                 </View>
               </View>
 
-              {/* Feeder Booths Table */}
+              {/* Feeder Societies Table */}
               <View style={[styles.boothSection, { borderTopColor: colors.border }]}>
                 <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800', marginBottom: 4 }]}>
-                  Feeder Booths ({bmcBooths.length})
+                  Feeder Societies ({bmcBooths.length})
                 </Text>
                 {bmcBooths.map((b) => (
                   <View key={b.id} style={styles.boothRow}>

@@ -48,7 +48,7 @@ export default function UnionDiscrepanciesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="District Discrepancy Ledger"
         subtitle="Cross-Facility Reconciliation & Integrity Audit"
         showBack
@@ -98,7 +98,7 @@ export default function UnionDiscrepanciesScreen() {
               {/* Quantities Table */}
               <View style={[styles.varianceBox, { backgroundColor: colors.background }]}>
                 <View style={styles.vRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Booth Declared Quantity:</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Society Declared Quantity:</Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{item.declaredQuantity.toFixed(1)} L</Text>
                 </View>
                 <View style={styles.vRow}>
@@ -120,10 +120,10 @@ export default function UnionDiscrepanciesScreen() {
                 </Text>
                 {item.investigationNotes.map((n) => (
                   <View key={n.id} style={styles.noteItem}>
-                    <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
+                    <Text style={[Typography.caption2, { color: '#8e1111ff', fontWeight: '700' }]}>
                       {n.author} • {n.timestamp}
                     </Text>
-                    <Text style={[Typography.caption1, { color: colors.text, marginTop: 2 }]}>
+                    <Text style={[Typography.caption1, { color: '#1d1e52ff', marginTop: 2 }]}>
                       {n.note}
                     </Text>
                     {n.evidenceReference && (

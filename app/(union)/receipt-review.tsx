@@ -99,7 +99,7 @@ export default function UnionReceiptReviewScreen() {
               {/* Volume Comparison Table */}
               <View style={[styles.volumeGrid, { borderTopColor: colors.border }]}>
                 <View style={styles.volItem}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Declared by Booths</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Declared by Societies</Text>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>
                     {item.totalDeclaredQuantity.toFixed(1)} L
                   </Text>

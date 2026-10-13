@@ -58,7 +58,7 @@ export default function BoothDashboard() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Discrepancy Alert for Booth Staff */}
+        {/* Discrepancy Alert for Society Staff */}
         {boothDiscrepancies.length > 0 && (
           <View style={[styles.discrepancyBanner, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
             <Ionicons name="alert-circle" size={24} color="#DC2626" />

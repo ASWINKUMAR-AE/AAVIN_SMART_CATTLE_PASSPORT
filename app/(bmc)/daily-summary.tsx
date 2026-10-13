@@ -43,7 +43,7 @@ export default function BMCDailySummaryScreen() {
 
   const handleGenerateBmcReceipt = () => {
     if (myDeliveries.length === 0) {
-      Alert.alert('No Deliveries', 'No feeder booth deliveries exist to generate a receipt.');
+      Alert.alert('No Deliveries', 'No feeder society deliveries exist to generate a receipt.');
       return;
     }
 
@@ -103,13 +103,13 @@ export default function BMCDailySummaryScreen() {
             {totalReceived.toFixed(2)} <Text style={{ fontSize: 20 }}>Litres</Text>
           </Text>
           <Text style={[Typography.footnote, { color: colors.textSecondary }]}>
-            Measured via calibrated flow meters across {myDeliveries.length} feeder booths
+            Measured via calibrated flow meters across {myDeliveries.length} feeder societies
           </Text>
 
           {/* Reconciliation Table */}
           <View style={[styles.table, { borderTopColor: colors.border }]}>
             <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Feeder Booth Dispatches Declared:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Feeder Society Dispatches Declared:</Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>{totalDeclared.toFixed(2)} L</Text>
             </View>
 
@@ -161,7 +161,7 @@ export default function BMCDailySummaryScreen() {
                 Net Dispatched Volume: {todayBmcReceipt.totalReceivedQuantity} L
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Feeder Booths Included: {todayBmcReceipt.totalBoothsCount} • Net Variance: {todayBmcReceipt.netDifference} L
+                Feeder Societies Included: {todayBmcReceipt.totalBoothsCount} • Net Variance: {todayBmcReceipt.netDifference} L
               </Text>
             </View>
 
@@ -183,10 +183,10 @@ export default function BMCDailySummaryScreen() {
           </Card>
         )}
 
-        {/* Feeder Booth Deliveries List */}
+        {/* Feeder Society Deliveries List */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Feeder Booth Deliveries Breakdown
+            Feeder Society Deliveries Breakdown
           </Text>
 
           {myDeliveries.map((d) => (

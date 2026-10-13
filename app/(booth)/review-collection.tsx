@@ -57,7 +57,7 @@ export default function ReviewDailyCollectionScreen() {
         todayStr,
         'morning',
         todayRecords.map(r => r.id),
-        user?.fullName || 'Booth Operator',
+        user?.fullName || 'Society Operator',
         notes
       );
 
@@ -166,7 +166,7 @@ export default function ReviewDailyCollectionScreen() {
               </Text>
             </View>
             <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 8 }]}>
-              The following registered booth farmers have not yet supplied milk today:
+              The following registered society farmers have not yet supplied milk today:
             </Text>
             {missingFarmers.map(mf => (
               <View key={mf.id} style={styles.missingItem}>

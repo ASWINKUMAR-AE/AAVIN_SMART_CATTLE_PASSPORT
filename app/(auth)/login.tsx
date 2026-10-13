@@ -26,7 +26,7 @@ export default function LoginScreen() {
 
   const roleMeta: Record<UserRole, { title: string; badgeColor: string; icon: string }> = {
     farmer: { title: 'Farmer', badgeColor: '#16A34A', icon: '👨‍🌾' },
-    booth: { title: 'Booth Staff', badgeColor: '#00A5E3', icon: '🏢' },
+    booth: { title: 'Society Staff', badgeColor: '#00A5E3', icon: '🏢' },
     bmc: { title: 'BMC Staff', badgeColor: '#0284C7', icon: '❄️' },
     union: { title: 'Union Executive', badgeColor: '#7C3AED', icon: '🏛️' },
     veterinary: { title: 'Veterinarian', badgeColor: '#EA580C', icon: '🩺' },

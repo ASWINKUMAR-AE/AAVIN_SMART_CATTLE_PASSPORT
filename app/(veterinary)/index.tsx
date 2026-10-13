@@ -47,7 +47,7 @@ export default function VeterinaryDashboard() {
                 ⚠️ ACTIVE MEDICINE WITHDRAWAL RESTRICTIONS ({cowsWithWithdrawal.length})
               </Text>
               <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                Veterinary antibiotic/NSAID withdrawal active. Booth alerts and milk withholding flags deployed.
+                Veterinary antibiotic/NSAID withdrawal active. Society alerts and milk withholding flags deployed.
               </Text>
             </View>
           </View>

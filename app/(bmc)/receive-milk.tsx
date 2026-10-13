@@ -57,7 +57,7 @@ export default function BMCReceiveMilkScreen() {
       if (result.isMismatch) {
         Alert.alert(
           '⚠️ QUANTITY MISMATCH DETECTED!',
-          `Declared by Booth: ${targetDelivery.declaredDispatchQuantity.toFixed(2)} L\nMeasured by BMC: ${qty.toFixed(2)} L\nVariance: ${result.difference.toFixed(2)} L (${((Math.abs(result.difference) / targetDelivery.declaredDispatchQuantity) * 100).toFixed(1)}%)\n\n• Delivery flagged as 'Mismatch - Investigation Required'\n• Formal Discrepancy Case automatically opened\n• High-priority notifications dispatched to BMC and Union Management!`,
+          `Declared by Society: ${targetDelivery.declaredDispatchQuantity.toFixed(2)} L\nMeasured by BMC: ${qty.toFixed(2)} L\nVariance: ${result.difference.toFixed(2)} L (${((Math.abs(result.difference) / targetDelivery.declaredDispatchQuantity) * 100).toFixed(1)}%)\n\n• Delivery flagged as 'Mismatch - Investigation Required'\n• Formal Discrepancy Case automatically opened\n• High-priority notifications dispatched to BMC and Union Management!`,
           [
             {
               text: 'Open Investigation Case',
@@ -105,7 +105,7 @@ export default function BMCReceiveMilkScreen() {
         ListEmptyComponent={
           <EmptyState
             title="No Feeder Deliveries"
-            message="No booth dispatches have arrived for measurement."
+            message="No society dispatches have arrived for measurement."
             icon="cube-outline"
           />
         }
@@ -144,7 +144,7 @@ export default function BMCReceiveMilkScreen() {
               {/* Quantities Side-by-Side Comparison */}
               <View style={[styles.compareGrid, { borderTopColor: colors.border }]}>
                 <View style={styles.compareCol}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Booth Declared</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Society Declared</Text>
                   <Text style={[Typography.title2, { color: colors.primary, fontWeight: '900' }]}>
                     {item.declaredDispatchQuantity.toFixed(1)} L
                   </Text>
@@ -244,7 +244,7 @@ export default function BMCReceiveMilkScreen() {
 
               <View style={[styles.declaredBox, { backgroundColor: colors.primaryLight }]}>
                 <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                  BOOTH DECLARED DISPATCH QUANTITY
+                  SOCIETY DECLARED DISPATCH QUANTITY
                 </Text>
                 <Text style={[styles.declaredNum, { color: colors.primary }]}>
                   {selectedDelivery.declaredDispatchQuantity.toFixed(2)} Litres

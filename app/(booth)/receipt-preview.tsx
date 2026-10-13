@@ -81,7 +81,7 @@ export default function ReceiptPreviewScreen() {
             </View>
 
             <View style={styles.detailRow}>
-              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Origin Booth:</Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Origin Society:</Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{receipt.boothName}</Text>
             </View>
 

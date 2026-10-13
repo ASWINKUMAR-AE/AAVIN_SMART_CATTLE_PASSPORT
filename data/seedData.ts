@@ -37,12 +37,12 @@ export const SEED_DEMO_USERS: DemoUser[] = [
   {
     id: 'BOOTH001',
     username: 'booth_kannan',
-    fullName: 'P. Kannan (Booth Officer)',
+    fullName: 'P. Kannan (Society Officer)',
     role: 'booth',
     phone: '9842000009',
     email: 'melur.booth@aavin.tn.gov.in',
     associatedId: 'BOOTH001',
-    description: 'Booth Staff • Melur Co-op Society (Dispatches to Madurai East BMC)',
+    description: 'Society Staff • Melur Co-op Society (Dispatches to Madurai East BMC)',
   },
   {
     id: 'BMC001',
@@ -294,7 +294,7 @@ export const SEED_COWS: Cow[] = [
         notes: 'MANDATORY MILK WITHHOLDING: Milk contains antibiotic residues. Discard milk completely.',
       },
     ],
-    notes: 'ACTIVE ANTIBIOTIC WITHDRAWAL: Do not pool milk into collection booth.',
+    notes: 'ACTIVE ANTIBIOTIC WITHDRAWAL: Do not pool milk into collection society.',
     createdAt: '2025-01-10T08:20:00Z',
   },
   {
@@ -442,7 +442,7 @@ export const SEED_BOOTHS: Booth[] = [
   {
     id: 'BOOTH003',
     code: 'AAVIN-CC-MDU-03',
-    name: 'Vadipatti Milk Collection Booth',
+    name: 'Vadipatti Milk Collection Society',
     taluk: 'Vadipatti',
     village: 'Vadipatti Town',
     district: 'Madurai',
@@ -524,7 +524,7 @@ export const SEED_MILK_RECORDS: MilkRecord[] = [
     individualAllocation: 'measured',
     status: 'recorded',
     createdBy: 'P. Kannan (BOOTH001)',
-    notes: 'Delivered Kamadhenu morning yield directly to Melur booth',
+    notes: 'Delivered Kamadhenu morning yield directly to Melur society',
     createdAt: `${todayStr}T06:15:00Z`,
   },
   {
@@ -696,7 +696,7 @@ export const SEED_MILK_RECORDS: MilkRecord[] = [
 ];
 
 export const SEED_BOOTH_RECEIPTS: BoothReceipt[] = [
-  // Receipt 1: Matched delivery yesterday (Booth 1 -> BMC 1)
+  // Receipt 1: Matched delivery yesterday (Society 1 -> BMC 1)
   {
     id: 'BR-2026-1011-01',
     boothId: 'BOOTH001',
@@ -716,7 +716,7 @@ export const SEED_BOOTH_RECEIPTS: BoothReceipt[] = [
     verificationCode: 'BR-MDU01-928174',
     notes: 'Evening dispatch tanker batch #TN59BZ4819',
   },
-  // Receipt 2: Mismatch delivery yesterday (Booth 2 -> BMC 1) - Declared 1000L, BMC received 970L (30L mismatch!)
+  // Receipt 2: Mismatch delivery yesterday (Society 2 -> BMC 1) - Declared 1000L, BMC received 970L (30L mismatch!)
   {
     id: 'BR-2026-1011-02',
     boothId: 'BOOTH002',
@@ -736,7 +736,7 @@ export const SEED_BOOTH_RECEIPTS: BoothReceipt[] = [
     verificationCode: 'BR-MDU02-482019',
     notes: 'Morning batch dispatched in Tanker TN-59-CX-3312',
   },
-  // Receipt 3: Today's pending arrival (Booth 1 -> BMC 1)
+  // Receipt 3: Today's pending arrival (Society 1 -> BMC 1)
   {
     id: 'BR-2026-1012-01',
     boothId: 'BOOTH001',
@@ -833,7 +833,7 @@ export const SEED_DISCREPANCY_CASES: DiscrepancyCase[] = [
       {
         id: 'NOTE-002',
         timestamp: `${yesterdayStr} 11:40 AM`,
-        author: 'M. Ramanathan (Booth Staff)',
+        author: 'M. Ramanathan (Society Staff)',
         note: 'Booth weigh-scale calibration rechecked and confirmed accurate. Suspect minor spillage or measurement calibration variance at transit.',
         evidenceReference: 'Weigh Slip #ALN-9982',
       },
