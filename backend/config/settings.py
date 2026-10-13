@@ -14,7 +14,7 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").sp
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
-    "corsheaders", "rest_framework", "rest_framework_simplejwt.token_blacklist", "accounts",
+    "corsheaders", "rest_framework", "rest_framework_simplejwt.token_blacklist", "accounts", "milk_collections.apps.CollectionsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware", "corsheaders.middleware.CorsMiddleware",

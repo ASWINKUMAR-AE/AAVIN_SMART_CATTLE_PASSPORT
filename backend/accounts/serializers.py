@@ -56,6 +56,7 @@ class ParentAccountSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    isActive = serializers.BooleanField(source="is_active", read_only=True)
     fullName = serializers.CharField(source="full_name", read_only=True)
     roles = serializers.SerializerMethodField()
     parentId = serializers.UUIDField(source="parent_id", read_only=True, allow_null=True)
@@ -65,7 +66,7 @@ class UserSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='date_joined', read_only=True)
     class Meta:
         model = User
-        fields = ["id", "phone", "fullName", "role", "roles", "parentId", "parent", "personalDetails", "cows", "createdAt"]
+        fields = ["id", "phone", "fullName", "role", "roles", "parentId", "parent", "personalDetails", "cows", "createdAt", "isActive"]
     def get_roles(self, obj):
         return [obj.role]
 
