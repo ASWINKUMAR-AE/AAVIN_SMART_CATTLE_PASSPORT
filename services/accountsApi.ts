@@ -7,6 +7,7 @@ export const AccountsApi = {
     fullName?: string;
     personalDetails?: Partial<PersonalDetails>;
     cows?: Array<{ id: string; name?: string; milkCapacity?: number }>;
+    newCows?: CowRegistration[];
   }): Promise<BackendUser> {
     const response = await api.patch(`/farmers/${farmerId}`, payload);
     return response.data.data.user;

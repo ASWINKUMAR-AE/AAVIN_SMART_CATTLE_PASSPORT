@@ -18,8 +18,8 @@ const original = {id:'farmer-uuid',phone:'9842000004',fullName:'Farmer One',role
   createdAt:'2026-10-13T00:00:00Z',personalDetails:{farmerIdCode:'FARM-1',address:'Old Street',village:'Melur',numberOfCows:1,
   verificationStatus:'pending'},cows:[{id:'cow-uuid',farmerId:'farmer-uuid',pashuAadhaar:'123456789012',breed:'Jersey Cross',
   name:'Lakshmi',milkCapacity:'12.00',createdAt:'2026-10-13T00:00:00Z'}]};
-function harness() {
-  let current = JSON.parse(JSON.stringify(original));
+function harness(initial = original) {
+  let current = JSON.parse(JSON.stringify(initial));
   const states = [], calls = [], alerts = [];
   let slot = 0, tree, focus, fail = false;
   const store = {farmers:[],cows:[],booths:[{id:'society-uuid',name:'Own Society'}],
@@ -34,6 +34,9 @@ function harness() {
         personalDetails:{...current.personalDetails,...payload.personalDetails},
         cows:current.cows.map(cow=>{const change=payload.cows?.find(item=>item.id===cow.id);return change ?
           {...cow,name:change.name,milkCapacity:String(change.milkCapacity)}:cow;})};
+            current.cows.push(...(payload.newCows || []).map((cow,index)=>({...cow,id:'added-cow-'+index,
+        farmerId:current.id,createdAt:current.createdAt})));
+      current.personalDetails.numberOfCows=current.cows.length;
       return current;
     },
     registerFarmer:async payload=>{calls.push({registration:payload});return {...current,id:'new-farmer',
@@ -99,6 +102,25 @@ function harness() {
   await h.find('Button',props=>props.title==='Save Changes').onPress();
   assert.equal(h.store.farmers[0].name,'Edited Farmer');
   assert.equal(h.find('TextField',props=>props.label==='Full Name *').value,'Rejected edit');
+  const adding=harness();await adding.focus();
+  adding.find('Pressable',(_props,node)=>adding.text(node)==='Edit Details').onPress();
+  assert.equal(adding.find('TextField',props=>props.label==='Cattle Call Name / Nickname (Editable)').value,'Lakshmi');
+  assert.ok(!adding.text(adding.render()).includes('farmer-uuid'));
+  assert.ok(!adding.text(adding.render()).includes('society-uuid'));
+  adding.find('Button',props=>props.title==='+ Add Cow').onPress();
+  for(const [label,value] of [['Pashu Aadhaar (12 Digits) *','123456789013'],['Cattle Breed *','HF Cross'],
+    ['Cattle Call Name / Nickname (Editable)','New Cow'],['Daily Milk Capacity (Litres) *','15.50']]) {
+    adding.find('TextField',props=>props.label===label).onChangeText(value);
+  }
+  await adding.find('Button',props=>props.title==='Save Changes').onPress();
+  assert.equal(adding.calls[0].payload.newCows[0].pashuAadhaar,'123456789013');
+  assert.equal(adding.calls[0].payload.cows[0].id,'cow-uuid');
+  assert.equal(adding.store.cows.length,2);
+  assert.equal(adding.store.farmers[0].numberOfCows,2);
+  const empty=harness({...original,cows:[],personalDetails:{...original.personalDetails,numberOfCows:0}});
+  await empty.focus();empty.find('Pressable',(_props,node)=>empty.text(node)==='Edit Details').onPress();
+  empty.find('Button',props=>props.title==='+ Add Cow').onPress();
+  assert.equal(empty.find('TextField',props=>props.label==='Pashu Aadhaar (12 Digits) *').value,'');
   const enrollment=harness();await enrollment.focus();
   enrollment.find('Button',props=>props.title==='+ Register Farmer').onPress();
   for(const [label,value] of [['Full Name *','New Farmer'],['10-Digit Mobile Number *','9842000088'],
@@ -110,5 +132,5 @@ function harness() {
   assert.equal(enrollment.calls[0].registration.cows[0].pashuAadhaar,'123456789099');
   assert.equal(enrollment.store.farmers[0].id,'new-farmer');
   assert.equal(enrollment.store.cows[0].farmerId,'new-farmer');
-  console.log('Society screen checks passed: backend profile/cow saves, persistent KYC, reload, and rejected updates leave cache unchanged.');
+  console.log('Society screen checks passed: backend profile/cow saves, persistent KYC, adding cattle, existing cattle display, hidden UUIDs, reload, and rejected updates leave cache unchanged.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

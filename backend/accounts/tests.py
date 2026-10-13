@@ -397,3 +397,55 @@ class AccountTests(APITestCase):
         response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'personalDetails':{'farmerIdCode':'FARM-LEGACY',
             'address':'Street','village':'Melur','verificationStatus':'verified'}}, format='json')
         self.assertEqual(response.status_code, 200, response.data)
+
+    def test_edit_farmer_can_add_cows_and_update_existing_in_one_save(self):
+        from .models import Cow
+        cow = self.create_profile_and_cow()
+        self.authenticate_as(self.society)
+        response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {
+            'cows':[{'id':str(cow.pk),'name':'Updated existing'}],
+            'newCows':[self.cow_payload(pashuAadhaar='123456789013',farmerId=str(self.society.pk))],
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['data']['user']['personalDetails']['numberOfCows'], 2)
+        self.assertEqual(len(response.data['data']['user']['cows']), 2)
+        self.assertEqual(Cow.objects.get(pashu_aadhaar='123456789013').farmer, self.farmer)
+        cow.refresh_from_db()
+        self.assertEqual(cow.name, 'Updated existing')
+        self.assertEqual(len(self.client.get('/api/v1/farmers').data['data']['farmers'][0]['cows']), 2)
+
+    def test_invalid_new_cows_do_not_change_existing_details(self):
+        cow = self.create_profile_and_cow()
+        self.authenticate_as(self.society)
+        for new in [[self.cow_payload()], [{'breed':'Jersey'}],
+                    [self.cow_payload(pashuAadhaar='123456789013'),self.cow_payload(pashuAadhaar='123456789013')]]:
+            response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {
+                'fullName':'Do not save','cows':[{'id':str(cow.pk),'name':'Do not save'}], 'newCows':new,
+            },format='json')
+            self.assertEqual(response.status_code, 400, response.data)
+            cow.refresh_from_db();self.farmer.refresh_from_db()
+            self.assertEqual(cow.name, 'Old name')
+            self.assertEqual(self.farmer.full_name, 'Farmer One')
+            self.assertEqual(self.farmer.cows.count(), 1)
+
+    def test_new_cow_database_failure_rolls_back_edit_and_additions(self):
+        from unittest.mock import patch
+        from django.db import IntegrityError
+        from .models import Cow
+        cow = self.create_profile_and_cow()
+        self.authenticate_as(self.society)
+        original_save = Cow.save
+        def fail_new(item,*args,**kwargs):
+            if item.pashu_aadhaar.endswith('13'):
+                raise IntegrityError('simulated tag race')
+            return original_save(item,*args,**kwargs)
+        with patch.object(Cow,'save',fail_new):
+            response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {
+                'fullName':'Rollback','cows':[{'id':str(cow.pk),'name':'Rollback'}],
+                'newCows':[self.cow_payload(pashuAadhaar='123456789013')],
+            },format='json')
+        self.assertEqual(response.status_code, 400,response.data)
+        cow.refresh_from_db();self.farmer.refresh_from_db()
+        self.assertEqual(cow.name,'Old name')
+        self.assertEqual(self.farmer.full_name,'Farmer One')
+        self.assertEqual(self.farmer.cows.count(),1)

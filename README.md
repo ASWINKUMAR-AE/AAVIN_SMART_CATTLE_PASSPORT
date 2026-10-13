@@ -89,7 +89,7 @@ backend/.venv/bin/python backend/manage.py check
 backend/.venv/bin/python backend/manage.py test --settings=config.test_settings
 ```
 
-The 31 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
+The 34 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
 
 See [API details](docs/api.md), [architecture](docs/architecture.md), and [database notes](database/README.md).
 
@@ -119,4 +119,4 @@ backend/.venv/bin/python backend/manage.py migrate accounts 0003_cow
 
 For the hosted Docker service, deploy the updated backend image and run `python manage.py migrate` with its database environment before serving traffic. The frontend requires the updated API to persist cattle.
 
-Society farmer edits and KYC use `PATCH /api/v1/farmers/<farmer UUID>`. It accepts partial account/profile fields and updates to existing cow IDs. The backend restricts changes to the Society's own Farmers and each Farmer's own cows, saves atomically, and returns the refreshed account/cattle. Farmer assignment, cow RFID and breed are fixed in this edit flow. Counts derive from saved cattle. Existing accounts without a profile must first save Farmer ID, address, and village before KYC. Verify the actual Society screen controls with `node scripts/test-society-farmers.cjs`.
+Society farmer edits and KYC use `PATCH /api/v1/farmers/<farmer UUID>`. It accepts partial account/profile fields, updates to existing cow IDs, and a `newCows` array for adding cattle to an existing Farmer. The backend restricts changes to the Society's own Farmers and each Farmer's own cows, saves atomically, and returns the refreshed account/cattle. Farmer assignment, cow RFID and breed are fixed in this edit flow. Counts derive from saved cattle. Existing accounts without a profile must first save Farmer ID, address, and village before KYC. Verify the actual Society screen controls with `node scripts/test-society-farmers.cjs`.

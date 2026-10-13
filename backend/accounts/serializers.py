@@ -184,6 +184,17 @@ class FarmerUpdateSerializer(serializers.Serializer):
     fullName = serializers.CharField(max_length=150, required=False)
     personalDetails = FarmerProfileUpdateSerializer(required=False)
     cows = CowUpdateSerializer(many=True, required=False)
+    newCows = CowSerializer(many=True, required=False)
+
+    def validate_newCows(self, cows):
+        tags = []
+        for cow in cows:
+            if not all(field in cow for field in ['pashu_aadhaar', 'breed', 'milk_capacity']):
+                raise serializers.ValidationError('Each new cow needs Pashu Aadhaar, breed and milk capacity.')
+            tags.append(cow['pashu_aadhaar'])
+        if len(tags) != len(set(tags)):
+            raise serializers.ValidationError('Each new cow must have a different Pashu Aadhaar.')
+        return cows
 
     def validate_phone(self, value):
         if User.objects.filter(phone=value).exclude(pk=self.instance.pk).exists():
@@ -215,13 +226,6 @@ class FarmerUpdateSerializer(serializers.Serializer):
                     user.full_name = validated_data['fullName']
                 user.full_clean()
                 user.save(update_fields=['phone', 'full_name'])
-                if 'personalDetails' in validated_data:
-                    profile = FarmerProfile.objects.filter(user=user).first() or FarmerProfile(user=user)
-                    for field, value in validated_data['personalDetails'].items():
-                        setattr(profile, field, value)
-                    profile.number_of_cows = user.cows.count()
-                    profile.full_clean()
-                    profile.save()
                 for changes in validated_data.get('cows', []):
                     cow = user.cows.select_for_update().get(pk=changes['id'])
                     for field, value in changes.items():
@@ -229,6 +233,17 @@ class FarmerUpdateSerializer(serializers.Serializer):
                             setattr(cow, field, value)
                     cow.full_clean()
                     cow.save()
+                for details in validated_data.get('newCows', []):
+                    cow = Cow(farmer=user, **details)
+                    cow.full_clean()
+                    cow.save()
+                if 'personalDetails' in validated_data or validated_data.get('newCows'):
+                    profile = FarmerProfile.objects.filter(user=user).first() or FarmerProfile(user=user)
+                    for field, value in validated_data.get('personalDetails', {}).items():
+                        setattr(profile, field, value)
+                    profile.number_of_cows = user.cows.count()
+                    profile.full_clean()
+                    profile.save()
                 return user
         except IntegrityError:
             raise serializers.ValidationError('Phone or Farmer ID is already registered.')

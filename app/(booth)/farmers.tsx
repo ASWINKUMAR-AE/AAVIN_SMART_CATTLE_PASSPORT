@@ -108,7 +108,7 @@ export default function BoothFarmersScreen() {
     tagId: string;
     breed: string;
     name: string;
-    dailyMilkYield: number;
+    dailyMilkYield: number | string;
     originalCow: Cow | null;
   }>>([]);
   const [activeEditCowSlide, setActiveEditCowSlide] = useState(0);
@@ -170,7 +170,7 @@ export default function BoothFarmersScreen() {
     setFormUpiId(farmer.upiId || '');
 
     // Load cows belonging to this farmer so the operator can edit cow name and capacity
-    const farmerCows = cows.filter(c => c.farmerId === farmer.id && c.backendSynced);
+    const farmerCows = cows.filter(c => c.farmerId === farmer.id);
     if (farmerCows.length > 0) {
       setEditingFarmerCows(farmerCows.map(c => ({
         id: c.id,
@@ -188,7 +188,15 @@ export default function BoothFarmersScreen() {
     setErrors({});
   };
 
-  const handleUpdateEditingCow = (cowId: string, field: 'name' | 'dailyMilkYield', value: any) => {
+  const handleAddEditingCow = () => {
+    const id = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    setEditingFarmerCows(previous => [...previous, {
+      id, cowId: '', tagId: '', breed: 'Jersey Cross', name: '', dailyMilkYield: '12.0', originalCow: null,
+    }]);
+    setActiveEditCowSlide(editingFarmerCows.length);
+  };
+
+  const handleUpdateEditingCow = (cowId: string, field: 'name' | 'dailyMilkYield' | 'tagId' | 'breed', value: any) => {
     setEditingFarmerCows(prev => prev.map(c => {
       if (c.id === cowId) {
         return { ...c, [field]: value };
@@ -362,7 +370,13 @@ export default function BoothFarmersScreen() {
     if (isSaving || user?.role !== 'booth') return;
     const newErrors: Record<string, string> = {};
     if (!formIdCode.trim()) newErrors.farmerIdCode = 'Farmer ID Code is required.';
+    const seenTags = new Set<string>();
     for (const cow of editingFarmerCows) {
+      if (!/^\d{12}$/.test(cow.tagId) || seenTags.has(cow.tagId)) {
+        newErrors[`cow_${cow.id}_tagId`] = 'Enter a unique 12-digit Pashu Aadhaar.';
+      }
+      seenTags.add(cow.tagId);
+      if (!cow.breed.trim()) newErrors[`cow_${cow.id}_breed`] = 'Breed is required.';
       if (!Number.isFinite(Number(cow.dailyMilkYield)) || Number(cow.dailyMilkYield) <= 0) {
         newErrors.cows = 'Enter a positive daily milk capacity for each cow.';
       }
@@ -411,6 +425,12 @@ export default function BoothFarmersScreen() {
           bankIfsc: formBankIfsc.trim().toUpperCase(),
           upiId: formUpiId.trim(),
         },
+        newCows: editingFarmerCows.filter(cow => !cow.originalCow?.backendSynced).map(cow => ({
+          pashuAadhaar: cow.tagId,
+          breed: cow.breed.trim(),
+          name: cow.name.trim(),
+          milkCapacity: Number(cow.dailyMilkYield),
+        })),
         cows: editingFarmerCows.filter(cow => cow.originalCow?.backendSynced).map(cow => ({
           id: cow.id,
           name: cow.name.trim(),
@@ -782,7 +802,7 @@ export default function BoothFarmersScreen() {
                   Edit Farmer Data
                 </Text>
                 <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '600' }]}>
-                  {editingFarmer?.farmerIdCode} • ID: {editingFarmer?.id}
+                  {editingFarmer?.farmerIdCode}
                 </Text>
               </View>
 
@@ -913,7 +933,7 @@ export default function BoothFarmersScreen() {
                         styles.boothChoiceText,
                         { color: formBoothId === b.id ? '#FFFFFF' : colors.text }
                       ]}>
-                        {b.name} ({b.code})
+                        {b.name}
                       </Text>
                     </Pressable>
                   ))}
@@ -978,10 +998,17 @@ export default function BoothFarmersScreen() {
                         Registered Cattle Passports ({editingFarmerCows.length} Cattle)
                       </Text>
                       <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                        RFID Tag & Breed are locked permanent records. Change Name & Milk Capacity below:
+                        View saved cattle, edit name and milk capacity, or add another cow.
                       </Text>
                     </View>
                   </View>
+
+                  <Button title="+ Add Cow" size="sm" onPress={handleAddEditingCow} disabled={isSaving} />
+                  {editingFarmerCows.length === 0 && (
+                    <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 12 }]}>
+                      No cattle saved for this farmer yet. Tap Add Cow to register one.
+                    </Text>
+                  )}
 
                   {/* Cattle Slide Tabs if multiple cows */}
                   {editingFarmerCows.length > 1 && (
@@ -1034,14 +1061,14 @@ export default function BoothFarmersScreen() {
                             </Text>
                           </View>
 
-                          <View style={styles.lockedPill}>
+                          {cow.originalCow?.backendSynced && <View style={styles.lockedPill}>
                             <Ionicons name="lock-closed" size={11} color="#15803D" />
                             <Text style={styles.lockedPillText}>RFID IMMUTABLE</Text>
-                          </View>
+                          </View>}
                         </View>
 
                         {/* Locked RFID Tag & Breed info row */}
-                        <View style={styles.lockedFieldsRow}>
+                        {cow.originalCow?.backendSynced ? <View style={styles.lockedFieldsRow}>
                           <View style={[styles.lockedInfoChip, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
                             <Ionicons name="barcode-outline" size={14} color={colors.textSecondary} />
                             <View style={{ marginLeft: 6 }}>
@@ -1063,7 +1090,13 @@ export default function BoothFarmersScreen() {
                             </View>
                             <Ionicons name="lock-closed" size={12} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
                           </View>
-                        </View>
+                        </View> : <View>
+                          <TextField label="Pashu Aadhaar (12 Digits) *" value={cow.tagId}
+                            onChangeText={value => handleUpdateEditingCow(cow.id, 'tagId', value.replace(/\D/g, '').slice(0, 12))}
+                            keyboardType="number-pad" maxLength={12} error={errors[`cow_${cow.id}_tagId`]} />
+                          <TextField label="Cattle Breed *" value={cow.breed}
+                            onChangeText={value => handleUpdateEditingCow(cow.id, 'breed', value)} error={errors[`cow_${cow.id}_breed`]} />
+                        </View>}
 
                         {/* Editable Field 1: Cow Name / Call Name */}
                         <View style={{ marginBottom: 12 }}>
@@ -1075,6 +1108,15 @@ export default function BoothFarmersScreen() {
                             icon="happy-outline"
                           />
                         </View>
+
+                        <TextField label="Daily Milk Capacity (Litres) *" value={String(cow.dailyMilkYield)}
+                          keyboardType="decimal-pad" error={errors.cows}
+                          onChangeText={value => handleUpdateEditingCow(cow.id, 'dailyMilkYield', value)} />
+                        {!cow.originalCow && <Button title="Remove New Cow" variant="outline" size="sm"
+                          onPress={() => {
+                            setEditingFarmerCows(previous => previous.filter(item => item.id !== cow.id));
+                            setActiveEditCowSlide(previous => Math.max(0, previous - 1));
+                          }} />}
 
                         {/* Editable Field 2: Daily Milk Capacity */}
                         <View style={{ marginBottom: 10 }}>
