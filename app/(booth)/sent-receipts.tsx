@@ -14,7 +14,7 @@ import { BoothReceipt } from '../../types/aavin';
 
 export default function SentReceiptsScreen() {
   const { user } = useAuth();
-  const { boothReceipts, bmcDeliveries, booths } = useAavinStore();
+  const { boothReceipts, bmcDeliveries, booths, discrepancyCases } = useAavinStore();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
@@ -24,10 +24,12 @@ export default function SentReceiptsScreen() {
   // All receipts from this booth
   const myReceipts = boothReceipts.filter(r => r.boothId === booth.id);
 
-  // Filters, Search & Popup Detail State
+  // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'matched' | 'mismatch'>('all');
-  const [selectedDetailReceipt, setSelectedDetailReceipt] = useState<BoothReceipt | null>(null);
+
+  // Selected receipt for "More View" popup modal
+  const [selectedReceiptForModal, setSelectedReceiptForModal] = useState<BoothReceipt | null>(null);
 
   // Stats calculation
   const totalDispatchedLitres = myReceipts.reduce((sum, r) => sum + r.dispatchQuantity, 0);
@@ -64,6 +66,33 @@ export default function SentReceiptsScreen() {
     );
   });
 
+  // Helper to determine status styling for any receipt
+  const getStatusBadge = (receipt: BoothReceipt) => {
+    const delivery = bmcDeliveries.find(d => d.boothReceiptId === receipt.id);
+    if (!delivery) {
+      return { label: 'CONFIRMED DRAFT', bg: '#FEF3C7', color: '#B45309', icon: 'time-outline' as const };
+    }
+    switch (delivery.status) {
+      case 'pending_arrival':
+        return { label: 'IN TRANSIT • PENDING BMC', bg: '#E0F2FE', color: '#0284C7', icon: 'bus-outline' as const };
+      case 'matched':
+        return { label: 'MATCHED & CONFIRMED', bg: '#DCFCE7', color: '#15803D', icon: 'checkmark-done-circle' as const };
+      case 'mismatch_investigation':
+        return { label: 'VARIANCE FLAGGED', bg: '#FEF2F2', color: '#DC2626', icon: 'alert-circle' as const };
+      case 'resolved':
+        return { label: 'AUDIT RESOLVED', bg: '#F3E8FF', color: '#7E22CE', icon: 'shield-checkmark' as const };
+      default:
+        return { label: delivery.status.toUpperCase(), bg: '#F1F5F9', color: '#475569', icon: 'ellipse-outline' as const };
+    }
+  };
+
+  // Delivery data for currently open modal receipt
+  const modalDelivery = selectedReceiptForModal
+    ? bmcDeliveries.find(d => d.boothReceiptId === selectedReceiptForModal.id)
+    : null;
+  const modalBadge = selectedReceiptForModal ? getStatusBadge(selectedReceiptForModal) : null;
+  const modalVariance = modalDelivery?.difference !== undefined ? modalDelivery.difference : 0;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
@@ -72,12 +101,12 @@ export default function SentReceiptsScreen() {
         showBack
       />
 
-      {/* Top Search & Filter Bar */}
+      {/* Top Search & Action Bar */}
       <View style={[styles.topBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: colors.border }]}>
           <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
           <TextInput
-            placeholder="Search Receipt ID, BMC, Date..."
+            placeholder="Search Receipt ID, Destination BMC, Date..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -100,40 +129,35 @@ export default function SentReceiptsScreen() {
       {/* Summary KPI Strip */}
       <View style={[styles.kpiContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={styles.kpiRow}>
-          <View style={styles.kpiItem}>
-            <Text style={[styles.kpiValue, { color: colors.primary }]}>
-              {totalDispatchedLitres.toFixed(1)} L
+          <View style={[styles.kpiTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>TOTAL DISPATCHED</Text>
+            <Text style={[styles.kpiNumber, { color: colors.primary }]}>
+              {totalDispatchedLitres.toFixed(1)} <Text style={{ fontSize: 13 }}>L</Text>
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Total Dispatched
-            </Text>
+            <Text style={[Typography.caption2, { color: colors.textMuted }]}>{myReceipts.length} Dispatch Receipts</Text>
           </View>
 
-          <View style={[styles.kpiDivider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.kpiItem}>
-            <Text style={[styles.kpiValue, { color: '#16A34A' }]}>
-              {matchedCount} / {myReceipts.length}
+          <View style={[styles.kpiTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>BMC RECONCILED</Text>
+            <Text style={[styles.kpiNumber, { color: '#16A34A' }]}>
+              {matchedCount} <Text style={{ fontSize: 13 }}>Matched</Text>
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Reconciled
-            </Text>
+            <Text style={[Typography.caption2, { color: '#16A34A' }]}>✓ Verified Weight</Text>
           </View>
 
-          <View style={[styles.kpiDivider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.kpiItem}>
-            <Text style={[styles.kpiValue, { color: mismatchCount > 0 ? '#DC2626' : '#0284C7' }]}>
-              {mismatchCount > 0 ? `${mismatchCount} Variance` : `${pendingCount} In Transit`}
+          <View style={[styles.kpiTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>IN TRANSIT / HOLD</Text>
+            <Text style={[styles.kpiNumber, { color: mismatchCount > 0 ? '#DC2626' : '#0284C7' }]}>
+              {pendingCount} <Text style={{ fontSize: 13 }}>Pending</Text>
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Current Status
+            <Text style={[Typography.caption2, { color: mismatchCount > 0 ? '#DC2626' : colors.textMuted }]}>
+              {mismatchCount > 0 ? `${mismatchCount} Under Audit` : 'Normal Transit'}
             </Text>
           </View>
         </View>
 
-        {/* Filter Pills */}
-        <View style={styles.filterRow}>
+        {/* Filter Chips */}
+        <View style={styles.filterChipRow}>
           <Pressable
             onPress={() => setSelectedFilter('all')}
             style={[
@@ -194,7 +218,7 @@ export default function SentReceiptsScreen() {
         </View>
       </View>
 
-      {/* Receipts List - Clean, compact scannable cards */}
+      {/* Compact Receipts List */}
       <FlatList
         data={filteredReceipts}
         keyExtractor={(item) => item.id}
@@ -207,43 +231,22 @@ export default function SentReceiptsScreen() {
           />
         }
         renderItem={({ item }) => {
-          // Find corresponding BMC delivery to show live status
           const delivery = bmcDeliveries.find(d => d.boothReceiptId === item.id);
           const hasDiscrepancy = delivery?.status === 'mismatch_investigation';
-
-          const getStatusBadge = () => {
-            if (!delivery) {
-              return { label: 'CONFIRMED DRAFT', bg: '#FEF3C7', color: '#B45309', icon: 'time-outline' as const };
-            }
-            switch (delivery.status) {
-              case 'pending_arrival':
-                return { label: 'IN TRANSIT', bg: '#E0F2FE', color: '#0284C7', icon: 'bus-outline' as const };
-              case 'matched':
-                return { label: 'MATCHED', bg: '#DCFCE7', color: '#15803D', icon: 'checkmark-done-circle' as const };
-              case 'mismatch_investigation':
-                return { label: 'VARIANCE', bg: '#FEF2F2', color: '#DC2626', icon: 'alert-circle' as const };
-              case 'resolved':
-                return { label: 'RESOLVED', bg: '#F3E8FF', color: '#7E22CE', icon: 'shield-checkmark' as const };
-              default:
-                return { label: delivery.status.toUpperCase(), bg: '#F1F5F9', color: '#475569', icon: 'ellipse-outline' as const };
-            }
-          };
-
-          const badge = getStatusBadge();
-          const varianceL = delivery?.difference !== undefined ? delivery.difference : 0;
+          const badge = getStatusBadge(item);
 
           return (
             <Card style={[styles.compactReceiptCard, { borderColor: hasDiscrepancy ? '#FCA5A5' : colors.border }]}>
-              {/* Header: Receipt Number, Session & Status Badge */}
-              <View style={styles.compactHeaderRow}>
-                <View style={styles.compactTitleGroup}>
+              {/* Header: Receipt Number & Status Badge */}
+              <View style={styles.cardHeader}>
+                <View style={styles.receiptTitleRow}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900' }]}>
                     #{item.id}
                   </Text>
                   <View style={[styles.sessionPill, { backgroundColor: item.session === 'morning' ? '#FEF3C7' : '#E0E7FF' }]}>
                     <Ionicons 
                       name={item.session === 'morning' ? 'sunny' : 'moon'} 
-                      size={11} 
+                      size={10} 
                       color={item.session === 'morning' ? '#D97706' : '#4F46E5'} 
                     />
                     <Text style={[styles.sessionPillText, { color: item.session === 'morning' ? '#92400E' : '#3730A3' }]}>
@@ -258,64 +261,47 @@ export default function SentReceiptsScreen() {
                 </View>
               </View>
 
-              {/* Summary Body Row: Dispatched Volume, Destination & Date */}
-              <View style={styles.compactBodyRow}>
-                <View style={styles.compactVolumeCol}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Dispatched Quantity</Text>
-                  <Text style={[styles.compactBigVolume, { color: colors.primary }]}>
-                    {item.dispatchQuantity.toFixed(2)} <Text style={{ fontSize: 13, fontWeight: '700' }}>Litres</Text>
-                  </Text>
-                </View>
-
-                <View style={[styles.compactVDivider, { backgroundColor: colors.border }]} />
-
-                <View style={styles.compactMetaCol}>
-                  <View style={styles.compactMetaItem}>
-                    <Ionicons name="business-outline" size={13} color={colors.textSecondary} />
-                    <Text style={[Typography.caption2, { color: colors.text, fontWeight: '700', marginLeft: 4 }]} numberOfLines={1}>
+              {/* Middle Row: Route Corridor & Large Volume */}
+              <View style={styles.cardMidRow}>
+                <View style={styles.routeTextCol}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="business-outline" size={13} color={colors.primary} />
+                    <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700', marginLeft: 4 }]} numberOfLines={1}>
+                      {item.boothName}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <Ionicons name="arrow-forward" size={11} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                    <Ionicons name="snow-outline" size={13} color="#0284C7" />
+                    <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800', marginLeft: 4 }]} numberOfLines={1}>
                       {item.bmcName}
                     </Text>
                   </View>
-                  <View style={styles.compactMetaItem}>
-                    <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>
-                      {item.collectionDate}
-                    </Text>
-                  </View>
-                  <View style={styles.compactMetaItem}>
-                    <Ionicons 
-                      name={delivery?.status === 'matched' ? "checkmark-circle" : (hasDiscrepancy ? "warning" : "time-outline")} 
-                      size={13} 
-                      color={delivery?.status === 'matched' ? "#16A34A" : (hasDiscrepancy ? "#DC2626" : "#0284C7")} 
-                    />
-                    <Text style={[Typography.caption2, { color: delivery?.status === 'matched' ? "#16A34A" : (hasDiscrepancy ? "#DC2626" : colors.textMuted), fontWeight: '700', marginLeft: 4 }]}>
-                      {delivery?.status === 'matched' ? 'Reconciled' : (hasDiscrepancy ? `${varianceL > 0 ? '+' : ''}${varianceL.toFixed(1)} L Variance` : 'In Transit')}
-                    </Text>
-                  </View>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 3 }]}>
+                    Date: {item.collectionDate}
+                  </Text>
+                </View>
+
+                <View style={styles.volumeRightBox}>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Dispatched</Text>
+                  <Text style={[styles.volumeLargeNum, { color: colors.primary }]}>
+                    {item.dispatchQuantity.toFixed(1)} <Text style={{ fontSize: 13, fontWeight: '700' }}>L</Text>
+                  </Text>
                 </View>
               </View>
 
-              {/* Card Footer: More View Button (Popup Modal) & Direct Waybill Link */}
-              <View style={[styles.compactFooterRow, { borderTopColor: colors.border }]}>
-                {/* User Requested: 'More View' Button to open full data popup */}
-                <Pressable
-                  onPress={() => setSelectedDetailReceipt(item)}
-                  style={[styles.moreViewBtn, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF', borderColor: '#BFDBFE' }]}
-                >
-                  <Ionicons name="eye-outline" size={15} color="#0072BC" />
-                  <Text style={[styles.moreViewBtnText, { color: '#0072BC' }]}>
-                    More View
-                  </Text>
-                </Pressable>
+              {/* Bottom Action Row with "More View" Button */}
+              <View style={[styles.cardBottomRow, { borderTopColor: colors.border }]}>
+                <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '600', flex: 1 }]}>
+                  👨‍🌾 {item.totalFarmersCount} Farmers • 🥛 {item.totalRecordsCount} Batches
+                </Text>
 
                 <Pressable
-                  onPress={() => router.push(`/(booth)/receipt-preview?receiptId=${item.id}` as any)}
-                  style={styles.waybillQuickLink}
+                  style={[styles.moreViewBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => setSelectedReceiptForModal(item)}
                 >
-                  <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800' }]}>
-                    Digital Slip
-                  </Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                  <Ionicons name="eye-outline" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
+                  <Text style={styles.moreViewBtnText}>More View</Text>
                 </Pressable>
               </View>
             </Card>
@@ -323,187 +309,209 @@ export default function SentReceiptsScreen() {
         }}
       />
 
-      {/* Full Data Detail Popup Modal */}
-      {selectedDetailReceipt && (
+      {/* Full-Data Popup Modal */}
+      {selectedReceiptForModal && modalBadge && (
         <Modal
-          visible
+          visible={true}
           transparent
           animationType="fade"
-          onRequestClose={() => setSelectedDetailReceipt(null)}
+          onRequestClose={() => setSelectedReceiptForModal(null)}
         >
-          <Pressable style={styles.modalOverlay} onPress={() => setSelectedDetailReceipt(null)}>
-            <View
-              style={[styles.modalContentBox, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onStartShouldSetResponder={() => true}
-            >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {/* Modal Header */}
-              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <View style={styles.modalHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', letterSpacing: 0.5 }]}>
-                    CONSIGNMENT AUDIT DETAILS
+                    AAVIN DISPATCH CONSIGNMENT MANIFEST
                   </Text>
-                  <Text style={[Typography.title2, { color: colors.text, fontWeight: '900', marginTop: 2 }]}>
-                    #{selectedDetailReceipt.id}
+                  <Text style={[Typography.headline, { color: colors.text, fontWeight: '900', marginTop: 2 }]}>
+                    Receipt #{selectedReceiptForModal.id}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                    Collection Date: {selectedReceiptForModal.collectionDate} • {selectedReceiptForModal.session.toUpperCase()} Shift
                   </Text>
                 </View>
-                <Pressable onPress={() => setSelectedDetailReceipt(null)} hitSlop={10} style={styles.modalCloseBtn}>
-                  <Ionicons name="close" size={22} color={colors.text} />
+
+                <Pressable 
+                  onPress={() => setSelectedReceiptForModal(null)} 
+                  hitSlop={8}
+                  style={[styles.modalCloseBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
+                >
+                  <Ionicons name="close" size={20} color={colors.text} />
                 </Pressable>
               </View>
 
-              <ScrollView style={styles.modalScrollBody} showsVerticalScrollIndicator={false}>
-                {(() => {
-                  const delivery = bmcDeliveries.find(d => d.boothReceiptId === selectedDetailReceipt.id);
-                  let modalBadge: { label: string; bg: string; color: string; icon: keyof typeof Ionicons.glyphMap } = {
-                    label: 'CONFIRMED DRAFT',
-                    bg: '#FEF3C7',
-                    color: '#B45309',
-                    icon: 'time-outline',
-                  };
-                  if (delivery) {
-                    if (delivery.status === 'pending_arrival') {
-                      modalBadge = { label: 'IN TRANSIT • AWAITING BMC', bg: '#E0F2FE', color: '#0284C7', icon: 'bus-outline' as const };
-                    } else if (delivery.status === 'matched') {
-                      modalBadge = { label: 'MATCHED & CONFIRMED', bg: '#DCFCE7', color: '#15803D', icon: 'checkmark-done-circle' as const };
-                    } else if (delivery.status === 'mismatch_investigation') {
-                      modalBadge = { label: 'VARIANCE • UNDER INVESTIGATION', bg: '#FEF2F2', color: '#DC2626', icon: 'alert-circle' as const };
-                    } else if (delivery.status === 'resolved') {
-                      modalBadge = { label: 'AUDIT RESOLVED', bg: '#F3E8FF', color: '#7E22CE', icon: 'shield-checkmark' as const };
-                    }
-                  }
-                  const varianceL = delivery?.difference !== undefined ? delivery.difference : 0;
+              <ScrollView contentContainerStyle={styles.modalScrollBody} showsVerticalScrollIndicator={false}>
+                {/* Status Strip */}
+                <View style={[styles.modalStatusStrip, { backgroundColor: modalBadge.bg }]}>
+                  <Ionicons name={modalBadge.icon} size={15} color={modalBadge.color} style={{ marginRight: 6 }} />
+                  <Text style={[styles.modalStatusText, { color: modalBadge.color }]}>
+                    {modalBadge.label}
+                  </Text>
+                </View>
 
-                  return (
-                    <View style={{ gap: 12 }}>
-                      {/* Status Strip in Modal */}
-                      <View style={[styles.modalStatusStrip, { backgroundColor: modalBadge.bg }]}>
-                        <Ionicons name={modalBadge.icon} size={15} color={modalBadge.color} style={{ marginRight: 6 }} />
-                        <Text style={[styles.modalStatusText, { color: modalBadge.color }]}>
-                          {modalBadge.label}
-                        </Text>
-                      </View>
+                {/* Transit Corridor Origin & Destination */}
+                <View style={[styles.modalCorridorBox, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                  <View style={styles.modalCorridorCol}>
+                    <Ionicons name="business" size={16} color={colors.primary} />
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>ORIGIN BOOTH</Text>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', textAlign: 'center' }]} numberOfLines={1}>
+                      {selectedReceiptForModal.boothName}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>ID: {selectedReceiptForModal.boothId}</Text>
+                  </View>
 
-                      {/* Spotlight Volume */}
-                      <View style={[styles.modalVolumeBox, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF', borderColor: '#BFDBFE' }]}>
-                        <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                          DECLARED DISPATCH QUANTITY
-                        </Text>
-                        <Text style={[styles.modalBigVolumeNumber, { color: colors.primary }]}>
-                          {selectedDetailReceipt.dispatchQuantity.toFixed(2)} <Text style={{ fontSize: 18, fontWeight: '700' }}>Litres</Text>
-                        </Text>
-                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                          Digitally sealed & verified by {selectedDetailReceipt.createdBy}
-                        </Text>
-                      </View>
+                  <Ionicons name="arrow-forward-circle" size={20} color="#0284C7" style={{ marginHorizontal: 6 }} />
 
-                      {/* Full Transit Route Corridor */}
-                      <View style={[styles.modalCorridorBox, { backgroundColor: isDark ? '#162032' : '#F8FAFC', borderColor: colors.border }]}>
-                        <View style={styles.modalCorridorNode}>
-                          <Ionicons name="business" size={16} color={colors.primary} />
-                          <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>Origin Society</Text>
-                          <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800', textAlign: 'center' }]}>
-                            {selectedDetailReceipt.boothName}
-                          </Text>
-                        </View>
-                        <Ionicons name="arrow-forward-circle" size={22} color="#0284C7" />
-                        <View style={styles.modalCorridorNode}>
-                          <Ionicons name="snow" size={16} color="#0284C7" />
-                          <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>Destination BMC</Text>
-                          <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800', textAlign: 'center' }]}>
-                            {selectedDetailReceipt.bmcName}
-                          </Text>
-                        </View>
-                      </View>
+                  <View style={styles.modalCorridorCol}>
+                    <Ionicons name="snow" size={16} color="#0284C7" />
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>DESTINATION BMC</Text>
+                    <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800', textAlign: 'center' }]} numberOfLines={1}>
+                      {selectedReceiptForModal.bmcName}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>ID: {selectedReceiptForModal.bmcId}</Text>
+                  </View>
+                </View>
 
-                      {/* Full 3-Column Reconciliation Grid */}
-                      <View style={[styles.modalReconGrid, { borderColor: colors.border }]}>
-                        <View style={styles.modalReconCol}>
-                          <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>DECLARED</Text>
-                          <Text style={[Typography.headline, { color: colors.primary, fontWeight: '900', marginTop: 2 }]}>
-                            {selectedDetailReceipt.dispatchQuantity.toFixed(1)} L
-                          </Text>
-                        </View>
-                        <View style={[styles.modalReconCol, styles.modalReconColBorder, { borderColor: colors.border }]}>
-                          <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>BMC WEIGHED</Text>
-                          <Text style={[Typography.headline, { color: colors.text, fontWeight: '900', marginTop: 2 }]}>
-                            {delivery?.measuredReceivedQuantity !== undefined ? `${delivery.measuredReceivedQuantity.toFixed(1)} L` : 'In Transit'}
-                          </Text>
-                        </View>
-                        <View style={styles.modalReconCol}>
-                          <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>VARIANCE</Text>
-                          <Text style={[Typography.headline, { color: !delivery?.measuredReceivedQuantity ? colors.textMuted : varianceL > 0 ? '#DC2626' : '#16A34A', fontWeight: '900', marginTop: 2 }]}>
-                            {delivery?.measuredReceivedQuantity !== undefined ? `${varianceL > 0 ? '+' : ''}${varianceL.toFixed(1)} L` : '0.0 L'}
-                          </Text>
-                        </View>
-                      </View>
+                {/* 3-Column Reconciliation Metrics */}
+                <View style={[styles.modalReconGrid, { borderColor: colors.border }]}>
+                  <View style={styles.modalGridItem}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                      DECLARED INTAKE
+                    </Text>
+                    <Text style={[Typography.headline, { color: colors.primary, fontWeight: '900', marginTop: 2 }]}>
+                      {selectedReceiptForModal.dispatchQuantity.toFixed(1)} L
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                      Booth Net Volume
+                    </Text>
+                  </View>
 
-                      {/* Full Audit Metadata Table */}
-                      <View style={[styles.modalDetailsTable, { borderColor: colors.border }]}>
-                        <View style={styles.modalDetailRow}>
-                          <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Collection Date:</Text>
-                          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                            {selectedDetailReceipt.collectionDate} ({selectedDetailReceipt.session.toUpperCase()} Shift)
-                          </Text>
-                        </View>
-                        <View style={styles.modalDetailRow}>
-                          <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Contributing Producers:</Text>
-                          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                            {selectedDetailReceipt.totalFarmersCount} Farmers ({selectedDetailReceipt.totalRecordsCount} Batches)
-                          </Text>
-                        </View>
-                        <View style={styles.modalDetailRow}>
-                          <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Audit Measurement Basis:</Text>
-                          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                            {selectedDetailReceipt.measurementBasis.toUpperCase()}
-                          </Text>
-                        </View>
-                        <View style={styles.modalDetailRow}>
-                          <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Verification Token:</Text>
-                          <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
-                            {selectedDetailReceipt.verificationCode}
-                          </Text>
-                        </View>
-                        <View style={styles.modalDetailRow}>
-                          <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Authorized Officer:</Text>
-                          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                            {selectedDetailReceipt.createdBy}
-                          </Text>
-                        </View>
-                        {selectedDetailReceipt.notes && (
-                          <View style={styles.modalDetailRow}>
-                            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Consignment Remarks:</Text>
-                            <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', flex: 1, textAlign: 'right' }]}>
-                              {selectedDetailReceipt.notes}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                  );
-                })()}
+                  <View style={[styles.modalGridItem, styles.modalGridBorder, { borderColor: colors.border }]}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                      BMC WEIGHED
+                    </Text>
+                    <Text style={[Typography.headline, { color: colors.text, fontWeight: '900', marginTop: 2 }]}>
+                      {modalDelivery?.measuredReceivedQuantity !== undefined 
+                        ? `${modalDelivery.measuredReceivedQuantity.toFixed(1)} L` 
+                        : 'In Transit'}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                      {modalDelivery?.receivedAt ? modalDelivery.receivedAt.split('T')[1]?.slice(0, 5) : 'Awaiting Arrival'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.modalGridItem}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                      VARIANCE
+                    </Text>
+                    <Text 
+                      style={[
+                        Typography.headline, 
+                        { 
+                          fontWeight: '900', 
+                          marginTop: 2,
+                          color: !modalDelivery?.measuredReceivedQuantity 
+                            ? colors.textMuted 
+                            : modalVariance > 0 
+                              ? '#DC2626' 
+                              : '#16A34A' 
+                        }
+                      ]}
+                    >
+                      {modalDelivery?.measuredReceivedQuantity !== undefined 
+                        ? `${modalVariance > 0 ? '+' : ''}${modalVariance.toFixed(1)} L` 
+                        : '0.0 L'}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: !modalDelivery?.measuredReceivedQuantity ? colors.textMuted : modalVariance > 0 ? '#DC2626' : '#16A34A' }]}>
+                      {!modalDelivery?.measuredReceivedQuantity ? 'Pending BMC' : Math.abs(modalVariance) <= 0.5 ? 'Within Tolerance' : '⚠️ Variance'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Additional Full Consignment Data */}
+                <View style={styles.modalDetailsGrid}>
+                  <View style={[styles.modalDetailTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Producers Count</Text>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      {selectedReceiptForModal.totalFarmersCount} Farmers
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>Direct Dairy Farmers</Text>
+                  </View>
+
+                  <View style={[styles.modalDetailTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Batches Included</Text>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      {selectedReceiptForModal.totalRecordsCount} Records
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>Audit Trail Locked</Text>
+                  </View>
+
+                  <View style={[styles.modalDetailTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Measurement Basis</Text>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      {selectedReceiptForModal.measurementBasis.toUpperCase()}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>Calibrated Meter</Text>
+                  </View>
+
+                  <View style={[styles.modalDetailTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Authorized Officer</Text>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
+                      {selectedReceiptForModal.createdBy}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>Booth Station Operator</Text>
+                  </View>
+                </View>
+
+                {/* Verification Code Box */}
+                <View style={[styles.modalTokenCard, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF', borderColor: '#BFDBFE' }]}>
+                  <Ionicons name="key-outline" size={16} color="#0072BC" />
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={[Typography.caption2, { color: '#0072BC', fontWeight: '800' }]}>
+                      DIGITAL WAYBILL TOKEN
+                    </Text>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900' }]}>
+                      {selectedReceiptForModal.verificationCode}
+                    </Text>
+                  </View>
+                  <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
+                </View>
+
+                {/* Remarks if any */}
+                {selectedReceiptForModal.notes && (
+                  <View style={[styles.modalNotesCard, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                    <Ionicons name="information-circle-outline" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, flex: 1 }]}>
+                      Transit Notes: {selectedReceiptForModal.notes}
+                    </Text>
+                  </View>
+                )}
               </ScrollView>
 
-              {/* Modal Action Buttons */}
-              <View style={[styles.modalFooterActions, { borderTopColor: colors.border }]}>
+              {/* Modal Bottom Actions */}
+              <View style={styles.modalActionsRow}>
                 <Button
-                  title="Open Full Digital Waybill Slip ➔"
+                  title="Open Full Digital Waybill & Slip ➔"
                   size="md"
                   onPress={() => {
-                    const rId = selectedDetailReceipt.id;
-                    setSelectedDetailReceipt(null);
-                    router.push(`/(booth)/receipt-preview?receiptId=${rId}` as any);
+                    const id = selectedReceiptForModal.id;
+                    setSelectedReceiptForModal(null);
+                    router.push(`/(booth)/receipt-preview?receiptId=${id}` as any);
                   }}
                 />
+
                 <Button
                   title="Close"
                   variant="outline"
                   size="md"
-                  onPress={() => setSelectedDetailReceipt(null)}
-                  style={{ marginTop: 8 }}
+                  onPress={() => setSelectedReceiptForModal(null)}
+                  style={{ marginTop: 6 }}
                 />
               </View>
             </View>
-          </Pressable>
+          </View>
         </Modal>
       )}
     </View>
@@ -526,70 +534,69 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
   searchInput: {
     flex: 1,
     fontSize: 13,
+    padding: 0,
   },
   kpiContainer: {
     padding: 14,
     borderBottomWidth: 1,
-    gap: 12,
+    gap: 10,
   },
   kpiRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 8,
   },
-  kpiItem: {
+  kpiTile: {
     flex: 1,
-    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
   },
-  kpiValue: {
-    fontSize: 16,
+  kpiNumber: {
+    fontSize: 18,
     fontWeight: '900',
+    marginTop: 2,
   },
-  kpiDivider: {
-    width: 1,
-    height: 24,
-  },
-  filterRow: {
+  filterChipRow: {
     flexDirection: 'row',
     gap: 8,
   },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
   },
   filterChipText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   listContent: {
-    padding: 14,
+    padding: 16,
     gap: 12,
     paddingBottom: 40,
   },
   compactReceiptCard: {
     padding: 14,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
-  compactHeaderRow: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  compactTitleGroup: {
+  receiptTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   sessionPill: {
     flexDirection: 'row',
@@ -614,39 +621,32 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
   },
-  compactBodyRow: {
+  cardMidRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    marginBottom: 10,
   },
-  compactVolumeCol: {
+  routeTextCol: {
     flex: 1,
+    marginRight: 10,
   },
-  compactBigVolume: {
-    fontSize: 24,
+  volumeRightBox: {
+    alignItems: 'flex-end',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  volumeLargeNum: {
+    fontSize: 20,
     fontWeight: '900',
-    marginTop: 2,
-    letterSpacing: -0.3,
+    marginTop: 1,
   },
-  compactVDivider: {
-    width: 1,
-    height: 36,
-    marginHorizontal: 12,
-  },
-  compactMetaCol: {
-    flex: 1.2,
-    gap: 4,
-  },
-  compactMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  compactFooterRow: {
+  cardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 10,
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
@@ -656,48 +656,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
-    gap: 4,
   },
   moreViewBtnText: {
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '800',
   },
-  waybillQuickLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    gap: 2,
-  },
-
-  /* Modal Popup Styles */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
   },
-  modalContentBox: {
+  modalCard: {
     width: '100%',
-    maxWidth: 440,
-    maxHeight: '85%',
+    maxWidth: 480,
+    maxHeight: '88%',
     borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
+    padding: 18,
+    borderWidth: 1.5,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   modalCloseBtn: {
     width: 32,
@@ -707,13 +691,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalScrollBody: {
-    padding: 16,
+    gap: 12,
+    paddingBottom: 10,
   },
   modalStatusStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
@@ -721,17 +705,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.3,
-  },
-  modalVolumeBox: {
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: 'center',
-  },
-  modalBigVolumeNumber: {
-    fontSize: 32,
-    fontWeight: '900',
-    marginVertical: 2,
   },
   modalCorridorBox: {
     flexDirection: 'row',
@@ -741,7 +714,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  modalCorridorNode: {
+  modalCorridorCol: {
     flex: 1,
     alignItems: 'center',
   },
@@ -749,29 +722,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: 10,
+    overflow: 'hidden',
   },
-  modalReconCol: {
+  modalGridItem: {
     flex: 1,
+    padding: 10,
     alignItems: 'center',
   },
-  modalReconColBorder: {
+  modalGridBorder: {
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderRightWidth: StyleSheet.hairlineWidth,
   },
-  modalDetailsTable: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
+  modalDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  modalDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  modalDetailTile: {
+    width: '48.5%',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
   },
-  modalFooterActions: {
-    padding: 14,
-    borderTopWidth: 1,
+  modalTokenCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  modalNotesCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+  },
+  modalActionsRow: {
+    marginTop: 10,
   },
 });
