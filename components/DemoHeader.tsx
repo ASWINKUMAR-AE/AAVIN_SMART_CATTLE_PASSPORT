@@ -111,16 +111,6 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
               style={styles.logoThumbnail}
               resizeMode="contain"
             />
-            <Pressable
-              style={styles.roleBadge}
-              onPress={() => setModalVisible(true)}
-            >
-              <Text style={styles.roleIcon}>{currentMeta.icon}</Text>
-              <Text style={styles.roleLabel}>
-                {currentMeta.label}
-              </Text>
-              <Ionicons name="chevron-down" size={12} color="#FFFFFF" style={{ marginLeft: 4 }} />
-            </Pressable>
           </View>
 
           <View style={styles.rightIconsRow}>
@@ -316,27 +306,6 @@ const styles = StyleSheet.create({
     width: 58,
     height: 34,
     backgroundColor: 'transparent',
-  },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-  },
-  roleIcon: {
-    fontSize: 13,
-    marginRight: 5,
-  },
-  roleLabel: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   rightIconsRow: {
     flexDirection: 'row',
