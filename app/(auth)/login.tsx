@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform, Pressable, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -103,8 +103,15 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Sky-Blue Upper Surface (Reference UI Header) */}
-        <View style={styles.skyBlueHeader}>
+        {/* Header Banner with Dark Overlay Layer */}
+        <ImageBackground
+          source={require('../../assets/login-banner.jpg')}
+          style={styles.skyBlueHeader}
+          imageStyle={styles.headerBannerImage}
+        >
+          {/* Dark Layer for Contrast and Legibility */}
+          <View style={styles.darkOverlayLayer} />
+
           {/* Top Utilities Row: Language Switcher */}
           <View style={styles.topUtilitiesRow}>
             <View style={styles.headerPill}>
@@ -127,13 +134,13 @@ export default function LoginScreen() {
           {/* Logo & Headline */}
           <View style={styles.heroBrandingContainer}>
             <View style={styles.logoCircleWrapper}>
-              <AavinLogo size="md" showSubtitle={false} />
+              <AavinLogo size="sm" showSubtitle={false} transparentBg={true} opacity={0.7} />
             </View>
             <Text style={styles.heroTitleText}>
               {t('app.title')}
             </Text>
           </View>
-        </View>
+        </ImageBackground>
 
         {/* White Curved Sheet Content (Matching Reference UI Bottom Panel) */}
         <View style={styles.whiteContentSheet}>
@@ -229,7 +236,7 @@ export default function LoginScreen() {
                         {acc.fullName}
                       </Text>
                       <Text style={styles.accountCredsLabel}>
-                        User: <Text style={{ fontWeight: '700', color: '#0F1D30' }}>{acc.username}</Text>
+                        {'User: '}<Text style={{ fontWeight: '700', color: '#0F1D30' }}>{acc.username}</Text>
                       </Text>
                     </View>
 
@@ -244,15 +251,6 @@ export default function LoginScreen() {
               })}
             </View>
           </View>
-
-          {/* Registration Footer */}
-          <View style={styles.footerRegistrationRow}>
-            <Pressable onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.registerLinkText}>
-                📝 {language === 'ta' ? 'புதிய விவசாயி பதிவு செய்ய இங்கே தொடவும்' : 'Need a new farmer profile? Register here'}
-              </Text>
-            </Pressable>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -262,16 +260,30 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#5EA8EE', // Sky-Blue primary surface from reference UI
+    backgroundColor: '#0D1E36', // Deep navy to match header banner seamlessly
   },
   scrollContent: {
     flexGrow: 1,
   },
   skyBlueHeader: {
-    backgroundColor: '#5EA8EE',
+    backgroundColor: '#0D1E36',
     paddingTop: Platform.OS === 'ios' ? 48 : 36,
     paddingHorizontal: 18,
-    paddingBottom: 24,
+    paddingBottom: 64, // Extra space so bottom banner content sits comfortably behind the top sheet
+    position: 'relative',
+    overflow: 'hidden',
+    zIndex: 1, // Bottom layer
+  },
+  headerBannerImage: {
+    resizeMode: 'cover',
+  },
+  darkOverlayLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10, 25, 45, 0.65)',
   },
   topUtilitiesRow: {
     flexDirection: 'row',
@@ -311,18 +323,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   logoCircleWrapper: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   heroTitleText: {
     color: '#FFFFFF',
@@ -330,19 +334,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: -0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   whiteContentSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    marginTop: -36, // Top layer overlapping the bottom banner layer to completely hide the edges
+    minHeight: 800, // Increased height so the top layer covers downwards completely
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 40,
+    paddingTop: 30,
+    paddingBottom: 50,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    zIndex: 10, // Top layer
   },
   sheetTitle: {
     fontSize: 18,
@@ -493,15 +503,5 @@ const styles = StyleSheet.create({
   },
   fillChipTextActive: {
     color: '#FFFFFF',
-  },
-  footerRegistrationRow: {
-    alignItems: 'center',
-    marginTop: 22,
-    paddingBottom: 10,
-  },
-  registerLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0072BC',
   },
 });

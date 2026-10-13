@@ -1,4 +1,4 @@
-import { getCurvedBarPath, TAB_BAR_HEIGHT, BUTTON_SIZE } from '../components/navigation/curvedNavPath';
+import { getCurvedBarPath, TAB_BAR_HEIGHT, BUTTON_SIZE, AAVIN_NAV_COLORS } from '../components/navigation/curvedNavPath';
 import enDict from '../locales/en.json';
 import taDict from '../locales/ta.json';
 
@@ -24,6 +24,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
 console.log('--- 1. Testing Floating Bar Constants & Sizing ---');
 assert(TAB_BAR_HEIGHT === 68, 'Bar height is standard 68 points');
 assert(BUTTON_SIZE === 58, 'Raised button diameter is 58 points (within 56-64 range)');
+assert(AAVIN_NAV_COLORS.headerBg === '#5EA8EE', 'Selected nav item icon background color matches header bg (#5EA8EE)');
 
 // ----------------------------------------------------
 // Test 2: SVG Path Generator (Closed & Valid Paths)

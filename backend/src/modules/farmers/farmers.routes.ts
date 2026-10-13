@@ -10,10 +10,10 @@ router.put('/portal/farmer/:id', FarmersController.updatePortalFarmer);
 
 router.get('/me', authenticate, FarmersController.getMe);
 router.patch('/me', authenticate, FarmersController.updateMe);
-router.get('/', authenticate, authorizeRoles('admin', 'veterinary', 'collection_operator'), FarmersController.listAll);
+router.get('/', authenticate, authorizeRoles('admin', 'veterinary', 'collection_operator', 'booth'), FarmersController.listAll);
 router.get('/:id', authenticate, FarmersController.getById);
-router.patch('/:id', authenticate, authorizeRoles('admin', 'veterinary', 'farmer'), FarmersController.updateById);
-router.put('/:id', authenticate, authorizeRoles('admin', 'veterinary', 'farmer'), FarmersController.updateById);
+router.patch('/:id', authenticate, authorizeRoles('admin', 'veterinary', 'farmer', 'booth', 'collection_operator'), FarmersController.updateById);
+router.put('/:id', authenticate, authorizeRoles('admin', 'veterinary', 'farmer', 'booth', 'collection_operator'), FarmersController.updateById);
 router.get('/:id/cows', authenticate, FarmersController.getFarmerCows);
 router.get('/:id/payments', authenticate, FarmersController.getFarmerPayments);
 

@@ -108,4 +108,16 @@ export const WorkflowApi = {
     const res = await api.get('/workflow/union-summary', { params: { date } });
     return res.data?.data;
   },
+
+  // Farmer management & KYC updates
+  updateFarmer: async (farmerId: string, data: any) => {
+    try {
+      const res = await api.patch(`/farmers/${farmerId}`, data);
+      return res.data?.data;
+    } catch {
+      // Fallback to portal endpoint if unauthenticated/offline
+      const res = await api.patch(`/farmers/portal/farmer/${farmerId}`, data);
+      return res.data?.data;
+    }
+  },
 };

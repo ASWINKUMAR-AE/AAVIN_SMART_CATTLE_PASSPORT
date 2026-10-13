@@ -26,10 +26,12 @@ export class FarmersController {
     try {
       const targetUserId = req.params.id;
       // Permission check: a pure farmer role can only update their own account
-      // Veterinary doctors and Admins can update any farmer profile
+      // Veterinary doctors, Admins, Booth operators, and Collection operators can update any farmer profile
       const isFarmerOnly = req.user!.roles.includes('farmer') &&
         !req.user!.roles.includes('veterinary') &&
-        !req.user!.roles.includes('admin');
+        !req.user!.roles.includes('admin') &&
+        !req.user!.roles.includes('booth') &&
+        !req.user!.roles.includes('collection_operator');
 
       if (isFarmerOnly && targetUserId !== req.user!.id) {
         return sendError(res, 'Forbidden: You can only update your own farmer profile', 403);

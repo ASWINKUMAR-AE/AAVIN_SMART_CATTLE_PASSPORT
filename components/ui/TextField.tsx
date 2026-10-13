@@ -65,11 +65,11 @@ export const TextField: React.FC<TextFieldProps> = ({
           ]}
           {...rest}
         />
-        {clearButton && value && value.length > 0 && (
+        {Boolean(clearButton && value && value.length > 0) ? (
           <Pressable onPress={() => onChangeText?.('')} hitSlop={10} style={styles.clearBtn}>
             <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </Pressable>
-        )}
+        ) : null}
       </View>
       {error ? (
         <Text style={[Typography.caption1, styles.errorText, { color: colors.hold }]}>{error}</Text>

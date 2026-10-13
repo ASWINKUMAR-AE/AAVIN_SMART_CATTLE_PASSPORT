@@ -8,11 +8,17 @@ import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Card } from '../../components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
 
 export default function RegisterFarmerScreen() {
+  const { user } = useAuth();
   const { booths, addFarmer } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
+
+  const defaultBoothId = (user?.role === 'booth' && user.associatedId) 
+    ? user.associatedId 
+    : (booths[0]?.id || 'BOOTH001');
 
   // Form State
   const [name, setName] = useState('');
@@ -21,7 +27,7 @@ export default function RegisterFarmerScreen() {
   const [village, setVillage] = useState('');
   const [community, setCommunity] = useState('Melur Taluk');
   const [numberOfCows, setNumberOfCows] = useState('1');
-  const [assignedBoothId, setAssignedBoothId] = useState(booths[0]?.id || 'BOOTH001');
+  const [assignedBoothId, setAssignedBoothId] = useState(defaultBoothId);
   const [farmerIdCode, setFarmerIdCode] = useState(`FARM-MDU-${Math.floor(105 + Math.random() * 800)}`);
   const [bankAccountName, setBankAccountName] = useState('');
   const [bankName, setBankName] = useState('');
@@ -85,12 +91,18 @@ export default function RegisterFarmerScreen() {
       });
 
       Alert.alert(
-        'Registration Submitted!',
-        `Farmer ${created.name} (${created.farmerIdCode}) registered successfully in local frontend state. Status is pending booth/admin verification.`,
+        'Farmer Created Successfully',
+        `Farmer ${created.name} (${created.farmerIdCode}) has been successfully enrolled under ${booths.find(b => b.id === assignedBoothId)?.name || 'Booth'}.`,
         [
           {
-            text: 'Go to Login',
-            onPress: () => router.replace('/(auth)/login'),
+            text: 'Done',
+            onPress: () => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(booth)/farmers');
+              }
+            },
           },
         ]
       );
@@ -112,7 +124,7 @@ export default function RegisterFarmerScreen() {
             New Farmer Registration
           </Text>
           <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 4 }]}>
-            Enroll farmer into Aavin Madurai Milk Safety Twin. Saves immediately to local state.
+            Booth Member Portal: Enroll and register a new farmer into Aavin Madurai Milk Safety Twin.
           </Text>
         </View>
 
