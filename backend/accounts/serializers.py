@@ -3,15 +3,51 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
-from .models import User, phone_validator
+from .models import FarmerProfile, User, phone_validator
+
+class FarmerProfileSerializer(serializers.ModelSerializer):
+    farmerIdCode = serializers.CharField(source='farmer_id_code', max_length=64)
+    numberOfCows = serializers.IntegerField(source='number_of_cows', min_value=0)
+    verificationStatus = serializers.CharField(source='verification_status', read_only=True)
+    bankAccountName = serializers.CharField(source='bank_account_name', max_length=150, required=False, allow_blank=True)
+    bankName = serializers.CharField(source='bank_name', max_length=150, required=False, allow_blank=True)
+    bankAccountNumber = serializers.CharField(source='bank_account_number', max_length=64, required=False, allow_blank=True)
+    bankIfsc = serializers.CharField(source='bank_ifsc', max_length=11, required=False, allow_blank=True)
+    upiId = serializers.CharField(source='upi_id', max_length=150, required=False, allow_blank=True)
+
+    class Meta:
+        model = FarmerProfile
+        fields = ['farmerIdCode', 'address', 'village', 'community', 'numberOfCows',
+                  'verificationStatus', 'bankAccountName', 'bankName', 'bankAccountNumber', 'bankIfsc', 'upiId']
+
+    def validate_farmerIdCode(self, value):
+        value = value.strip().upper()
+        if FarmerProfile.objects.filter(farmer_id_code__iexact=value).exists():
+            raise serializers.ValidationError('This Farmer ID code is already registered.')
+        return value
+
+    def validate_bankIfsc(self, value):
+        return value.strip().upper()
+
+
+class ParentAccountSerializer(serializers.ModelSerializer):
+    fullName = serializers.CharField(source='full_name', read_only=True)
+    parentId = serializers.UUIDField(source='parent_id', read_only=True, allow_null=True)
+    class Meta:
+        model = User
+        fields = ['id', 'fullName', 'phone', 'role', 'parentId']
+
 
 class UserSerializer(serializers.ModelSerializer):
     fullName = serializers.CharField(source="full_name", read_only=True)
     roles = serializers.SerializerMethodField()
     parentId = serializers.UUIDField(source="parent_id", read_only=True, allow_null=True)
+    parent = ParentAccountSerializer(read_only=True)
+    personalDetails = FarmerProfileSerializer(source='farmer_profile', read_only=True, allow_null=True)
+    createdAt = serializers.DateTimeField(source='date_joined', read_only=True)
     class Meta:
         model = User
-        fields = ["id", "phone", "fullName", "role", "roles", "parentId"]
+        fields = ["id", "phone", "fullName", "role", "roles", "parentId", "parent", "personalDetails", "createdAt"]
     def get_roles(self, obj):
         return [obj.role]
 
@@ -34,9 +70,10 @@ class LoginSerializer(serializers.Serializer):
 class RegisterSerializer(serializers.Serializer):
     phone = serializers.CharField(validators=[phone_validator])
     fullName = serializers.CharField(max_length=150)
-    password = serializers.CharField(write_only=True, trim_whitespace=False)
+    password = serializers.CharField(write_only=True, trim_whitespace=False, required=False)
     role = serializers.ChoiceField(choices=User.Role.choices)
     parentId = serializers.UUIDField(required=False)
+    personalDetails = FarmerProfileSerializer(required=False)
 
     def validate(self, attrs):
         actor = self.context["request"].user
@@ -56,6 +93,14 @@ class RegisterSerializer(serializers.Serializer):
             parent = actor
         if User.objects.filter(phone=attrs["phone"]).exists():
             raise serializers.ValidationError({"phone": "An account with this phone already exists."})
+        if 'personalDetails' in attrs and attrs['role'] != User.Role.FARMER:
+            raise serializers.ValidationError({'personalDetails': 'Only Farmer accounts have personal details.'})
+        if 'password' not in attrs:
+            if attrs['role'] != User.Role.FARMER:
+                raise serializers.ValidationError({'password': 'Password is required.'})
+            attrs['password'] = attrs['phone']
+            attrs['parent'] = parent
+            return attrs
         candidate = User(phone=attrs["phone"], full_name=attrs["fullName"], role=attrs["role"], parent=parent)
         try:
             password_validation.validate_password(attrs["password"], candidate)
@@ -67,10 +112,16 @@ class RegisterSerializer(serializers.Serializer):
     def create(self, validated_data):
         try:
             with transaction.atomic():
-                return User.objects.create_user(phone=validated_data["phone"], password=validated_data["password"],
+                user = User.objects.create_user(phone=validated_data["phone"], password=validated_data["password"],
                     full_name=validated_data["fullName"], role=validated_data["role"], parent=validated_data["parent"],
                     created_by=self.context["request"].user)
+                details = validated_data.get('personalDetails')
+                if details is not None:
+                    profile = FarmerProfile(user=user, **details)
+                    profile.full_clean()
+                    profile.save()
+                return user
         except IntegrityError:
-            raise serializers.ValidationError({"phone": "Unable to create account; verify the phone and parent."})
+            raise serializers.ValidationError({"nonFieldErrors": "Unable to create account; the phone or Farmer ID may already be registered."})
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.message_dict if hasattr(exc, "message_dict") else exc.messages)

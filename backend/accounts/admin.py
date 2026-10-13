@@ -27,3 +27,11 @@ class AccountAdmin(UserAdmin):
                  ("Dates", {"fields": ("last_login", "date_joined")}))
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("phone", "full_name", "role", "parent", "password1", "password2")}),)
     readonly_fields = ("created_by",)
+
+
+from .models import FarmerProfile
+
+@admin.register(FarmerProfile)
+class FarmerProfileAdmin(admin.ModelAdmin):
+    list_display = ('farmer_id_code', 'user', 'village', 'verification_status')
+    search_fields = ('farmer_id_code', 'user__phone', 'user__full_name')

@@ -54,6 +54,9 @@ interface AavinState {
 
 interface AavinStoreContextType extends AavinState {
   isLoading: boolean;
+  cacheFarmer: (farmer: Farmer) => void;
+  cacheSociety: (society: Booth) => void;
+  replaceSocietyFarmers: (societyId: string, farmers: Farmer[]) => void;
   // Farmer actions
   addFarmer: (farmerData: Omit<Farmer, 'id' | 'createdAt'>) => Farmer;
   updateFarmer: (farmer: Farmer) => void;
@@ -184,6 +187,24 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.warn('Failed to persist demo store state:', err);
     }
   }, []);
+
+  // Backend records use server UUIDs; these helpers never create demo IDs.
+  const updateBackendCache = useCallback((update: (previous: AavinState) => AavinState) => {
+    setState(previous => {
+      const next = update(previous);
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(err => console.warn('Backend cache save failed:', err));
+      return next;
+    });
+  }, []);
+  const cacheFarmer = useCallback((farmer: Farmer) => updateBackendCache(previous => ({
+    ...previous, farmers: [farmer, ...previous.farmers.filter(item => item.id !== farmer.id)],
+  })), [updateBackendCache]);
+  const cacheSociety = useCallback((society: Booth) => updateBackendCache(previous => ({
+    ...previous, booths: [society, ...previous.booths.filter(item => item.id !== society.id)],
+  })), [updateBackendCache]);
+  const replaceSocietyFarmers = useCallback((societyId: string, records: Farmer[]) => updateBackendCache(previous => ({
+    ...previous, farmers: [...records, ...previous.farmers.filter(item => item.assignedBoothId !== societyId && !records.some(record => record.id === item.id))],
+  })), [updateBackendCache]);
 
   // 1. Farmer Actions
   const addFarmer = useCallback((farmerData: Omit<Farmer, 'id' | 'createdAt'>): Farmer => {
@@ -1077,6 +1098,9 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       value={{
         ...state,
         isLoading,
+        cacheFarmer,
+        cacheSociety,
+        replaceSocietyFarmers,
         addFarmer,
         updateFarmer,
         verifyFarmer,

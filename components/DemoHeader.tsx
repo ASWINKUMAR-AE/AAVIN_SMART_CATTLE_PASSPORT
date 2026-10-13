@@ -73,9 +73,14 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
     }
   };
 
-  const handleSelectRole = (r: UserRole) => {
+  const handleSelectRole = async (r: UserRole) => {
     setModalVisible(false);
-    switchRole(r);
+    try {
+      await switchRole(r);
+    } catch (error: any) {
+      Alert.alert('Sign in required', error.message);
+      return;
+    }
     // Navigate to role's dashboard
     switch (r) {
       case 'farmer':

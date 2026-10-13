@@ -58,7 +58,7 @@ export default function LoginScreen() {
 
   const handleManualLogin = async () => {
     const input = usernameOrPhone.trim();
-    const pwd = password.trim() || 'Password@123';
+    const pwd = password;
 
     if (!input) {
       setErrorMessage(
@@ -66,6 +66,11 @@ export default function LoginScreen() {
           ? 'தயவுசெய்து பயனர் பெயர் அல்லது அலைபேசி எண்ணை உள்ளிடவும்'
           : 'Please enter your username, phone number, or officer ID'
       );
+      return;
+    }
+
+    if (!pwd) {
+      setErrorMessage('Phone number and password are required.');
       return;
     }
 
@@ -92,7 +97,7 @@ export default function LoginScreen() {
   };
 
   const handleFillDemoCredential = (acc: typeof SEED_DEMO_USERS[0]) => {
-    setUsernameOrPhone(acc.username || acc.phone);
+    setUsernameOrPhone(acc.phone);
     setPassword('Password@123');
     setErrorMessage(null);
   };
@@ -208,7 +213,7 @@ export default function LoginScreen() {
             <View style={styles.accountsList}>
               {SEED_DEMO_USERS.map((acc) => {
                 const meta = roleMeta[acc.role] || { title: acc.role, badgeColor: '#00A5E3', icon: '👤' };
-                const isCurrentFilled = usernameOrPhone === acc.username || usernameOrPhone === acc.id;
+                const isCurrentFilled = usernameOrPhone === acc.phone;
 
                 return (
                   <Pressable

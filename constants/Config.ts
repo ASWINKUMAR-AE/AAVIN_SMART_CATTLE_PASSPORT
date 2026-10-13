@@ -1,26 +1,10 @@
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 
 const getDefaultApiUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
 
-  // 1. Automatically extract host LAN IP from Expo dev server
-  const hostUri =
-    Constants.expoConfig?.hostUri ||
-    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost ||
-    (Constants as any).manifest?.debuggerHost;
-
-  if (hostUri) {
-    const hostIp = hostUri.split(':')[0];
-    if (hostIp && hostIp !== 'localhost' && hostIp !== '127.0.0.1') {
-      return `http://${hostIp}:4000/api/v1`;
-    }
-  }
-
-  // 2. Default to detected local LAN IP
-  return 'http://192.168.0.12:4000/api/v1';
+  return 'https://aavin.todayworld.in/api/v1';
 };
 
 export const Config = {

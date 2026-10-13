@@ -67,3 +67,26 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.full_name} ({self.role})"
+
+
+class FarmerProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='farmer_profile')
+    farmer_id_code = models.CharField(max_length=64, unique=True)
+    address = models.TextField()
+    village = models.CharField(max_length=150)
+    community = models.CharField(max_length=150, blank=True)
+    number_of_cows = models.PositiveIntegerField(default=0)
+    verification_status = models.CharField(max_length=10, choices=[('pending', 'Pending'), ('verified', 'Verified')], default='pending')
+    bank_account_name = models.CharField(max_length=150, blank=True)
+    bank_name = models.CharField(max_length=150, blank=True)
+    bank_account_number = models.CharField(max_length=64, blank=True)
+    bank_ifsc = models.CharField(max_length=11, blank=True)
+    upi_id = models.CharField(max_length=150, blank=True)
+
+    def clean(self):
+        self.farmer_id_code = self.farmer_id_code.strip().upper()
+        if self.user.role != User.Role.FARMER:
+            raise ValidationError({'user': 'Personal details belong to a Farmer account.'})
+
+    def __str__(self):
+        return self.farmer_id_code

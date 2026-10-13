@@ -1,0 +1,26 @@
+meta {
+  name: 06 List own Farmers
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/farmers
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{societyAccessToken}}
+}
+
+tests {
+  test("Own Society Farmer list", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().data.farmers).to.be.an("array");
+  });
+}
+
+docs {
+  Returns only Farmers whose parent is the authenticated Society, including accounts with no personal-details profile. Other roles are forbidden.
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types/aavin';
@@ -47,7 +47,12 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
   };
 
   const handleRoleSwitch = async (targetRole: UserRole) => {
-    await switchRole(targetRole);
+    try {
+      await switchRole(targetRole);
+    } catch (error: any) {
+      Alert.alert('Sign in required', error.message);
+      return;
+    }
     switch (targetRole) {
       case 'farmer':
         router.replace('/(farmer)');

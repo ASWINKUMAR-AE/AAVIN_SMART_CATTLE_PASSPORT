@@ -1,0 +1,67 @@
+meta {
+  name: 05 Society registers Farmer personal details
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/register
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{societyAccessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+vars:pre-request {
+  newFarmerPhone: 9842000099
+  newFarmerIdCode: FARM-MDU-999
+}
+
+body:json {
+  {
+    "phone": "{{newFarmerPhone}}",
+    "fullName": "Murugan",
+    "role": "farmer",
+    "personalDetails": {
+      "farmerIdCode": "{{newFarmerIdCode}}",
+      "address": "10 Main Street",
+      "village": "Melur",
+      "community": "Melur Taluk",
+      "numberOfCows": 0,
+      "bankAccountName": "Murugan",
+      "bankName": "Example Bank",
+      "bankAccountNumber": "0000123456",
+      "bankIfsc": "TEST0001234",
+      "upiId": "murugan@bank"
+    }
+  }
+}
+
+script:pre-request {
+  if (!bru.getVar("societyAccessToken")) throw new Error("Log in as Society first.");
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const user = res.getBody().data.user;
+    bru.setVar("farmerId", user.id);
+  }
+}
+
+tests {
+  test("Saved account and profile", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().data.user.personalDetails.numberOfCows).to.equal(0);
+    expect(res.getBody().data.user.personalDetails.verificationStatus).to.equal("pending");
+  });
+}
+
+docs {
+  This creates a real Farmer. Use an unused phone number and Farmer ID. Password is omitted so the initial login password equals the phone number. The authenticated Society is the parent. Existing login request examples with an explicit farmerPassword still support older accounts; to log in to this new Farmer, use its phone for both fields.
+}

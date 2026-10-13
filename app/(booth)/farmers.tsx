@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -12,7 +12,9 @@ import {
   KeyboardAvoidingView, 
   Platform 
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { AccountsApi } from '../../services/accountsApi';
+import { apiErrorMessage, mapFarmer } from '../../services/accountMapping';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -27,12 +29,31 @@ import { Farmer } from '../../types/aavin';
 
 export default function BoothFarmersScreen() {
   const { user } = useAuth();
-  const { farmers, booths, cows, verifyFarmer, updateFarmer } = useAavinStore();
+  const { farmers: storedFarmers, booths, cows, verifyFarmer, updateFarmer, replaceSocietyFarmers } = useAavinStore();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
   const boothId = user?.associatedId || 'BOOTH001';
   const booth = booths.find(b => b.id === boothId) || booths[0];
+
+  const [loadedForSociety, setLoadedForSociety] = useState<string | null>(null);
+  const farmers = loadedForSociety === user?.associatedId
+    ? storedFarmers.filter(farmer => farmer.assignedBoothId === user?.associatedId)
+    : [];
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setLoadedForSociety(null);
+    if (user?.role !== 'booth') return;
+    AccountsApi.listFarmers().then(accounts => {
+      if (!active) return;
+      replaceSocietyFarmers(user.associatedId, accounts.map(mapFarmer));
+      setLoadedForSociety(user.associatedId);
+    }).catch(error => {
+      if (active) Alert.alert('Unable to load Farmers', apiErrorMessage(error));
+    });
+    return () => { active = false; };
+  }, [user?.role, user?.associatedId, replaceSocietyFarmers]));
 
   // Filtering & Search
   const [searchQuery, setSearchQuery] = useState('');

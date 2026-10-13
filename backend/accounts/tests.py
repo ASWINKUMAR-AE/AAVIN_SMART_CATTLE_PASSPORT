@@ -119,3 +119,110 @@ class AccountTests(APITestCase):
         user = form.save()
         self.assertTrue(user.check_password(PASSWORD))
         self.assertIsNone(user.parent)
+
+    def profile_payload(self, **changes):
+        details = {
+            'farmerIdCode': 'farm-mdu-999', 'address': '10 Main Street', 'village': 'Melur',
+            'community': 'Melur Taluk', 'numberOfCows': 0,
+            'bankAccountName': 'New Farmer', 'bankName': 'Example Bank',
+            'bankAccountNumber': '0000123456', 'bankIfsc': 'TEST0001234', 'upiId': 'farmer@bank',
+        }
+        details.update(changes)
+        return {'phone': '9842000099', 'fullName': 'New Farmer', 'role': 'farmer', 'personalDetails': details}
+
+    def test_registration_persists_complete_profile_and_phone_password(self):
+        from .models import FarmerProfile
+        self.authenticate_as(self.society)
+        payload = self.profile_payload()
+        response = self.client.post('/api/v1/auth/register', payload, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        user = User.objects.get(phone=payload['phone'])
+        profile = FarmerProfile.objects.get(user=user)
+        self.assertEqual(profile.farmer_id_code, 'FARM-MDU-999')
+        self.assertEqual(profile.number_of_cows, 0)
+        self.assertEqual(profile.verification_status, 'pending')
+        self.assertEqual(profile.address, payload['personalDetails']['address'])
+        self.assertEqual(profile.bank_account_number, '0000123456')
+        for wire, model_field in [('village', 'village'), ('community', 'community'), ('bankAccountName', 'bank_account_name'),
+                                  ('bankName', 'bank_name'), ('bankIfsc', 'bank_ifsc'), ('upiId', 'upi_id')]:
+            self.assertEqual(getattr(profile, model_field), payload['personalDetails'][wire])
+        self.assertEqual(user.parent, self.society)
+        self.assertEqual(user.created_by, self.society)
+        self.assertTrue(user.check_password(user.phone))
+        self.assertNotEqual(user.password, user.phone)
+        self.client.credentials()
+        login = self.client.post('/api/v1/auth/login', {'phone': user.phone, 'password': user.phone})
+        self.assertEqual(login.status_code, 200, login.data)
+        data = login.data['data']['user']
+        self.assertEqual(data['personalDetails']['numberOfCows'], 0)
+        self.assertEqual(data['parent']['id'], str(self.society.pk))
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+login.data['data']['accessToken'])
+        self.assertEqual(self.client.get('/api/v1/auth/me').data['data']['user']['personalDetails'], data['personalDetails'])
+
+    def test_optional_banking_and_existing_accounts_without_profile(self):
+        self.authenticate_as(self.society)
+        payload = self.profile_payload()
+        for field in ['bankAccountName', 'bankName', 'bankAccountNumber', 'bankIfsc', 'upiId']:
+            del payload['personalDetails'][field]
+        response = self.client.post('/api/v1/auth/register', payload, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['data']['user']['personalDetails']['bankName'], '')
+        listed = self.client.get('/api/v1/farmers').data['data']['farmers']
+        legacy = next(item for item in listed if item['id'] == str(self.farmer.pk))
+        self.assertIsNone(legacy['personalDetails'])
+
+    def test_duplicate_profile_code_case_insensitive_and_negative_cows(self):
+        self.authenticate_as(self.society)
+        response = self.client.post('/api/v1/auth/register', self.profile_payload(), format='json')
+        self.assertEqual(response.status_code, 201)
+        duplicate = self.profile_payload(farmerIdCode='farm-mdu-999')
+        duplicate['phone'] = '9842000098'
+        response = self.client.post('/api/v1/auth/register', duplicate, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('farmerIdCode', response.data['errors']['personalDetails'])
+        self.assertFalse(User.objects.filter(phone=duplicate['phone']).exists())
+        negative = self.profile_payload(numberOfCows=-1, farmerIdCode='FARM-MDU-998')
+        negative['phone'] = '9842000097'
+        self.assertEqual(self.client.post('/api/v1/auth/register', negative, format='json').status_code, 400)
+
+    def test_profile_failure_rolls_back_account(self):
+        from unittest.mock import patch
+        from django.db import IntegrityError
+        from .models import FarmerProfile
+        self.authenticate_as(self.society)
+        with patch.object(FarmerProfile, 'save', side_effect=IntegrityError('test failure')):
+            response = self.client.post('/api/v1/auth/register', self.profile_payload(), format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(phone='9842000099').exists())
+
+    def test_nonfarmer_cannot_use_default_password_or_profile(self):
+        self.authenticate_as(self.union)
+        data = {'phone': '9842000099', 'fullName': 'BMC Two', 'role': 'bmc'}
+        self.assertEqual(self.client.post('/api/v1/auth/register', data).status_code, 400)
+        data['password'] = PASSWORD
+        data['personalDetails'] = self.profile_payload()['personalDetails']
+        self.assertEqual(self.client.post('/api/v1/auth/register', data, format='json').status_code, 400)
+
+    def test_farmer_listing_is_society_scoped(self):
+        other = User.objects.create_user('9842000010', PASSWORD, full_name='Society Two', role='society', parent=self.bmc)
+        other_farmer = User.objects.create_user('9842000011', PASSWORD, full_name='Other Farmer', role='farmer', parent=other)
+        self.authenticate_as(self.society)
+        response = self.client.get('/api/v1/farmers?parentId='+str(other.pk))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item['id'] for item in response.data['data']['farmers']], [str(self.farmer.pk)])
+        self.authenticate_as(other)
+        response = self.client.get('/api/v1/farmers')
+        self.assertEqual([item['id'] for item in response.data['data']['farmers']], [str(other_farmer.pk)])
+        for actor in [self.union, self.bmc, self.farmer]:
+            self.authenticate_as(actor)
+            self.assertEqual(self.client.get('/api/v1/farmers').status_code, 403)
+        self.client.credentials()
+        self.assertEqual(self.client.get('/api/v1/farmers').status_code, 401)
+
+    def test_login_preserves_password_spaces(self):
+        self.farmer.set_password('  SecurePassword!879  ')
+        self.farmer.save()
+        good = self.client.post('/api/v1/auth/login', {'phone': self.farmer.phone, 'password': '  SecurePassword!879  '})
+        self.assertEqual(good.status_code, 200)
+        bad = self.client.post('/api/v1/auth/login', {'phone': self.farmer.phone, 'password': 'SecurePassword!879'})
+        self.assertEqual(bad.status_code, 401)

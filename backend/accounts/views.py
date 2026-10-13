@@ -69,3 +69,13 @@ def ready(request):
         return JsonResponse({"success": True, "database": "connected"})
     except Exception:
         return JsonResponse({"success": False, "message": "Database unavailable"}, status=503)
+
+
+class FarmerListView(APIView):
+    def get(self, request):
+        from .models import User
+        from rest_framework.exceptions import PermissionDenied
+        if request.user.role != User.Role.SOCIETY:
+            raise PermissionDenied('Only Society accounts can list their Farmers.')
+        farmers = User.objects.filter(role=User.Role.FARMER, parent=request.user).select_related('parent', 'farmer_profile').order_by('date_joined', 'id')
+        return success({'farmers': UserSerializer(farmers, many=True).data})

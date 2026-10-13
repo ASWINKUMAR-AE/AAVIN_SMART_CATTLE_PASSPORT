@@ -15,7 +15,7 @@ This backend implements phone/password login, JWT access and refresh tokens, rol
 
 A BMC can have any number of Societies. When a Union registers a Society, it supplies the ID of an active BMC belonging to that Union. When a BMC registers a Society, the Society automatically belongs to that BMC. Registration requires authentication; there is no public signup or Union registration API.
 
-The frontend is unchanged. Its existing local demo accounts and screens still exist. Its role mapping does not yet recognise `society`, and its older cattle, milk safety, payment, and AI APIs have not been ported in this authentication-only backend replacement. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
+The existing login and Society Farmer registration forms are connected to Django without layout changes. Society accounts use the existing Booth screens. The Society Farmers directory loads its own registered accounts from PostgreSQL. Milk, cattle, payments, editing, verification, and AI features remain local/demo workflows outside this integration. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
 
 ## Backend setup
 
@@ -89,10 +89,18 @@ backend/.venv/bin/python backend/manage.py check
 backend/.venv/bin/python backend/manage.py test --settings=config.test_settings
 ```
 
-The 14 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
+The 21 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
 
 See [API details](docs/api.md), [architecture](docs/architecture.md), and [database notes](database/README.md).
 
 ## Bruno API collection
 
 Open `bruno/Aavin API` as a collection in Bruno and select the Local environment. See [Bruno setup and request order](bruno/Aavin%20API/README.md).
+
+### Integrated Farmer onboarding
+
+The Society registration form persists Farmer personal details in PostgreSQL. The initial Farmer password is the phone number when the registration omits an explicit password, and pending Farmers can log in immediately. Existing account-only registrations and accounts without profiles remain supported.
+
+Before deploying the updated API, run `python manage.py migrate` in the backend environment. Rebuild/restart the hosted Django container to expose the extended registration and `GET /api/v1/farmers`; frontend code alone cannot update the hosted server.
+
+The default frontend API is `https://aavin.todayworld.in/api/v1`. Set `EXPO_PUBLIC_API_URL` or use the existing Server Settings to override it. Run isolated frontend behaviour checks with `node scripts/test-auth-integration.cjs` and backend tests with `python manage.py test accounts --settings=config.test_settings` from `backend/`.

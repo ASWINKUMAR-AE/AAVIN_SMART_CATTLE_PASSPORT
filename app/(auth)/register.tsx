@@ -9,16 +9,19 @@ import { TextField } from '../../components/ui/TextField';
 import { Card } from '../../components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { AccountsApi } from '../../services/accountsApi';
+import { apiErrorMessage, mapFarmer } from '../../services/accountMapping';
 
 export default function RegisterFarmerScreen() {
   const { user } = useAuth();
-  const { booths, addFarmer } = useAavinStore();
+  const { booths: storedBooths, cacheFarmer } = useAavinStore();
+  const booths = user?.role === 'booth' ? storedBooths.filter(booth => booth.id === user.associatedId) : [];
   const { colors } = useTheme();
   const router = useRouter();
 
   const defaultBoothId = (user?.role === 'booth' && user.associatedId) 
     ? user.associatedId 
-    : (booths[0]?.id || 'BOOTH001');
+    : '';
 
   // Form State
   const [name, setName] = useState('');
@@ -56,8 +59,8 @@ export default function RegisterFarmerScreen() {
     if (!village.trim()) errs.village = 'Village name is required.';
     if (!farmerIdCode.trim()) errs.farmerIdCode = 'Farmer ID Code is required.';
 
-    const cowsNum = parseInt(numberOfCows, 10);
-    if (isNaN(cowsNum) || cowsNum < 0) {
+    const cowsNum = Number(numberOfCows);
+    if (!numberOfCows.trim() || !Number.isInteger(cowsNum) || cowsNum < 0) {
       errs.numberOfCows = 'Enter a valid number of cows.';
     }
 
@@ -66,6 +69,11 @@ export default function RegisterFarmerScreen() {
   };
 
   const handleRegister = async () => {
+    if (submitting) return;
+    if (user?.role !== 'booth') {
+      Alert.alert('Registration Failed', 'Sign in as a Society to register a Farmer.');
+      return;
+    }
     if (!validate()) {
       Alert.alert('Validation Error', 'Please correct the highlighted fields before submitting.');
       return;
@@ -73,22 +81,19 @@ export default function RegisterFarmerScreen() {
 
     setSubmitting(true);
     try {
-      const created = addFarmer({
-        farmerIdCode: farmerIdCode.trim().toUpperCase(),
-        name: name.trim(),
-        mobileNumber: mobileNumber.trim().replace(/\D/g, ''),
-        address: address.trim(),
-        village: village.trim(),
-        community: community.trim(),
-        numberOfCows: parseInt(numberOfCows, 10) || 1,
-        assignedBoothId,
-        verificationStatus: 'pending',
-        bankAccountName: bankAccountName.trim() || undefined,
-        bankName: bankName.trim() || undefined,
-        bankAccountNumber: bankAccountNumber.trim() || undefined,
-        bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
-        upiId: upiId.trim() || undefined,
+      const account = await AccountsApi.registerFarmer({
+        phone: mobileNumber.trim().replace(/\D/g, ''),
+        fullName: name.trim(), parentId: user.associatedId,
+        personalDetails: {
+          farmerIdCode: farmerIdCode.trim().toUpperCase(),
+          address: address.trim(), village: village.trim(), community: community.trim(),
+          numberOfCows: Number(numberOfCows),
+          bankAccountName: bankAccountName.trim(), bankName: bankName.trim(),
+          bankAccountNumber: bankAccountNumber.trim(), bankIfsc: bankIfsc.trim().toUpperCase(), upiId: upiId.trim(),
+        },
       });
+      const created = mapFarmer(account);
+      cacheFarmer(created);
 
       Alert.alert(
         'Farmer Created Successfully',
@@ -107,7 +112,15 @@ export default function RegisterFarmerScreen() {
         ]
       );
     } catch (err: any) {
-      Alert.alert('Registration Failed', err.message || 'Could not register farmer.');
+      const fieldErrors = err?.response?.data?.errors || {};
+      const formErrors: Record<string, string> = {};
+      const aliases: Record<string, string> = { phone: 'mobileNumber', fullName: 'name' };
+      for (const [key, value] of Object.entries({ ...fieldErrors, ...fieldErrors.personalDetails })) {
+        if (key === 'personalDetails') continue;
+        formErrors[aliases[key] || key] = Array.isArray(value) ? value.join(' ') : String(value);
+      }
+      setErrors(formErrors);
+      Alert.alert('Registration Failed', apiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

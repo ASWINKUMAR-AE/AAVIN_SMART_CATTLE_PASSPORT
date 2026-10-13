@@ -1,6 +1,6 @@
 # Aavin API — Bruno collection
 
-Open this directory as a collection in Bruno. It contains 13 requests covering every current JSON API endpoint, four role-specific logins, and every permitted registration path.
+Open this directory as a collection in Bruno. It contains 15 requests covering every current JSON API endpoint, four role-specific logins, and every permitted registration path.
 
 ## Open in Bruno on Windows
 
@@ -47,3 +47,7 @@ Send requests individually in this order, rather than running the whole collecti
 | POST | `/api/v1/auth/logout` | Revoke active refresh token |
 
 Django Admin is a browser interface at `http://localhost:4000/admin/`, not a JSON API. Union creation is manual and has no registration API. All request files include sample JSON where applicable, expected status checks, and usage notes.
+
+## Integrated Farmer form examples
+
+Use **03 Registration → 05 Society registers Farmer personal details** for the new profile-aware onboarding. It omits password, making the initial password equal to the phone. Request **06 List own Farmers** reloads PostgreSQL records for the authenticated Society. Original requests and their custom credentials are preserved.
