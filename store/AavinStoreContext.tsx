@@ -55,8 +55,16 @@ interface AavinState {
 interface AavinStoreContextType extends AavinState {
   isLoading: boolean;
   // Farmer actions
-  addFarmer: (farmerData: Omit<Farmer, 'id' | 'createdAt'>) => Farmer;
-  updateFarmer: (farmer: Farmer) => void;
+  addFarmer: (
+    farmerData: Omit<Farmer, 'id' | 'createdAt'>,
+    initialCows?: Array<{
+      pashuAadhaar: string;
+      breed: string;
+      milkCapacity: number;
+      name?: string;
+    }>
+  ) => Farmer;
+  updateFarmer: (farmer: Farmer, updatedCows?: Cow[]) => void;
   verifyFarmer: (farmerId: string, status: 'verified' | 'pending') => void;
   
   // Cow actions
@@ -186,7 +194,15 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   // 1. Farmer Actions
-  const addFarmer = useCallback((farmerData: Omit<Farmer, 'id' | 'createdAt'>): Farmer => {
+  const addFarmer = useCallback((
+    farmerData: Omit<Farmer, 'id' | 'createdAt'>,
+    initialCows?: Array<{
+      pashuAadhaar: string;
+      breed: string;
+      milkCapacity: number;
+      name?: string;
+    }>
+  ): Farmer => {
     // Check duplicates
     const duplicateId = state.farmers.some(f => f.farmerIdCode.toLowerCase() === farmerData.farmerIdCode.toLowerCase());
     if (duplicateId) {
@@ -197,17 +213,67 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       throw new Error(`Mobile number '${farmerData.mobileNumber}' is already registered to another farmer.`);
     }
 
+    // Validate initial cows if provided
+    const newCows: Cow[] = [];
+    if (initialCows && initialCows.length > 0) {
+      const seenTags = new Set<string>();
+      for (let i = 0; i < initialCows.length; i++) {
+        const c = initialCows[i];
+        const cleanTag = c.pashuAadhaar.trim();
+        if (!/^\d{12}$/.test(cleanTag)) {
+          throw new Error(`Cow #${i + 1}: Pashu Aadhaar Number '${cleanTag}' must be exactly 12 numeric digits.`);
+        }
+        if (seenTags.has(cleanTag)) {
+          throw new Error(`Duplicate Pashu Aadhaar #${cleanTag} entered for multiple cows.`);
+        }
+        seenTags.add(cleanTag);
+        const exists = state.cows.some(existing => existing.tagId === cleanTag);
+        if (exists) {
+          throw new Error(`Pashu Aadhaar #${cleanTag} already exists in the Cattle Passport registry.`);
+        }
+      }
+    }
+
     const newFarmer: Farmer = {
       ...farmerData,
       id: `FARMER${String(state.farmers.length + 1).padStart(3, '0')}`,
+      numberOfCows: (initialCows && initialCows.length > 0) ? initialCows.length : (farmerData.numberOfCows || 1),
       createdAt: new Date().toISOString(),
     };
+
+    if (initialCows && initialCows.length > 0) {
+      initialCows.forEach((c, idx) => {
+        newCows.push({
+          id: `COW${String(state.cows.length + idx + 1).padStart(3, '0')}`,
+          cowId: `COW-${newFarmer.farmerIdCode}-${String(idx + 1).padStart(2, '0')}`,
+          tagId: c.pashuAadhaar.trim(),
+          farmerId: newFarmer.id,
+          farmerName: newFarmer.name,
+          breed: c.breed || 'Jersey Cross',
+          name: c.name?.trim() || `Cow #${idx + 1} (${c.breed || 'Jersey Cross'})`,
+          dateOfBirth: '2023-04-15',
+          approxAgeMonths: 36,
+          sex: 'female',
+          currentStatus: 'lactating',
+          dailyMilkYield: Number(c.milkCapacity) || 10,
+          healthStatus: 'healthy',
+          lactationStage: 'peak',
+          identificationMarks: 'Govt 12-digit RFID Tag',
+          verificationStatus: 'verified',
+          medicalHistory: [],
+          vaccinationHistory: [],
+          inseminationHistory: [],
+          treatmentRecords: [],
+          createdAt: new Date().toISOString(),
+        });
+      });
+    }
 
     const newNotification: InAppNotification = {
       id: `NOTIF-${Date.now()}`,
       recipientRole: 'admin',
       title: 'New Farmer Registered',
-      message: `Farmer ${newFarmer.name} (${newFarmer.farmerIdCode}) has been registered and is pending verification.`,
+      message: `Farmer ${newFarmer.name} (${newFarmer.farmerIdCode}) registered with ${newCows.length} cattle passports.`,
       type: 'verification_request',
       timestamp: 'Just now',
       isRead: false,
@@ -217,26 +283,34 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const updated = {
       ...state,
       farmers: [newFarmer, ...state.farmers],
+      cows: [...newCows, ...state.cows],
       notifications: [newNotification, ...state.notifications],
     };
     persistState(updated);
     return newFarmer;
   }, [state, persistState]);
 
-  const updateFarmer = useCallback((farmer: Farmer) => {
+  const updateFarmer = useCallback((farmer: Farmer, updatedCows?: Cow[]) => {
     const newNotification: InAppNotification = {
       id: `NOTIF-${Date.now()}`,
       recipientRole: 'admin',
-      title: 'Farmer Profile Updated',
-      message: `Farmer record for ${farmer.name} (${farmer.farmerIdCode}) was updated.`,
+      title: 'Farmer Profile & Cattle Updated',
+      message: `Farmer record for ${farmer.name} (${farmer.farmerIdCode}) and cattle details were updated.`,
       type: 'system',
       timestamp: 'Just now',
       isRead: false,
     };
 
+    let updatedCowsList = state.cows;
+    if (updatedCows && updatedCows.length > 0) {
+      const cowMap = new Map(updatedCows.map(c => [c.id, c]));
+      updatedCowsList = state.cows.map(c => cowMap.has(c.id) ? cowMap.get(c.id)! : c);
+    }
+
     const updated = {
       ...state,
       farmers: state.farmers.map(f => f.id === farmer.id ? farmer : f),
+      cows: updatedCowsList,
       notifications: [newNotification, ...state.notifications],
     };
     persistState(updated);
