@@ -27,32 +27,40 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Admin Ops',
+          title: 'System Ops',
           headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="safety-reviews"
+        name="verifications"
         options={{
-          title: 'Safety Queue',
-          tabBarIcon: ({ color, size }) => <Ionicons name="alert-circle-outline" size={size} color={color} />,
+          title: 'Verifications',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="ai-settings"
+        name="demo-settings"
         options={{
-          title: 'AI Config',
-          tabBarIcon: ({ color, size }) => <Ionicons name="hardware-chip-outline" size={size} color={color} />,
+          title: 'Demo Settings',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="users"
         options={{
-          title: 'Users',
+          title: 'Demo Users',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
         }}
       />
+      {/* Hidden legacy routes */}
+      <Tabs.Screen name="safety-reviews" options={{ href: null }} />
+      <Tabs.Screen name="reconciliation" options={{ href: null }} />
+      <Tabs.Screen name="gm-report" options={{ href: null }} />
+      <Tabs.Screen name="ai-settings" options={{ href: null }} />
     </Tabs>
   );
 }

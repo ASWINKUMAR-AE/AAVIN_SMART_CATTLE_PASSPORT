@@ -11,39 +11,13 @@ export default function IndexScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return;
-
+    // Initial entry point is the Login Screen as requested
     const timer = setTimeout(() => {
-      if (!user) {
-        router.replace('/(auth)/login');
-        return;
-      }
-
-      // Role-based routing
-      switch (activeRole) {
-        case 'farmer':
-          router.replace('/(farmer)');
-          break;
-        case 'veterinary':
-          router.replace('/(veterinary)');
-          break;
-        case 'collection_operator':
-          router.replace('/(collection)');
-          break;
-        case 'transport_vendor':
-          router.replace('/(vendor)');
-          break;
-        case 'admin':
-          router.replace('/(admin)');
-          break;
-        default:
-          router.replace('/(farmer)');
-          break;
-      }
+      router.replace('/(auth)/login');
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [user, activeRole, isLoading]);
+  }, [router]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.primary }]}>
@@ -62,6 +36,9 @@ export default function IndexScreen() {
         <Text style={[Typography.footnote, styles.twinBadge]}>
           MILK SAFETY TWIN • MADURAI UNION
         </Text>
+        <Text style={[Typography.caption1, styles.demoBadge]}>
+          ACADEMIC FRONTEND PROTOTYPE • LOCAL SIMULATION
+        </Text>
         <ActivityIndicator color="#FFFFFF" size="large" style={styles.loader} />
       </View>
     </View>
@@ -76,18 +53,17 @@ const styles = StyleSheet.create({
   },
   centerContent: {
     alignItems: 'center',
+    paddingHorizontal: 24,
   },
   iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 20,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
   },
   title: {
@@ -98,15 +74,23 @@ const styles = StyleSheet.create({
   subTitle: {
     color: '#EAF5FC',
     marginTop: 4,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   twinBadge: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.9)',
     marginTop: 8,
     letterSpacing: 1,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  demoBadge: {
+    color: '#FEF3C7',
+    marginTop: 6,
+    letterSpacing: 0.5,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   loader: {
-    marginTop: 36,
+    marginTop: 32,
   },
 });

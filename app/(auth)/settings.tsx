@@ -1,100 +1,84 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, View, Text, ScrollView, Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAavinStore } from '../../store/AavinStoreContext';
 import { Typography } from '../../constants/Typography';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
 import { GroupedList } from '../../components/ui/GroupedList';
 import { ListRow } from '../../components/ui/ListRow';
-import { getCurrentApiUrl, setCustomApiUrl } from '../../services/api';
-import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
   const { user, updateLanguage, logout } = useAuth();
+  const { farmers, cows, milkRecords, discrepancyCases, resetDemoData } = useAavinStore();
 
-  const [apiUrl, setApiUrl] = useState(getCurrentApiUrl());
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    setApiUrl(getCurrentApiUrl());
-  }, []);
-
-  const handleSaveApiUrl = async () => {
-    if (!apiUrl.startsWith('http')) {
-      Alert.alert('Invalid URL', 'Please include http:// or https://');
-      return;
-    }
-    await setCustomApiUrl(apiUrl.trim());
-    Alert.alert('Saved', 'API Base URL updated successfully.');
-  };
-
-  const handleTestConnection = async () => {
-    setTestingConnection(true);
-    setConnectionStatus(null);
-    try {
-      const cleanUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
-      const res = await axios.get(`${cleanUrl}/health`, { timeout: 4000 });
-      if (res.status === 200) {
-        setConnectionStatus('✅ Connected to Aavin Backend successfully!');
-      } else {
-        setConnectionStatus(`⚠️ Received HTTP ${res.status}`);
-      }
-    } catch (err: any) {
-      setConnectionStatus(`❌ Connection failed: ${err.message}. Check that Node server is running and your PC IP is reachable.`);
-    } finally {
-      setTestingConnection(false);
-    }
+  const handleResetData = () => {
+    Alert.alert(
+      'Reset Demo Data',
+      'This will restore all seeded farmers, cattle tags, and milk records to their initial demo state. Any unsaved demo edits will be cleared.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset Dataset',
+          style: 'destructive',
+          onPress: async () => {
+            await resetDemoData();
+            Alert.alert('Reset Complete', 'Demo state has been restored to factory seed data.');
+          },
+        },
+      ]
+    );
   };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      <Text style={[Typography.title2, { color: colors.text, marginBottom: 12 }]}>
-        Server & Network Configuration
+      <Text style={[Typography.title2, { color: colors.text, marginBottom: 12, fontWeight: '800' }]}>
+        App Preferences & Demo Mode
       </Text>
 
-      <Card>
-        <Text style={[Typography.headline, { color: colors.text, marginBottom: 8 }]}>
-          API Endpoint (Host IP)
-        </Text>
-        <Text style={[Typography.footnote, { color: colors.textSecondary, marginBottom: 12 }]}>
-          For physical phones on Wi-Fi, enter your computer LAN IP (e.g. http://192.168.1.15:4000/api/v1):
+      {/* Local Simulation Architecture Card */}
+      <Card style={{ marginBottom: 16 }}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="hardware-chip-outline" size={22} color={colors.primary} />
+          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 8 }]}>
+            Architecture: Frontend-Only Simulation
+          </Text>
+        </View>
+        <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 6, lineHeight: 18 }]}>
+          This app runs as a fully interactive client-side twin. All milk recordings, difference calculations, receipts, and discrepancy alerts execute locally with persistent AsyncStorage.
         </Text>
 
-        <TextField
-          value={apiUrl}
-          onChangeText={setApiUrl}
-          placeholder="http://192.168.1.100:4000/api/v1"
-          autoCapitalize="none"
-          autoCorrect={false}
-          clearButton
-        />
-
-        <View style={styles.btnRow}>
-          <Button
-            title="Save URL"
-            size="sm"
-            onPress={handleSaveApiUrl}
-            style={{ flex: 1, marginRight: 6 }}
-          />
-          <Button
-            title="Test Connection"
-            variant="secondary"
-            size="sm"
-            loading={testingConnection}
-            onPress={handleTestConnection}
-            style={{ flex: 1, marginLeft: 6 }}
-          />
+        <View style={[styles.statsRow, { borderColor: colors.border }]}>
+          <View style={styles.statCol}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>{farmers.length}</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Farmers</Text>
+          </View>
+          <View style={styles.statCol}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>{cows.length}</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Cows</Text>
+          </View>
+          <View style={styles.statCol}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>{milkRecords.length}</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Records</Text>
+          </View>
+          <View style={styles.statCol}>
+            <Text style={[Typography.headline, { color: discrepancyCases.length > 0 ? '#DC2626' : '#16A34A', fontWeight: '800' }]}>
+              {discrepancyCases.length}
+            </Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Cases</Text>
+          </View>
         </View>
 
-        {connectionStatus && (
-          <Text style={[Typography.caption1, { color: colors.text, marginTop: 12, fontWeight: '600' }]}>
-            {connectionStatus}
-          </Text>
-        )}
+        <Button
+          title="🔄 Reset All Demo Data to Seed"
+          variant="outline"
+          size="sm"
+          onPress={handleResetData}
+          style={{ marginTop: 14 }}
+        />
       </Card>
 
       <GroupedList title="Appearance & Theme">
@@ -128,7 +112,7 @@ export default function SettingsScreen() {
 
       {user && (
         <Button
-          title="Sign Out"
+          title="Sign Out / Switch Demo User"
           variant="destructive"
           onPress={logout}
           style={{ marginTop: 24 }}
@@ -146,8 +130,19 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  btnRow: {
+  cardHeader: {
     flexDirection: 'row',
-    marginTop: 10,
+    alignItems: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    marginTop: 12,
+  },
+  statCol: {
+    alignItems: 'center',
   },
 });

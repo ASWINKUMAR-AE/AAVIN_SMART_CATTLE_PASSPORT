@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 
 export default function FarmerLayout() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   return (
     <Tabs
@@ -36,35 +36,41 @@ export default function FarmerLayout() {
         name="cows"
         options={{
           title: 'My Cows',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="paw-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="milk-entry"
+        name="milk-history"
         options={{
-          title: 'Milk Entry',
+          title: 'Milk Supply',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="water-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="payments"
+        name="receipts"
         options={{
-          title: 'Payments',
-          tabBarIcon: ({ color, size }) => <Ionicons name="wallet-outline" size={size} color={color} />,
+          title: 'Receipts',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="ai-assistant"
+        name="profile"
         options={{
-          title: 'AI Advisor',
-          tabBarIcon: ({ color, size }) => <Ionicons name="sparkles-outline" size={size} color={color} />,
+          title: 'Profile',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />
+      {/* Hidden Subroutes */}
       <Tabs.Screen
         name="cow-details"
         options={{
-          href: null, // Hidden from tab bar, accessed via navigation
-          title: 'Cattle Digital Passport',
+          href: null,
+          title: 'Cattle Passport',
+          headerShown: false,
         }}
       />
       <Tabs.Screen
@@ -72,6 +78,27 @@ export default function FarmerLayout() {
         options={{
           href: null,
           title: 'Register Cow',
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="milk-entry"
+        options={{
+          href: null,
+          title: 'Daily Milking Log',
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="payments"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="ai-assistant"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

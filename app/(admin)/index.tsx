@@ -1,235 +1,208 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
-import { LargeTitleHeader } from '../../components/ui/LargeTitleHeader';
-import { StatTile } from '../../components/ui/StatTile';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
-import { GroupedList } from '../../components/ui/GroupedList';
-import { ListRow } from '../../components/ui/ListRow';
-import { StatusChip } from '../../components/ui/StatusChip';
 import { Button } from '../../components/ui/Button';
-import { api } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { 
+    farmers, 
+    cows, 
+    booths, 
+    bmcs, 
+    milkRecords, 
+    discrepancyCases 
+  } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [adminData, setAdminData] = useState<any>(null);
 
-  const loadData = async () => {
-    try {
-      const res = await api.get('/admin/dashboard');
-      if (res.data?.data) {
-        setAdminData(res.data.data);
-      }
-    } catch (e) {
-      console.warn('Failed to load admin dashboard:', e);
-    }
-  };
+  const pendingFarmers = farmers.filter(f => f.verificationStatus === 'pending');
+  const pendingCows = cows.filter(c => c.verificationStatus === 'pending');
+  const openDiscrepancies = discrepancyCases.filter(c => c.status === 'open' || c.status === 'under_investigation');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    setTimeout(() => setRefreshing(false), 400);
   };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      `Sign out from Administrator account (${user?.fullName || 'Aavin Admin'})?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
-          },
-        },
-      ]
-    );
-  };
-
-  const metrics = adminData?.metrics || { active_farmers: 2, total_cows: 4, active_vets: 1, active_centres: 2, active_batches: 1, active_withdrawals: 1 };
-  const today = adminData?.today || { total_litres_today: 19.5, total_value_today: 750, total_entries_today: 3 };
-  const aiState = adminData?.aiState;
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-    >
-      <LargeTitleHeader
-        title="Operations Control"
-        subtitle="Aavin Madurai District Union"
-        onLogout={handleLogout}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <DemoHeader 
+        title="Aavin System Administration"
+        subtitle={`${user?.fullName} • District ICT Operations`}
       />
 
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {/* Pending Verifications Banner */}
+        {(pendingFarmers.length > 0 || pendingCows.length > 0) && (
+          <View style={[styles.alertBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+            <Ionicons name="time" size={24} color="#D97706" />
+            <View style={{ marginLeft: 10, flex: 1 }}>
+              <Text style={[Typography.headline, { color: '#B45309', fontWeight: '800' }]}>
+                KYC / Verification Queue
+              </Text>
+              <Text style={[Typography.caption1, { color: '#92400E', marginTop: 2 }]}>
+                {pendingFarmers.length} farmer(s) and {pendingCows.length} cow(s) awaiting identity verification.
+              </Text>
+            </View>
+            <Button
+              title="Review"
+              size="sm"
+              onPress={() => router.push('/(admin)/verifications')}
+            />
+          </View>
+        )}
 
-      {/* Row 1 Stats */}
-      <View style={styles.statsRow}>
-        <StatTile
-          title="Active Farmers"
-          value={metrics.active_farmers}
-          icon="people-outline"
-          onPress={() => router.push('/(admin)/users')}
-        />
-        <StatTile
-          title="Registered Cows"
-          value={metrics.total_cows}
-          icon="paw-outline"
-        />
-      </View>
-
-      {/* Row 2 Stats */}
-      <View style={styles.statsRow}>
-        <StatTile
-          title="Today's Milk Intake"
-          value={Number(today.total_litres_today).toFixed(1)}
-          unit="L"
-          icon="water-outline"
-        />
-        <StatTile
-          title="Active Withdrawals"
-          value={metrics.active_withdrawals}
-          icon="hand-left"
-          iconColor={colors.hold}
-          iconBg={colors.holdBg}
-          onPress={() => router.push('/(admin)/safety-reviews')}
-        />
-      </View>
-
-      {/* AI Provider Status Card */}
-      <Card style={styles.aiStatusCard}>
-        <View style={styles.aiHeaderRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-              BACKEND AI INFERENCE ENGINE
+        {/* System Entities Grid */}
+        <View style={styles.gridRow}>
+          <Card style={styles.gridCard}>
+            <View style={[styles.iconFrame, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="people" size={20} color="#0284C7" />
+            </View>
+            <Text style={[styles.gridNum, { color: colors.text }]}>{farmers.length}</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Enrolled Farmers</Text>
+            <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700' }]}>
+              {farmers.filter(f => f.verificationStatus === 'verified').length} Verified
             </Text>
-            <Text style={[Typography.headline, { color: colors.text, marginTop: 2 }]}>
-              Active Provider: {aiState?.config?.active_provider?.toUpperCase() || 'OPENROUTER'}
+          </Card>
+
+          <Card style={styles.gridCard}>
+            <View style={[styles.iconFrame, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="paw" size={20} color="#16A34A" />
+            </View>
+            <Text style={[styles.gridNum, { color: colors.text }]}>{cows.length}</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Registered Cattle</Text>
+            <Text style={[Typography.caption2, { color: '#DC2626', fontWeight: '700' }]}>
+              {cows.filter(c => c.activeWithdrawal?.hasActiveWithdrawal).length} Under Hold
             </Text>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-              Model: {aiState?.config?.openrouter_model || 'meta-llama/llama-3.3-70b-instruct:free'}
+          </Card>
+
+          <Card style={styles.gridCard}>
+            <View style={[styles.iconFrame, { backgroundColor: '#FAF5FF' }]}>
+              <Ionicons name="business" size={20} color="#9333EA" />
+            </View>
+            <Text style={[styles.gridNum, { color: colors.text }]}>{booths.length}</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Collection Booths</Text>
+            <Text style={[Typography.caption2, { color: colors.textMuted }]}>Feeder Societies</Text>
+          </Card>
+
+          <Card style={styles.gridCard}>
+            <View style={[styles.iconFrame, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="snow" size={20} color="#D97706" />
+            </View>
+            <Text style={[styles.gridNum, { color: colors.text }]}>{bmcs.length}</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>BMC Centers</Text>
+            <Text style={[Typography.caption2, { color: colors.textMuted }]}>Bulk Coolers</Text>
+          </Card>
+        </View>
+
+        {/* Ledger Transactions Summary */}
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
+            Ledger Activity & Data Integrity
+          </Text>
+
+          <View style={styles.row}>
+            <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Total Milk Transactions Recorded:</Text>
+            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>{milkRecords.length} Entries</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Active Discrepancies:</Text>
+            <Text style={[Typography.subhead, { color: openDiscrepancies.length > 0 ? '#DC2626' : '#16A34A', fontWeight: '800' }]}>
+              {openDiscrepancies.length} Cases
             </Text>
           </View>
+          <View style={styles.row}>
+            <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Local Storage Persistence:</Text>
+            <Text style={[Typography.subhead, { color: '#16A34A', fontWeight: '800' }]}>Active (AsyncStorage)</Text>
+          </View>
+        </Card>
+
+        {/* Quick Operational Navigation */}
+        <View style={styles.actionGrid}>
           <Button
-            title="Configure"
-            size="sm"
+            title="📋 Verification Queue (Farmers & Cattle)"
+            size="lg"
+            onPress={() => router.push('/(admin)/verifications')}
+          />
+          <Button
+            title="⚙️ Demo Settings & Reset Data"
+            variant="secondary"
+            onPress={() => router.push('/(admin)/demo-settings')}
+          />
+          <Button
+            title="👥 Manage Demo Accounts"
             variant="outline"
-            onPress={() => router.push('/(admin)/ai-settings')}
+            onPress={() => router.push('/(admin)/users')}
           />
         </View>
-
-        <View style={[styles.aiMetaRow, { borderTopColor: colors.separator }]}>
-          <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-            Fallback: {aiState?.config?.fallback_enabled ? `✅ Enabled (${aiState.config.fallback_provider})` : '❌ Disabled by default'}
-          </Text>
-          <Text style={[Typography.caption1, { color: colors.textMuted }]}>
-            Requests Today: {aiState?.usageToday?.total_ai_requests_today || 0}
-          </Text>
-        </View>
-      </Card>
-
-      {/* Quick Admin Actions */}
-      <View style={styles.actionBtns}>
-        <Button
-          title="Safety Review Queue"
-          icon="alert-circle-outline"
-          variant="secondary"
-          onPress={() => router.push('/(admin)/safety-reviews')}
-          style={{ flex: 1, marginRight: 6 }}
-        />
-        <Button
-          title="Manage Users"
-          icon="people-outline"
-          variant="secondary"
-          onPress={() => router.push('/(admin)/users')}
-          style={{ flex: 1, marginLeft: 6 }}
-        />
-      </View>
-
-      {/* Pending Safety Overrides */}
-      <GroupedList title="Recent Safety Review Requests" footer="Supervisors can approve or reject flagged collection holds">
-        {adminData?.pendingReviews?.length === 0 ? (
-          <ListRow title="No pending review requests in queue" subtitle="All decisions verified" isLast />
-        ) : (
-          adminData?.pendingReviews?.map((rev: any, idx: number) => (
-            <ListRow
-              key={rev.id}
-              title={`Receipt #${rev.receipt_number} • ${rev.farmer_name}`}
-              subtitle={`Cow: ${rev.cow_name} (${rev.tag_number}) • Reason: ${rev.override_reason || rev.primary_reason}`}
-              icon="alert-circle"
-              iconColor={colors.hold}
-              iconBg={colors.holdBg}
-              rightComponent={<StatusChip status={rev.decision} size="sm" />}
-              onPress={() => router.push('/(admin)/safety-reviews')}
-              showChevron
-              isLast={idx === adminData.pendingReviews.length - 1}
-            />
-          ))
-        )}
-      </GroupedList>
-
-      {/* Account Info & Logout */}
-      <View style={{ marginHorizontal: 16, marginTop: 16 }}>
-        <Button
-          title="Sign Out of Administrator Account"
-          variant="destructive"
-          icon="log-out-outline"
-          onPress={handleLogout}
-        />
-
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
+    padding: 16,
+    gap: 14,
     paddingBottom: 40,
   },
-  statsRow: {
+  alertBanner: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
   },
-  aiStatusCard: {
-    marginHorizontal: 16,
-    marginVertical: 8,
+  gridRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  gridCard: {
+    width: '48%',
+    padding: 14,
+  },
+  iconFrame: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  gridNum: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  card: {
     padding: 16,
+    gap: 8,
   },
-  aiHeaderRow: {
+  row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 4,
   },
-  aiMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 10,
-    marginTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  actionBtns: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginVertical: 8,
+  actionGrid: {
+    gap: 10,
+    marginTop: 4,
   },
 });

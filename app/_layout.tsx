@@ -5,7 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { AuthProvider } from '../context/AuthContext';
 import { NetworkProvider } from '../context/NetworkContext';
-import { OfflineBanner } from '../components/ui/OfflineBanner';
+import { LanguageProvider } from '../context/LanguageContext';
+import { AavinStoreProvider } from '../store/AavinStoreContext';
 
 function RootLayoutNav() {
   const { isDark, colors } = useTheme();
@@ -13,7 +14,6 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <OfflineBanner />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.card },
@@ -25,13 +25,21 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)/register" options={{ title: 'Farmer Registration' }} />
-        <Stack.Screen name="(auth)/settings" options={{ title: 'App & Network Settings' }} />
+        <Stack.Screen name="(auth)/register" options={{ title: 'Farmer Registration', headerBackTitle: 'Login' }} />
         <Stack.Screen name="(farmer)" options={{ headerShown: false }} />
+        <Stack.Screen name="(booth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(bmc)" options={{ headerShown: false }} />
+        <Stack.Screen name="(union)" options={{ headerShown: false }} />
         <Stack.Screen name="(veterinary)" options={{ headerShown: false }} />
-        <Stack.Screen name="(collection)" options={{ headerShown: false }} />
-        <Stack.Screen name="(vendor)" options={{ headerShown: false }} />
         <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+        <Stack.Screen name="(collection)" options={{ headerShown: false }} />
+        <Stack.Screen 
+          name="notifications" 
+          options={{ 
+            title: 'Notifications Center',
+            presentation: 'modal',
+          }} 
+        />
       </Stack>
     </>
   );
@@ -41,11 +49,15 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <NetworkProvider>
-          <AuthProvider>
-            <RootLayoutNav />
-          </AuthProvider>
-        </NetworkProvider>
+        <LanguageProvider>
+          <NetworkProvider>
+            <AavinStoreProvider>
+              <AuthProvider>
+                <RootLayoutNav />
+              </AuthProvider>
+            </AavinStoreProvider>
+          </NetworkProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

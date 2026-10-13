@@ -1,120 +1,300 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
+import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Card } from '../../components/ui/Card';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function RegisterScreen() {
-  const { register } = useAuth();
+export default function RegisterFarmerScreen() {
+  const { booths, addFarmer } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
 
-  const [roleIndex, setRoleIndex] = useState(0); // 0: farmer, 1: vet, 2: operator, 3: vendor
-  const roles = ['Farmer', 'Veterinarian', 'Operator', 'Vendor'];
-  const roleKeys = ['farmer', 'veterinary', 'collection_operator', 'transport_vendor'];
+  // Form State
+  const [name, setName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [address, setAddress] = useState('');
+  const [village, setVillage] = useState('');
+  const [community, setCommunity] = useState('Melur Taluk');
+  const [numberOfCows, setNumberOfCows] = useState('1');
+  const [assignedBoothId, setAssignedBoothId] = useState(booths[0]?.id || 'BOOTH001');
+  const [farmerIdCode, setFarmerIdCode] = useState(`FARM-MDU-${Math.floor(105 + Math.random() * 800)}`);
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIfsc, setBankIfsc] = useState('');
+  const [upiId, setUpiId] = useState('');
 
-  const [fullName, setFullName] = useState('');
-  const [username, setUsername] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [village, setVillage] = useState('Melur Rural');
-  const [loading, setLoading] = useState(false);
+  // Field Errors
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+
+    if (!name.trim()) errs.name = 'Farmer name is required.';
+    
+    // Indian Mobile Number validation (10 digits starting with 6,7,8,9)
+    const phoneClean = mobileNumber.trim().replace(/\D/g, '');
+    if (!phoneClean) {
+      errs.mobileNumber = 'Mobile number is required.';
+    } else if (!/^[6-9]\d{9}$/.test(phoneClean)) {
+      errs.mobileNumber = 'Enter a valid 10-digit Indian mobile number (e.g. 9842000002).';
+    }
+
+    if (!address.trim()) errs.address = 'Street/Door address is required.';
+    if (!village.trim()) errs.village = 'Village name is required.';
+    if (!farmerIdCode.trim()) errs.farmerIdCode = 'Farmer ID Code is required.';
+
+    const cowsNum = parseInt(numberOfCows, 10);
+    if (isNaN(cowsNum) || cowsNum < 0) {
+      errs.numberOfCows = 'Enter a valid number of cows.';
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleRegister = async () => {
-    if (!fullName || !username || !phone || !password) {
-      Alert.alert('Required Fields', 'Please fill in all details');
+    if (!validate()) {
+      Alert.alert('Validation Error', 'Please correct the highlighted fields before submitting.');
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
-      await register({
-        fullName,
-        username,
-        phone,
-        password,
-        role: roleKeys[roleIndex],
-        village,
+      const created = addFarmer({
+        farmerIdCode: farmerIdCode.trim().toUpperCase(),
+        name: name.trim(),
+        mobileNumber: mobileNumber.trim().replace(/\D/g, ''),
+        address: address.trim(),
+        village: village.trim(),
+        community: community.trim(),
+        numberOfCows: parseInt(numberOfCows, 10) || 1,
+        assignedBoothId,
+        verificationStatus: 'pending',
+        bankAccountName: bankAccountName.trim() || undefined,
+        bankName: bankName.trim() || undefined,
+        bankAccountNumber: bankAccountNumber.trim() || undefined,
+        bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
+        upiId: upiId.trim() || undefined,
       });
-      Alert.alert('Success', 'Account registered successfully. Please sign in.', [
-        { text: 'OK', onPress: () => router.replace('/(auth)/login') },
-      ]);
+
+      Alert.alert(
+        'Registration Submitted!',
+        `Farmer ${created.name} (${created.farmerIdCode}) registered successfully in local frontend state. Status is pending booth/admin verification.`,
+        [
+          {
+            text: 'Go to Login',
+            onPress: () => router.replace('/(auth)/login'),
+          },
+        ]
+      );
     } catch (err: any) {
-      Alert.alert('Registration Error', err.message);
+      Alert.alert('Registration Failed', err.message || 'Could not register farmer.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      <Card>
-        <Text style={[Typography.title2, { color: colors.text, marginBottom: 8 }]}>
-          Create Account
-        </Text>
-        <Text style={[Typography.footnote, { color: colors.textSecondary, marginBottom: 16 }]}>
-          Select your ecosystem role:
-        </Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.headerInfo}>
+          <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>
+            New Farmer Registration
+          </Text>
+          <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 4 }]}>
+            Enroll farmer into Aavin Madurai Milk Safety Twin. Saves immediately to local state.
+          </Text>
+        </View>
 
-        <SegmentedControl
-          values={roles}
-          selectedIndex={roleIndex}
-          onChange={setRoleIndex}
-        />
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.primary, marginBottom: 12, fontWeight: '700' }]}>
+            1. Farmer Identity & Details
+          </Text>
 
-        <TextField
-          label="Full Name"
-          placeholder="e.g. K. Murugesan"
-          value={fullName}
-          onChangeText={setFullName}
-        />
-
-        <TextField
-          label="Username"
-          placeholder="e.g. farmer_murugan"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-        />
-
-        <TextField
-          label="10-Digit Mobile Number"
-          placeholder="9842000002"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-        />
-
-        {roleIndex === 0 && (
           <TextField
-            label="Village / Taluk"
-            placeholder="Melur Rural"
-            value={village}
-            onChangeText={setVillage}
+            label="Full Name *"
+            placeholder="e.g. K. Murugesan"
+            value={name}
+            onChangeText={(t) => { setName(t); setErrors({ ...errors, name: '' }); }}
+            error={errors.name}
+            icon="person-outline"
           />
-        )}
 
-        <TextField
-          label="Password"
-          placeholder="At least 6 characters"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
+          <TextField
+            label="10-Digit Mobile Number *"
+            placeholder="e.g. 9842000002"
+            value={mobileNumber}
+            onChangeText={(t) => { setMobileNumber(t); setErrors({ ...errors, mobileNumber: '' }); }}
+            keyboardType="phone-pad"
+            maxLength={10}
+            error={errors.mobileNumber}
+            icon="call-outline"
+          />
+
+          <TextField
+            label="Farmer ID Code *"
+            placeholder="e.g. FARM-MDU-105"
+            value={farmerIdCode}
+            onChangeText={(t) => { setFarmerIdCode(t); setErrors({ ...errors, farmerIdCode: '' }); }}
+            autoCapitalize="characters"
+            error={errors.farmerIdCode}
+            icon="card-outline"
+          />
+
+          <TextField
+            label="Declared Number of Cows"
+            placeholder="e.g. 2"
+            value={numberOfCows}
+            onChangeText={(t) => { setNumberOfCows(t); setErrors({ ...errors, numberOfCows: '' }); }}
+            keyboardType="number-pad"
+            error={errors.numberOfCows}
+            icon="paw-outline"
+          />
+        </Card>
+
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.primary, marginBottom: 12, fontWeight: '700' }]}>
+            2. Location & Booth Assignment
+          </Text>
+
+          <TextField
+            label="Residential Address *"
+            placeholder="e.g. 14, South Street, Melur"
+            value={address}
+            onChangeText={(t) => { setAddress(t); setErrors({ ...errors, address: '' }); }}
+            error={errors.address}
+            icon="home-outline"
+          />
+
+          <TextField
+            label="Village *"
+            placeholder="e.g. Melur Rural"
+            value={village}
+            onChangeText={(t) => { setVillage(t); setErrors({ ...errors, village: '' }); }}
+            error={errors.village}
+            icon="location-outline"
+          />
+
+          <TextField
+            label="Taluk / Community"
+            placeholder="e.g. Melur Taluk"
+            value={community}
+            onChangeText={setCommunity}
+            icon="map-outline"
+          />
+
+          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600', marginBottom: 8, marginTop: 4 }]}>
+            Assigned Collection Booth *
+          </Text>
+          <View style={styles.boothPickerRow}>
+            {booths.map((b) => {
+              const isSelected = assignedBoothId === b.id;
+              return (
+                <Pressable
+                  key={b.id}
+                  onPress={() => setAssignedBoothId(b.id)}
+                  style={[
+                    styles.boothOption,
+                    {
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? colors.primaryLight : colors.card,
+                    },
+                  ]}
+                >
+                  <Ionicons 
+                    name={isSelected ? 'radio-button-on' : 'radio-button-off'} 
+                    size={18} 
+                    color={isSelected ? colors.primary : colors.textMuted} 
+                  />
+                  <View style={{ marginLeft: 8, flex: 1 }}>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: isSelected ? '700' : '500' }]}>
+                      {b.name}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                      Code: {b.code} • {b.taluk}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Card>
+
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.primary, marginBottom: 12, fontWeight: '700' }]}>
+            3. Direct Benefit Transfer (Optional)
+          </Text>
+
+          <TextField
+            label="Bank Account Name"
+            placeholder="e.g. K Murugesan"
+            value={bankAccountName}
+            onChangeText={setBankAccountName}
+            icon="person-circle-outline"
+          />
+
+          <TextField
+            label="Bank Name"
+            placeholder="e.g. Canara Bank - Melur"
+            value={bankName}
+            onChangeText={setBankName}
+            icon="business-outline"
+          />
+
+          <TextField
+            label="Account Number"
+            placeholder="e.g. 109283746501"
+            value={bankAccountNumber}
+            onChangeText={setBankAccountNumber}
+            keyboardType="number-pad"
+            icon="wallet-outline"
+          />
+
+          <TextField
+            label="IFSC Code"
+            placeholder="e.g. CNRB0001092"
+            value={bankIfsc}
+            onChangeText={setBankIfsc}
+            autoCapitalize="characters"
+            icon="barcode-outline"
+          />
+
+          <TextField
+            label="UPI ID"
+            placeholder="e.g. murugan@okhdfcbank"
+            value={upiId}
+            onChangeText={setUpiId}
+            autoCapitalize="none"
+            icon="phone-portrait-outline"
+          />
+        </Card>
+
+        <Button
+          title="Submit Farmer Registration"
+          onPress={handleRegister}
+          loading={submitting}
+          size="lg"
+          style={{ marginTop: 8 }}
         />
 
         <Button
-          title="Create Account"
-          onPress={handleRegister}
-          loading={loading}
-          style={{ marginTop: 16 }}
+          title="Cancel & Return to Login"
+          variant="outline"
+          onPress={() => router.back()}
+          style={{ marginTop: 10, marginBottom: 30 }}
         />
-      </Card>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -122,8 +302,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingTop: 16,
+  },
+  headerInfo: {
+    marginBottom: 16,
+  },
+  card: {
+    padding: 16,
+    marginBottom: 16,
+  },
+  boothPickerRow: {
+    gap: 8,
+  },
+  boothOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
   },
 });

@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'farmer' | 'veterinary' | 'collection_operator' | 'transport_vendor';
+export type UserRole = 'admin' | 'farmer' | 'veterinary' | 'collection_operator' | 'transport_vendor' | 'booth' | 'bmc' | 'union';
 
 export interface AuthUser {
   id: string;

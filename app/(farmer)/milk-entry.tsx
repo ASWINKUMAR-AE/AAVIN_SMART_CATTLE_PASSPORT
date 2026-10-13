@@ -1,208 +1,208 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, Alert, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAavinStore } from '../../store/AavinStoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { GroupedList } from '../../components/ui/GroupedList';
-import { ListRow } from '../../components/ui/ListRow';
-import { api } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function MilkEntryScreen() {
+  const { user } = useAuth();
+  const { cows, recordMilk, milkRecords } = useAavinStore();
   const { colors } = useTheme();
+  const router = useRouter();
 
-  const [cows, setCows] = useState<any[]>([]);
-  const [selectedCowId, setSelectedCowId] = useState<string>('');
-  const [sessionIndex, setSessionIndex] = useState(0); // 0: morning, 1: evening
-  const [quantity, setQuantity] = useState('');
-  const [fatPercentage, setFatPercentage] = useState('4.3');
-  const [snfPercentage, setSnfPercentage] = useState('8.5');
-  const [milkingTemp, setMilkingTemp] = useState('37.2');
-  const [teatDipIndex, setTeatDipIndex] = useState(0); // 0: Yes, 1: No
-  const [feedGiven, setFeedGiven] = useState('Co-4 Green Grass (20kg) + Aavin Pellet (4kg)');
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [recentEntries, setRecentEntries] = useState<any[]>([]);
+  const farmerId = user?.associatedId || 'FARMER001';
+  const myCows = cows.filter(c => c.farmerId === farmerId);
 
-  useEffect(() => {
-    loadCowsAndEntries();
-  }, []);
+  const [selectedCowId, setSelectedCowId] = useState(myCows[0]?.id || 'COW001');
+  const [session, setSession] = useState<'morning' | 'evening'>('morning');
+  const [quantity, setQuantity] = useState('8.5');
+  const [notes, setNotes] = useState('Clean milking, filtered through SS sieve');
+  const [submitting, setSubmitting] = useState(false);
 
-  const loadCowsAndEntries = async () => {
-    try {
-      const [cowsRes, prodRes] = await Promise.all([
-        api.get('/cows'),
-        api.get('/production?days=7'),
-      ]);
-      if (cowsRes.data?.data?.length > 0) {
-        setCows(cowsRes.data.data);
-        setSelectedCowId(cowsRes.data.data[0].id);
-      }
-      if (prodRes.data?.data) {
-        setRecentEntries(prodRes.data.data);
-      }
-    } catch (e) {
-      console.warn('Failed to load cows/entries:', e);
-    }
-  };
+  const selectedCow = myCows.find(c => c.id === selectedCowId) || myCows[0];
+  const hasWithdrawal = selectedCow?.activeWithdrawal?.hasActiveWithdrawal;
 
-  const handleSave = async () => {
-    if (!selectedCowId || !quantity) {
-      Alert.alert('Required', 'Please select a cow and enter milk quantity in litres');
+  const handleSubmit = () => {
+    const qty = parseFloat(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      Alert.alert('Invalid Quantity', 'Please enter a valid volume in litres.');
       return;
     }
 
-    setLoading(true);
+    if (hasWithdrawal) {
+      Alert.alert(
+        '⚠️ ACTIVE WITHDRAWAL HOLD!',
+        `This cow (${selectedCow.name}) has an active withdrawal restriction until ${selectedCow.activeWithdrawal?.withdrawalEndDate}. This milk must NOT be delivered to the Aavin collection booth! Discard or segregate for calves.`,
+        [
+          { text: 'Acknowledge', style: 'destructive' }
+        ]
+      );
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      await api.post('/production', {
-        cowId: selectedCowId,
-        session: sessionIndex === 0 ? 'morning' : 'evening',
-        quantityLitres: parseFloat(quantity),
-        fatPercentage: parseFloat(fatPercentage) || 4.2,
-        snfPercentage: parseFloat(snfPercentage) || 8.5,
-        milkingTemperatureC: parseFloat(milkingTemp) || 37.2,
-        teatDipApplied: teatDipIndex === 0,
-        cowConditionNotes: notes || undefined,
+      recordMilk({
+        farmerId,
+        farmerName: user?.fullName || 'K. Murugesan',
+        boothId: 'BOOTH001',
+        collectionDate: '2026-10-12',
+        session,
+        quantityLitres: qty,
+        route: 'direct',
+        measurementMethod: 'farmer_wise',
+        individualAllocation: 'measured',
+        createdBy: user?.fullName || 'Farmer',
+        notes: notes.trim(),
       });
 
-      Alert.alert('Saved', 'Milk production & hygiene log recorded successfully.');
-      setQuantity('');
-      setNotes('');
-      loadCowsAndEntries();
+      Alert.alert(
+        'Milking Logged!',
+        `Logged ${qty.toFixed(2)} L for ${selectedCow.name}. Updated on your dashboard and booth records.`,
+        [
+          {
+            text: 'View History',
+            onPress: () => router.push('/(farmer)/milk-history' as any),
+          },
+        ]
+      );
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.message || err.message);
+      Alert.alert('Notice', err.message || 'Error recording milking.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const selectedCow = cows.find((c) => c.id === selectedCowId);
-
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      <Card>
-        <Text style={[Typography.title2, { color: colors.text, marginBottom: 4 }]}>
-          Daily Milk Production & Hygiene Log
-        </Text>
-        <Text style={[Typography.footnote, { color: colors.textSecondary, marginBottom: 12 }]}>
-          Records yield, company hygiene metrics, and chilling standards.
-        </Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <DemoHeader 
+        title="On-Farm Milking Log"
+        subtitle="Record morning/evening cow yields"
+        showBack
+      />
 
-        <Text style={[Typography.subhead, { color: colors.textSecondary, marginBottom: 6, fontWeight: '600' }]}>
-          Select Cattle:
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cowChips}>
-          {cows.map((c) => {
-            const isSelected = c.id === selectedCowId;
-            return (
-              <Button
-                key={c.id}
-                title={`${c.name} (${c.tag_number})`}
-                variant={isSelected ? 'primary' : 'secondary'}
-                size="sm"
-                onPress={() => setSelectedCowId(c.id)}
-                style={{ marginRight: 8, marginBottom: 8 }}
-              />
-            );
-          })}
-        </ScrollView>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Cow Selector */}
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 10 }]}>
+            Select Cow
+          </Text>
 
-        <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 10, marginBottom: 4, fontWeight: '600' }]}>
-          Milking Session
-        </Text>
-        <SegmentedControl
-          values={['🌅 Morning Session', '🌇 Evening Session']}
-          selectedIndex={sessionIndex}
-          onChange={setSessionIndex}
-        />
-
-        <TextField
-          label="Quantity Milked (Litres) *"
-          placeholder="e.g. 7.5"
-          value={quantity}
-          onChangeText={setQuantity}
-          keyboardType="decimal-pad"
-        />
-
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <TextField
-              label="Estimated Fat %"
-              placeholder="4.3"
-              value={fatPercentage}
-              onChangeText={setFatPercentage}
-              keyboardType="decimal-pad"
-            />
+          <View style={styles.cowsGrid}>
+            {myCows.map((c) => {
+              const isSelected = selectedCowId === c.id;
+              const isHold = c.activeWithdrawal?.hasActiveWithdrawal;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => setSelectedCowId(c.id)}
+                  style={[
+                    styles.cowCard,
+                    {
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? colors.primaryLight : colors.card,
+                    },
+                    isHold && { borderColor: '#DC2626' }
+                  ]}
+                >
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    {c.name}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                    Tag #{c.tagId}
+                  </Text>
+                  {isHold && (
+                    <View style={styles.holdTag}>
+                      <Text style={styles.holdTagText}>⚠️ WITHDRAWAL</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
-          <View style={{ flex: 1 }}>
-            <TextField
-              label="Estimated SNF %"
-              placeholder="8.5"
-              value={snfPercentage}
-              onChangeText={setSnfPercentage}
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </View>
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <TextField
-              label="Milking Temp (°C)"
-              placeholder="37.2"
-              value={milkingTemp}
-              onChangeText={setMilkingTemp}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={[Typography.subhead, { color: colors.textSecondary, marginBottom: 4, fontWeight: '600' }]}>
-              Teat Dip Sanitizer
-            </Text>
-            <SegmentedControl
-              values={['✅ Done', '❌ No']}
-              selectedIndex={teatDipIndex}
-              onChange={setTeatDipIndex}
-            />
-          </View>
-        </View>
+          {hasWithdrawal && (
+            <View style={styles.withdrawalAlert}>
+              <Ionicons name="warning" size={20} color="#DC2626" />
+              <View style={{ marginLeft: 8, flex: 1 }}>
+                <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800' }]}>
+                  WARNING: Medicine Withdrawal Active
+                </Text>
+                <Text style={[Typography.caption2, { color: '#991B1B' }]}>
+                  {selectedCow.activeWithdrawal?.medicineName} (Ends: {selectedCow.activeWithdrawal?.withdrawalEndDate}). Do not deliver this milk.
+                </Text>
+              </View>
+            </View>
+          )}
+        </Card>
 
-        <TextField
-          label="Feed & Supplements Given"
-          value={feedGiven}
-          onChangeText={setFeedGiven}
-        />
+        {/* Milking Details */}
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 12 }]}>
+            Milking Session & Yield
+          </Text>
 
-        <TextField
-          label="Observation Notes (Optional)"
-          placeholder="e.g. Udder clean, appetite high, good letdown"
-          value={notes}
-          onChangeText={setNotes}
-        />
+          <View style={styles.sessionToggle}>
+            <Pressable
+              onPress={() => setSession('morning')}
+              style={[
+                styles.sessionTab,
+                session === 'morning' && { backgroundColor: '#FEF3C7', borderColor: '#D97706' },
+              ]}
+            >
+              <Ionicons name="sunny" size={16} color={session === 'morning' ? '#D97706' : colors.textSecondary} />
+              <Text style={[styles.sessionTabText, { color: session === 'morning' ? '#92400E' : colors.textSecondary }]}>
+                MORNING
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setSession('evening')}
+              style={[
+                styles.sessionTab,
+                session === 'evening' && { backgroundColor: '#E0E7FF', borderColor: '#4F46E5' },
+              ]}
+            >
+              <Ionicons name="moon" size={16} color={session === 'evening' ? '#4F46E5' : colors.textSecondary} />
+              <Text style={[styles.sessionTabText, { color: session === 'evening' ? '#3730A3' : colors.textSecondary }]}>
+                EVENING
+              </Text>
+            </Pressable>
+          </View>
+
+          <TextField
+            label="Quantity (Litres) *"
+            placeholder="e.g. 8.5"
+            value={quantity}
+            onChangeText={setQuantity}
+            keyboardType="decimal-pad"
+            icon="water-outline"
+          />
+
+          <TextField
+            label="Feed & Milking Observation"
+            value={notes}
+            onChangeText={setNotes}
+            icon="create-outline"
+          />
+        </Card>
 
         <Button
-          title="Save Milk Production Entry"
-          onPress={handleSave}
-          loading={loading}
-          style={{ marginTop: 18 }}
+          title={submitting ? "Logging..." : "Log Milk Entry"}
+          size="lg"
+          loading={submitting}
+          onPress={handleSubmit}
+          style={{ marginTop: 8 }}
         />
-      </Card>
-
-      {/* Recent Entries */}
-      <GroupedList title="Recent Farm Milk Logs">
-        {recentEntries.slice(0, 5).map((entry, idx) => (
-          <ListRow
-            key={entry.id || idx}
-            title={`${entry.cow_name || 'Cow'} • ${entry.quantity_litres} Litres`}
-            subtitle={`${entry.session.toUpperCase()} • ${new Date(entry.production_date).toLocaleDateString('en-IN')}`}
-            icon="water"
-            isLast={idx === Math.min(recentEntries.length, 5) - 1}
-          />
-        ))}
-      </GroupedList>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -210,12 +210,65 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     padding: 16,
+    gap: 14,
     paddingBottom: 40,
   },
-  cowChips: {
+  card: {
+    padding: 16,
+  },
+  cowsGrid: {
     flexDirection: 'row',
-    marginBottom: 8,
+    gap: 10,
+  },
+  cowCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  holdTag: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  holdTagText: {
+    color: '#DC2626',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  withdrawalAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  sessionToggle: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  sessionTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 6,
+  },
+  sessionTabText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

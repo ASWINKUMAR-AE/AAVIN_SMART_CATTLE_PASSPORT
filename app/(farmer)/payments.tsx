@@ -1,113 +1,88 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Text, ScrollView, FlatList } from 'react-native';
+import { useAavinStore } from '../../store/AavinStoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
-import { StatTile } from '../../components/ui/StatTile';
-import { GroupedList } from '../../components/ui/GroupedList';
-import { ListRow } from '../../components/ui/ListRow';
-import { StatusChip } from '../../components/ui/StatusChip';
-import { api } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function PaymentsScreen() {
+export default function FarmerPaymentsScreen() {
+  const { user } = useAuth();
+  const { milkRecords, farmers } = useAavinStore();
   const { colors } = useTheme();
 
-  const [loading, setLoading] = useState(false);
-  const [paymentData, setPaymentData] = useState<any>(null);
+  const farmerId = user?.associatedId || 'FARMER001';
+  const farmer = farmers.find(f => f.id === farmerId) || farmers[0];
+  const myRecords = milkRecords.filter(r => r.farmerId === farmerId);
 
-  const loadPayments = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/payments/me');
-      if (res.data?.data) {
-        setPaymentData(res.data.data);
-      }
-    } catch (e) {
-      console.warn('Failed to load farmer payments:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadPayments();
-  }, []);
-
-  const summary = paymentData?.summary || { pending_amount: 0, approved_amount: 0, paid_amount: 0, total_litres: 0 };
-  const transactions = paymentData?.transactions || [];
-  const recentCollections = paymentData?.recentCollections || [];
+  const totalLitres = myRecords.reduce((sum, r) => sum + r.quantityLitres, 0);
+  const baseRate = 38.5; // Rs / Litre
+  const totalAmount = totalLitres * baseRate;
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={loadPayments} tintColor={colors.primary} />}
-    >
-      <Text style={[Typography.title2, { color: colors.text, marginHorizontal: 16, marginTop: 8, marginBottom: 12 }]}>
-        Payment & Procurement Ledger
-      </Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <DemoHeader 
+        title="Payment & Passbook"
+        subtitle={`DBT Bank: ${farmer.bankName || 'Canara Bank'} • Direct Ledger`}
+        showBack
+      />
 
-      {/* Summary Metrics */}
-      <View style={styles.statsRow}>
-        <StatTile
-          title="Calculated Pending"
-          value={`₹${Number(summary.pending_amount).toFixed(2)}`}
-          icon="time-outline"
-          iconColor={colors.review}
-          iconBg={colors.reviewBg}
-          subtitle="Current 15-day cycle"
-        />
-        <StatTile
-          title="Approved / Paid"
-          value={`₹${(Number(summary.approved_amount) + Number(summary.paid_amount)).toFixed(2)}`}
-          icon="checkmark-circle-outline"
-          iconColor={colors.clear}
-          iconBg={colors.clearBg}
-          subtitle="Disbursed via Direct Bank"
-        />
-      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Total Earned Card */}
+        <Card style={styles.card}>
+          <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
+            ESTIMATED OCTOBER PROCUREMENT PAYOUT
+          </Text>
+          <Text style={[styles.bigAmount, { color: colors.text }]}>
+            ₹{totalAmount.toFixed(2)}
+          </Text>
+          <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
+            Total Supplied: {totalLitres.toFixed(2)} L @ ₹{baseRate.toFixed(2)} / Litre
+          </Text>
 
-      {/* Transparent Pricing Matrix Card */}
-      <Card style={{ marginHorizontal: 16, marginVertical: 8 }}>
-        <Text style={[Typography.headline, { color: colors.text, marginBottom: 4 }]}>
-          Aavin Transparent Rate Matrix
-        </Text>
-        <Text style={[Typography.footnote, { color: colors.textSecondary }]}>
-          Standard Cow Milk Base Rate: ₹36.50/L @ 4.0% FAT & 8.5% SNF + Quality Incentive (₹1.00/L for CLEAR samples). Rates calculate automatically on intake.
-        </Text>
-      </Card>
+          <View style={[styles.dbtBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+            <Ionicons name="shield-checkmark" size={16} color="#16A34A" />
+            <Text style={[Typography.caption2, { color: '#166534', fontWeight: '700', marginLeft: 6 }]}>
+              DBT Account: {farmer.bankAccountNumber || '•••• 6501'} (IFSC: {farmer.bankIfsc || 'CNRB0001092'})
+            </Text>
+          </View>
+        </Card>
 
-      {/* 15-Day Cycle Disbursement Transactions */}
-      <GroupedList title="15-Day Fortnight Payment Cycles">
-        {transactions.length === 0 ? (
-          <ListRow title="No billing cycles finalized yet" subtitle="Payments calculate on 15th & 30th of every month" isLast />
-        ) : (
-          transactions.map((tx: any, idx: number) => (
-            <ListRow
-              key={tx.id}
-              title={`Cycle: ${tx.cycle_code}`}
-              subtitle={`${tx.total_litres} Litres • Ref: ${tx.transaction_reference}`}
-              value={`₹${tx.net_payable_inr}`}
-              rightComponent={<StatusChip status={tx.status} size="sm" />}
-              isLast={idx === transactions.length - 1}
-            />
-          ))
-        )}
-      </GroupedList>
+        {/* Transaction Passbook */}
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
+            Milk Supply Credit Ledger
+          </Text>
 
-      {/* Collection-Level Earnings */}
-      <GroupedList title="Individual Collection Receipts">
-        {recentCollections.map((col: any, idx: number) => (
-          <ListRow
-            key={col.id}
-            title={`${col.quantity_litres} L • ₹${col.calculated_amount_inr}`}
-            subtitle={`Rate: ₹${col.rate_per_litre_applied}/L • ${col.cow_name}`}
-            rightComponent={<StatusChip status={col.decision || 'CLEAR'} size="sm" />}
-            isLast={idx === recentCollections.length - 1}
-          />
-        ))}
-      </GroupedList>
-    </ScrollView>
+          {myRecords.map((r) => {
+            const amount = r.quantityLitres * baseRate;
+            return (
+              <View key={r.id} style={[styles.ledgerRow, { borderBottomColor: colors.border }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
+                    {r.collectionDate} • {r.session.toUpperCase()}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                    {r.quantityLitres.toFixed(2)} L supplied @ ₹{baseRate}/L
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '800' }]}>
+                    +₹{amount.toFixed(2)}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                    {r.receiptId ? 'Verified' : 'Calculated'}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </Card>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -115,11 +90,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
+    padding: 16,
+    gap: 14,
     paddingBottom: 40,
   },
-  statsRow: {
+  card: {
+    padding: 16,
+  },
+  bigAmount: {
+    fontSize: 32,
+    fontWeight: '900',
+    marginVertical: 4,
+  },
+  dbtBox: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  ledgerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });

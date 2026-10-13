@@ -19,6 +19,7 @@ import paymentsRoutes from './modules/payments/payments.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import aiRoutes from './modules/ai/ai.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
+import workflowRoutes from './modules/workflow/workflow.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -105,6 +106,7 @@ export function createApp(): Express {
   app.use('/api/v1/notifications', notificationsRoutes);
   app.use('/api/v1/ai', aiRoutes);
   app.use('/api/v1/admin', adminRoutes);
+  app.use('/api/v1/workflow', workflowRoutes);
 
   // 404 handler
   app.use((req: Request, res: Response) => {

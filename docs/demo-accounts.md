@@ -16,14 +16,14 @@ In the mobile app's Sign In screen, tap any of the 6 **⚡ Quick Demo Login** bu
 
 ---
 
-### 🐄 Cattle & Vaccination Registry (Build / Demo Accounts)
+### 🐄 Cattle & Vaccination Registry (Pashu Aadhaar 12-Digit Tags)
 
-| Cattle Tag | Cow Name | Breed | Farmer Owner | Last Vaccination | Admin Date | Next Booster Prediction | Safety Index / Status |
+| Pashu Aadhaar (12-Digit Tag) | Cow Name | Breed | Farmer Owner | Last Vaccination | Admin Date | Next Booster Prediction | Safety Index / Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `TN-MDU-COW-1001` | **Kamadhenu** | Jersey Cross | K. Murugesan | FMD Trivalent Booster (Raksha-Ovac) | 2026-06-15 | **2026-12-15** (⏳ Due in 65d) | **98/100** ⭐ Grade A Clear |
-| `TN-MDU-COW-1002` | **Lakshmi** | HF Cross | K. Murugesan | Raksha-HS+BQ Combined Booster | 2026-05-20 | **2026-11-20** (⏳ Due in 40d) | **45/100** ⛔ Withdrawal Hold |
-| `TN-MDU-COW-1003` | **Ganga** | Kangayam | M. Selvi | Brucellosis S19 Immuno-Guard | 2026-02-12 | **2027-02-12** (✅ Up to Date) | **96/100** ⭐ Grade A Clear |
-| `TN-MDU-COW-1004` | **Ponni** | Sindhi Cross | M. Selvi | FMD Trivalent Booster | 2026-04-18 | **2026-10-18** (⚠️ Due in 8d) | **95/100** ⭐ Grade A Clear |
-| `TN-MDU-COW-1005` | **Gowri** | Jersey Cross | K. Murugesan | FMD Trivalent Booster | 2026-07-05 | **2027-01-05** (✅ Up to Date) | **97/100** ⭐ Grade A Clear |
-| `TN-MDU-COW-1006` | **Kaveri** | Gir Cross | M. Selvi | Anthrax Spore Vaccine (Live) | 2026-08-10 | **2027-08-10** (✅ Up to Date) | **99/100** ⭐ Grade A Clear |
+| `100100001001` | **Kamadhenu** | Jersey Cross | K. Murugesan | FMD Trivalent Booster (Raksha-Ovac) | 2026-06-15 | **2026-12-15** (⏳ Due in 65d) | **98/100** ⭐ Grade A Clear |
+| `100100001002` | **Lakshmi** | HF Cross | K. Murugesan | Raksha-HS+BQ Combined Booster | 2026-05-20 | **2026-11-20** (⏳ Due in 40d) | **45/100** ⛔ Withdrawal Hold |
+| `100100001003` | **Ganga** | Kangayam | M. Selvi | Brucellosis S19 Immuno-Guard | 2026-02-12 | **2027-02-12** (✅ Up to Date) | **96/100** ⭐ Grade A Clear |
+| `100100001004` | **Ponni** | Sindhi Cross | M. Selvi | FMD Trivalent Booster | 2026-04-18 | **2026-10-18** (⚠️ Due in 8d) | **95/100** ⭐ Grade A Clear |
+| `100100001005` | **Gowri** | Jersey Cross | K. Murugesan | FMD Trivalent Booster | 2026-07-05 | **2027-01-05** (✅ Up to Date) | **97/100** ⭐ Grade A Clear |
+| `100100001006` | **Kaveri** | Gir Cross | M. Selvi | Anthrax Spore Vaccine (Live) | 2026-08-10 | **2027-08-10** (✅ Up to Date) | **99/100** ⭐ Grade A Clear |
 

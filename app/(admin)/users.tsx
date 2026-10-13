@@ -1,131 +1,98 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Text, FlatList, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
-import { StatusChip } from '../../components/ui/StatusChip';
-import { GroupedList } from '../../components/ui/GroupedList';
-import { ListRow } from '../../components/ui/ListRow';
-import { api } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
+import { UserRole } from '../../types/aavin';
 
-export default function UserManagementScreen() {
+export default function AdminUsersScreen() {
+  const { demoUsers, activeRole, switchRole } = useAuth();
   const { colors } = useTheme();
+  const router = useRouter();
 
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [filterRole, setFilterRole] = useState('');
-
-  const loadUsers = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/admin/users${filterRole ? `?role=${filterRole}` : ''}`);
-      if (res.data?.data) {
-        setUsers(res.data.data);
-      }
-    } catch (e) {
-      console.warn('Failed to load users:', e);
-    } finally {
-      setLoading(false);
+  const handleSwitch = (role: UserRole) => {
+    switchRole(role);
+    switch (role) {
+      case 'farmer':
+        router.replace('/(farmer)');
+        break;
+      case 'booth':
+        router.replace('/(booth)');
+        break;
+      case 'bmc':
+        router.replace('/(bmc)');
+        break;
+      case 'union':
+        router.replace('/(union)');
+        break;
+      case 'veterinary':
+        router.replace('/(veterinary)');
+        break;
+      case 'admin':
+        router.replace('/(admin)');
+        break;
     }
   };
 
-  useEffect(() => {
-    loadUsers();
-  }, [filterRole]);
-
-  const handleToggleStatus = async (user: any) => {
-    const nextStatus = user.status === 'active' ? 'suspended' : 'active';
-    Alert.alert(
-      'Confirm Status Change',
-      `Change account status for ${user.full_name} (${user.username}) to ${nextStatus.toUpperCase()}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            try {
-              await api.patch(`/admin/users/${user.id}/status`, { status: nextStatus });
-              Alert.alert('Updated', `User status updated to ${nextStatus}`);
-              loadUsers();
-            } catch (err: any) {
-              Alert.alert('Error', err.response?.data?.message || err.message);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={loadUsers} tintColor={colors.primary} />}
-    >
-      <Text style={[Typography.title2, { color: colors.text, marginHorizontal: 16, marginTop: 8, marginBottom: 12 }]}>
-        Ecosystem User Management
-      </Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <DemoHeader 
+        title="Demo User Accounts"
+        subtitle="6 Pre-Seeded Academic Roles"
+        showBack
+      />
 
-      {/* Role Filter Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-        <Button
-          title="All Roles"
-          variant={filterRole === '' ? 'primary' : 'secondary'}
-          size="sm"
-          onPress={() => setFilterRole('')}
-          style={{ marginRight: 6 }}
-        />
-        <Button
-          title="Farmers"
-          variant={filterRole === 'farmer' ? 'primary' : 'secondary'}
-          size="sm"
-          onPress={() => setFilterRole('farmer')}
-          style={{ marginRight: 6 }}
-        />
-        <Button
-          title="Veterinarians"
-          variant={filterRole === 'veterinary' ? 'primary' : 'secondary'}
-          size="sm"
-          onPress={() => setFilterRole('veterinary')}
-          style={{ marginRight: 6 }}
-        />
-        <Button
-          title="Operators"
-          variant={filterRole === 'collection_operator' ? 'primary' : 'secondary'}
-          size="sm"
-          onPress={() => setFilterRole('collection_operator')}
-          style={{ marginRight: 6 }}
-        />
-        <Button
-          title="Vendors"
-          variant={filterRole === 'transport_vendor' ? 'primary' : 'secondary'}
-          size="sm"
-          onPress={() => setFilterRole('transport_vendor')}
-          style={{ marginRight: 6 }}
-        />
-      </ScrollView>
-
-      {/* User Directory */}
-      <GroupedList title="Registered System Users" footer="Tap any user to toggle active/suspended account status">
-        {users.map((u, idx) => (
-          <ListRow
-            key={u.id}
-            title={u.full_name}
-            subtitle={`@${u.username} • Mobile: ${u.phone} • Role: ${u.roles}`}
-            icon="person-outline"
-            rightComponent={
-              <View style={{ alignItems: 'flex-end' }}>
-                <StatusChip status={u.status} size="sm" />
+      <FlatList
+        data={demoUsers}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => {
+          const isCurrent = activeRole === item.role;
+          return (
+            <Card style={[styles.card, isCurrent && { borderColor: colors.primary, borderWidth: 1.5 }]}>
+              <View style={styles.cardHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+                      {item.fullName}
+                    </Text>
+                    {isCurrent && (
+                      <View style={[styles.activeBadge, { backgroundColor: colors.primary }]}>
+                        <Text style={styles.activeBadgeText}>CURRENT</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
+                    ID: {item.id} • Username: {item.username} • Role: {item.role.toUpperCase()}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
+                    {item.description}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 2 }]}>
+                    Phone: +91 {item.phone} • Email: {item.email}
+                  </Text>
+                </View>
               </View>
-            }
-            onPress={() => handleToggleStatus(u)}
-            isLast={idx === users.length - 1}
-          />
-        ))}
-      </GroupedList>
-    </ScrollView>
+
+              <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
+                <Button
+                  title={isCurrent ? "Active Role" : `Switch to ${item.role.toUpperCase()}`}
+                  variant={isCurrent ? "outline" : "secondary"}
+                  size="sm"
+                  onPress={() => handleSwitch(item.role)}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </Card>
+          );
+        }}
+      />
+    </View>
   );
 }
 
@@ -133,12 +100,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  listContent: {
+    padding: 16,
+    gap: 12,
     paddingBottom: 40,
   },
-  filterScroll: {
+  card: {
+    padding: 16,
+  },
+  cardHeader: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  activeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  activeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  cardActions: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

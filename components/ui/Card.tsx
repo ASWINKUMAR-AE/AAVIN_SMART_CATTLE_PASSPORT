@@ -17,9 +17,9 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, bordered =
     styles.card,
     {
       backgroundColor: colors.card,
-      borderColor: bordered ? colors.border : isDark ? colors.border : 'transparent',
-      borderWidth: bordered || isDark ? 1 : 0,
-      shadowColor: '#000000',
+      borderColor: bordered ? colors.border : isDark ? colors.border : '#E2EBF5',
+      borderWidth: 1,
+      shadowColor: '#123157',
     },
     style,
   ];
@@ -37,12 +37,12 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, bordered =
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     marginVertical: 6,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 2,
   },
 });

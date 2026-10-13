@@ -35,25 +35,35 @@ export default function VeterinaryLayout() {
       <Tabs.Screen
         name="treatment-entry"
         options={{
-          title: 'Prescribe Treatment',
+          title: 'Prescribe',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="bandage-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="examination-entry"
         options={{
-          title: 'Health Exam',
+          title: 'Clinical Exam',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="pulse-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="cattle-registry"
+        options={{
+          title: 'Cattle',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="paw-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="cow-details"
         options={{
           href: null,
-          title: 'Veterinary Cattle Passport',
+          title: 'Veterinary Passport',
+          headerShown: false,
         }}
       />
     </Tabs>
   );
 }
-

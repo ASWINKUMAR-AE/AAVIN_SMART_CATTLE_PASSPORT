@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'navy';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
@@ -37,6 +37,8 @@ export const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case 'primary':
         return colors.primary;
+      case 'navy':
+        return colors.navy;
       case 'secondary':
         return colors.primaryLight;
       case 'destructive':
@@ -53,12 +55,13 @@ export const Button: React.FC<ButtonProps> = ({
     if (disabled) return colors.textMuted;
     switch (variant) {
       case 'primary':
+      case 'navy':
       case 'destructive':
         return '#FFFFFF';
       case 'secondary':
-        return colors.primary;
+        return colors.primaryDark;
       case 'outline':
-        return colors.primary;
+        return colors.primaryDark;
       case 'ghost':
         return colors.text;
       default:
@@ -69,12 +72,12 @@ export const Button: React.FC<ButtonProps> = ({
   const getPadding = () => {
     switch (size) {
       case 'sm':
-        return { paddingVertical: 8, paddingHorizontal: 14, minHeight: 36, borderRadius: 10 };
+        return { paddingVertical: 8, paddingHorizontal: 16, minHeight: 38, borderRadius: 20 };
       case 'lg':
-        return { paddingVertical: 16, paddingHorizontal: 24, minHeight: 52, borderRadius: 16 };
+        return { paddingVertical: 15, paddingHorizontal: 26, minHeight: 52, borderRadius: 28 };
       case 'md':
       default:
-        return { paddingVertical: 12, paddingHorizontal: 18, minHeight: 46, borderRadius: 14 };
+        return { paddingVertical: 12, paddingHorizontal: 20, minHeight: 46, borderRadius: 24 };
     }
   };
 

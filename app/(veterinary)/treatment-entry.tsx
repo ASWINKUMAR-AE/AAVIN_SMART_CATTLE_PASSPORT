@@ -1,251 +1,302 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAavinStore } from '../../store/AavinStoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { api } from '../../services/api';
-import { QRScannerModal } from '../../components/scanner/QRScannerModal';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TreatmentEntryScreen() {
+  const { user } = useAuth();
+  const { cows, addTreatmentRecord } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
 
-  const [cows, setCows] = useState<any[]>([]);
-  const [medicines, setMedicines] = useState<any[]>([]);
-  const [selectedCowId, setSelectedCowId] = useState('');
-  const [selectedMedicineId, setSelectedMedicineId] = useState('');
-  const [customMedicine, setCustomMedicine] = useState('');
-  const [dosage, setDosage] = useState('1 tube intramammary BID x 3 days');
-  const [routeIndex, setRouteIndex] = useState(3); // 'intramammary'
-  const routes = ['IM', 'IV', 'SC', 'Intramammary', 'Oral'];
-  const routeKeys = ['intramuscular', 'intravenous', 'subcutaneous', 'intramammary', 'oral'];
+  const [selectedCowId, setSelectedCowId] = useState(cows[0]?.id || 'COW001');
 
-  const [treatmentDays, setTreatmentDays] = useState('3');
-  const [withdrawalDays, setWithdrawalDays] = useState('4');
-  const [reason, setReason] = useState('Clinical Mastitis in Left Quarter');
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [scannerVisible, setScannerVisible] = useState(false);
+  // Treatment fields
+  const [medicineName, setMedicineName] = useState('Amoxicillin & Cloxacillin Intramammary');
+  const [genericName, setGenericName] = useState('Amoxicillin + Cloxacillin');
+  const [dosage, setDosage] = useState('1 tube per quarter bid x 3 days');
+  const [route, setRoute] = useState('Intramammary Infusion');
+  const [withdrawalPeriodDays, setWithdrawalPeriodDays] = useState('4');
+  const [reason, setReason] = useState('Acute Clinical Mastitis');
+  const [notes, setNotes] = useState('Mandatory milk withholding. Teat dip with chlorhexidine solution.');
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const selectedCow = cows.find(c => c.id === selectedCowId) || cows[0];
 
-  const loadData = async () => {
-    try {
-      const [cowsRes, medsRes] = await Promise.all([
-        api.get('/veterinary/assignments'),
-        api.get('/veterinary/medicines'),
-      ]);
-      if (cowsRes.data?.data?.length > 0) {
-        setCows(cowsRes.data.data);
-        setSelectedCowId(cowsRes.data.data[0].id);
-      }
-      if (medsRes.data?.data?.length > 0) {
-        setMedicines(medsRes.data.data);
-        setSelectedMedicineId(medsRes.data.data[1].id); // Default to Amoxicillin/Cloxacillin
-        setWithdrawalDays(String(medsRes.data.data[1].default_milk_withdrawal_days));
-      }
-    } catch (e) {
-      console.warn('Failed to load treatment dependencies:', e);
-    }
+  const medicineCatalog = [
+    {
+      name: 'Amoxicillin & Cloxacillin Intramammary',
+      generic: 'Amoxicillin + Cloxacillin',
+      dosage: '1 tube bid x 3 days',
+      route: 'Intramammary',
+      defaultDays: '4',
+      reason: 'Acute Clinical Mastitis',
+    },
+    {
+      name: 'Enrofloxacin 10% (Floxidin)',
+      generic: 'Enrofloxacin',
+      dosage: '15 ml IM sid x 3 days',
+      route: 'Intramuscular',
+      defaultDays: '5',
+      reason: 'Bovine Respiratory Infection',
+    },
+    {
+      name: 'Meloxicam Inj (Melonex)',
+      generic: 'Meloxicam 5mg/ml',
+      dosage: '15 ml IM stat',
+      route: 'Intramuscular',
+      defaultDays: '3',
+      reason: 'Pyrexia & Musculoskeletal Pain',
+    },
+    {
+      name: 'Ceftiofur Sodium Inj (Excenel)',
+      generic: 'Ceftiofur Sodium',
+      dosage: '10 ml IM sid x 3 days',
+      route: 'Intramuscular',
+      defaultDays: '0', // Zero milk withdrawal
+      reason: 'Acute Metritis / Foot Rot',
+    },
+  ];
+
+  const handleSelectMedicinePreset = (med: typeof medicineCatalog[0]) => {
+    setMedicineName(med.name);
+    setGenericName(med.generic);
+    setDosage(med.dosage);
+    setRoute(med.route);
+    setWithdrawalPeriodDays(med.defaultDays);
+    setReason(med.reason);
   };
 
-  const handleMedicineSelect = (med: any) => {
-    setSelectedMedicineId(med.id);
-    setWithdrawalDays(String(med.default_milk_withdrawal_days));
-  };
-
-  const handleScan = (token: string) => {
-    api.get(`/cows/lookup/${encodeURIComponent(token)}`).then((res) => {
-      if (res.data?.data?.id) {
-        setSelectedCowId(res.data.data.id);
-      }
-    }).catch(() => {
-      Alert.alert('Scan Error', 'Cattle not found');
-    });
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedCowId || !dosage || !reason) {
-      Alert.alert('Required Fields', 'Please select cow, specify dosage and diagnosis reason');
+  const handleSaveTreatment = () => {
+    const days = parseInt(withdrawalPeriodDays, 10);
+    if (isNaN(days) || days < 0) {
+      Alert.alert('Invalid Days', 'Please enter a valid withdrawal period in days (0 for zero-withhold drugs).');
       return;
     }
 
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + (parseInt(treatmentDays, 10) || 1));
-
-    setLoading(true);
+    setSubmitting(true);
     try {
-      const res = await api.post('/veterinary/treatments', {
-        cowId: selectedCowId,
-        medicineId: selectedMedicineId || undefined,
-        customMedicineName: !selectedMedicineId ? customMedicine : undefined,
-        dosage,
-        routeOfAdministration: routeKeys[routeIndex],
-        treatmentStartDate: startDate.toISOString(),
-        treatmentEndDate: endDate.toISOString(),
-        withdrawalPeriodDays: parseInt(withdrawalDays, 10) || 0,
-        reasonForTreatment: reason,
-        notes: notes || undefined,
+      const today = new Date();
+      const startDate = today.toISOString().split('T')[0];
+      const endDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      addTreatmentRecord(selectedCow.id, {
+        date: startDate,
+        vetName: user?.fullName || 'Dr. R. Anand BVSc',
+        medicineName: medicineName.trim(),
+        genericName: genericName.trim(),
+        dosage: dosage.trim(),
+        route: route.trim(),
+        treatmentStartDate: startDate,
+        treatmentEndDate: startDate,
+        withdrawalPeriodDays: days,
+        withdrawalEndDate: endDate,
+        reason: reason.trim(),
+        notes: notes.trim(),
       });
 
-      const withholdingEnd = res.data?.data?.withholdingEndDate;
       Alert.alert(
-        'Treatment & Withdrawal Activated',
-        `Prescription saved. Cattle is now placed on MANDATORY MILK WITHDRAWAL HOLD until ${
-          withholdingEnd ? new Date(withholdingEnd).toLocaleDateString('en-IN') : 'withdrawal period'
-        }. Collection centers will automatically reject milk during this period.`,
-        [{ text: 'OK', onPress: () => router.replace('/(veterinary)') }]
+        'Treatment Prescribed!',
+        `Prescription saved for ${selectedCow.name} (#${selectedCow.tagId}).\n\n${days > 0 ? `⚠️ Active Milk Withdrawal Period of ${days} days deployed until ${endDate}. Safety alert dispatched to farmer and booth.` : 'Zero milk discard medicine. Cow remains cleared for supply.'}`,
+        [
+          {
+            text: 'View Passport',
+            onPress: () => router.push(`/(veterinary)/cow-details?cowId=${selectedCow.id}` as any),
+          },
+        ]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.message || err.message);
+      Alert.alert('Error', err.message || 'Could not save treatment.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  // Live calculation of withdrawal withholding end date
-  const calculatedEnd = new Date();
-  calculatedEnd.setDate(calculatedEnd.getDate() + (parseInt(treatmentDays, 10) || 1) + (parseInt(withdrawalDays, 10) || 0));
-
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      <Card>
-        <View style={styles.headerRow}>
-          <Text style={[Typography.title2, { color: colors.text }]}>
-            Clinical Prescription
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.container, { backgroundColor: colors.background }]}>
+      <DemoHeader 
+        title="Prescribe Treatment"
+        subtitle="Medicine Administration & Milk Withdrawal Ledger"
+        showBack
+      />
+
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* Select Target Bovine */}
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 10 }]}>
+            1. Select Patient Cow
           </Text>
-          <Button
-            title="Scan QR"
-            icon="qr-code-outline"
-            size="sm"
-            variant="secondary"
-            onPress={() => setScannerVisible(true)}
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cowHorizontalScroll}>
+            <View style={styles.cowsRow}>
+              {cows.map((c) => {
+                const isSelected = selectedCowId === c.id;
+                return (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => setSelectedCowId(c.id)}
+                    style={[
+                      styles.cowPill,
+                      {
+                        backgroundColor: isSelected ? colors.primaryLight : colors.card,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Ionicons 
+                      name={isSelected ? 'radio-button-on' : 'radio-button-off'} 
+                      size={16} 
+                      color={isSelected ? colors.primary : colors.textMuted} 
+                    />
+                    <View style={{ marginLeft: 6 }}>
+                      <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
+                        {c.name}
+                      </Text>
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                        Tag: #{c.tagId} ({c.farmerName.split(' ')[0]})
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          <View style={[styles.selectedCowBadge, { backgroundColor: colors.background }]}>
+            <Text style={[Typography.caption1, { color: colors.text }]}>
+              Selected: <Text style={{ fontWeight: '800' }}>{selectedCow.name}</Text> • Breed: {selectedCow.breed} • Owner: {selectedCow.farmerName}
+            </Text>
+          </View>
+        </Card>
+
+        {/* Quick Presets Catalog */}
+        <Card style={styles.card}>
+          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 8 }]}>
+            Veterinary Drug Presets (Tap to Load Standard Protocol):
+          </Text>
+          <View style={styles.presetsGrid}>
+            {medicineCatalog.map((med, index) => (
+              <Pressable
+                key={index}
+                onPress={() => handleSelectMedicinePreset(med)}
+                style={[
+                  styles.presetChip,
+                  medicineName === med.name && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+                ]}
+              >
+                <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
+                  {med.name.split('(')[0]}
+                </Text>
+                <Text style={[Typography.caption2, { color: med.defaultDays === '0' ? '#16A34A' : '#DC2626', fontWeight: '800' }]}>
+                  {med.defaultDays === '0' ? 'Zero Discard' : `${med.defaultDays} Days Withdrawal`}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Card>
+
+        {/* Prescription Details Card */}
+        <Card style={styles.card}>
+          <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 12 }]}>
+            2. Clinical Diagnosis & Dosage
+          </Text>
+
+          <TextField
+            label="Diagnosis / Reason for Treatment *"
+            placeholder="e.g. Acute Clinical Mastitis"
+            value={reason}
+            onChangeText={setReason}
+            icon="pulse-outline"
           />
-        </View>
 
-        <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 10, marginBottom: 6, fontWeight: '600' }]}>
-          Select Patient Cattle:
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-          {cows.map((c) => {
-            const isSelected = c.id === selectedCowId;
-            return (
-              <Button
-                key={c.id}
-                title={`${c.name} (#${c.tag_number})`}
-                variant={isSelected ? 'primary' : 'secondary'}
-                size="sm"
-                onPress={() => setSelectedCowId(c.id)}
-                style={{ marginRight: 8, marginBottom: 8 }}
-              />
-            );
-          })}
-        </ScrollView>
+          <TextField
+            label="Trade / Brand Name *"
+            placeholder="e.g. Amoxicillin & Cloxacillin Intramammary"
+            value={medicineName}
+            onChangeText={setMedicineName}
+            icon="medkit-outline"
+          />
 
-        <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 10, marginBottom: 6, fontWeight: '600' }]}>
-          Approved Veterinary Medicine:
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-          {medicines.map((m) => {
-            const isSelected = m.id === selectedMedicineId;
-            return (
-              <Button
-                key={m.id}
-                title={`${m.brand_name} (${m.default_milk_withdrawal_days}d WD)`}
-                variant={isSelected ? 'primary' : 'secondary'}
-                size="sm"
-                onPress={() => handleMedicineSelect(m)}
-                style={{ marginRight: 8, marginBottom: 8 }}
-              />
-            );
-          })}
-        </ScrollView>
+          <TextField
+            label="Generic / Active Ingredients"
+            placeholder="e.g. Amoxicillin + Cloxacillin"
+            value={genericName}
+            onChangeText={setGenericName}
+            icon="flask-outline"
+          />
 
-        <TextField
-          label="Diagnosis / Reason for Treatment *"
-          value={reason}
-          onChangeText={setReason}
-        />
+          <TextField
+            label="Dosage & Regimen"
+            placeholder="e.g. 1 tube bid x 3 days"
+            value={dosage}
+            onChangeText={setDosage}
+            icon="fitness-outline"
+          />
 
-        <TextField
-          label="Dosage & Regimen *"
-          value={dosage}
-          onChangeText={setDosage}
-        />
+          <TextField
+            label="Route of Administration"
+            placeholder="e.g. Intramammary Infusion"
+            value={route}
+            onChangeText={setRoute}
+            icon="eyedrop-outline"
+          />
 
-        <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 10, marginBottom: 4, fontWeight: '600' }]}>
-          Route of Administration
-        </Text>
-        <SegmentedControl
-          values={routes}
-          selectedIndex={routeIndex}
-          onChange={setRouteIndex}
-        />
-
-        <View style={styles.row}>
-          <View style={{ flex: 1, marginRight: 6 }}>
+          {/* CRITICAL WITHDRAWAL PERIOD INPUT */}
+          <View style={[styles.withdrawalInputBox, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <Ionicons name="warning" size={20} color="#DC2626" />
+              <Text style={[Typography.subhead, { color: '#B91C1C', fontWeight: '900', marginLeft: 6 }]}>
+                MANDATORY MILK WITHDRAWAL DAYS *
+              </Text>
+            </View>
+            <Text style={[Typography.caption2, { color: '#991B1B', marginBottom: 8 }]}>
+              Enter number of days milk must be discarded following last administration to ensure zero antibiotic residue.
+            </Text>
             <TextField
-              label="Treatment Course (Days)"
-              value={treatmentDays}
-              onChangeText={setTreatmentDays}
+              label="Withdrawal Period (Days)"
+              placeholder="e.g. 4 (0 if zero milk discard)"
+              value={withdrawalPeriodDays}
+              onChangeText={setWithdrawalPeriodDays}
               keyboardType="number-pad"
+              icon="time-outline"
             />
           </View>
-          <View style={{ flex: 1, marginLeft: 6 }}>
-            <TextField
-              label="Milk Withdrawal (Days) *"
-              value={withdrawalDays}
-              onChangeText={setWithdrawalDays}
-              keyboardType="number-pad"
-            />
-          </View>
-        </View>
 
-        {/* Live Withdrawal Preview Calculation */}
-        <View style={[styles.withdrawalNotice, { backgroundColor: colors.holdBg, borderColor: colors.hold }]}>
-          <Ionicons name="time" size={20} color={colors.hold} style={{ marginRight: 8 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={[Typography.footnote, { color: colors.hold, fontWeight: '700' }]}>
-              AUTOMATIC MILK WITHDRAWAL LOCK
-            </Text>
-            <Text style={[Typography.caption1, { color: colors.text, marginTop: 2 }]}>
-              Milk intake will be locked on HOLD until: {calculatedEnd.toLocaleDateString('en-IN')}.
-            </Text>
-          </View>
-        </View>
+          <TextField
+            label="Clinical Advice / Notes to Farmer"
+            placeholder="e.g. Discard all milk during treatment. Complete full 3-day course."
+            value={notes}
+            onChangeText={setNotes}
+            icon="create-outline"
+          />
+        </Card>
 
-        <TextField
-          label="Clinical Notes / Recommendations"
-          placeholder="e.g. Teat dip post milking, isolate in shed"
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-          numberOfLines={2}
+        <Button
+          title={submitting ? "Deploying Restriction..." : "Confirm & Deploy Treatment Record"}
+          size="lg"
+          loading={submitting}
+          onPress={handleSaveTreatment}
+          style={{ marginTop: 8 }}
         />
 
         <Button
-          title="Save Prescription & Enforce Withdrawal"
-          onPress={handleSubmit}
-          loading={loading}
-          variant="destructive"
-          style={{ marginTop: 18 }}
+          title="Cancel"
+          variant="outline"
+          onPress={() => router.back()}
+          style={{ marginTop: 10, marginBottom: 30 }}
         />
-      </Card>
-
-      <QRScannerModal
-        visible={scannerVisible}
-        onClose={() => setScannerVisible(false)}
-        onScan={handleScan}
-      />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -253,28 +304,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     padding: 16,
+    gap: 14,
     paddingBottom: 40,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  card: {
+    padding: 16,
   },
-  chipsScroll: {
-    flexDirection: 'row',
+  cowHorizontalScroll: {
     marginBottom: 8,
   },
-  row: {
+  cowsRow: {
     flexDirection: 'row',
+    gap: 8,
   },
-  withdrawalNotice: {
+  cowPill: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
     borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  selectedCowBadge: {
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  presetsGrid: {
+    gap: 8,
+  },
+  presetChip: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
     borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  withdrawalInputBox: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
     marginVertical: 10,
   },
 });

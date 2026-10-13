@@ -653,3 +653,233 @@ CREATE TABLE `refresh_tokens` (
   FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   INDEX `idx_refresh_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================================
+-- 4-STAGE AAVIN MILK COLLECTION & RECONCILIATION WORKFLOW
+-- Farmer -> Booth -> BMC -> Union
+-- ==========================================================
+
+-- 41. Bulk Milk Coolers (BMCs)
+CREATE TABLE IF NOT EXISTS `bmcs` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL UNIQUE,
+  `name` VARCHAR(120) NOT NULL,
+  `location` VARCHAR(150) NOT NULL,
+  `district` VARCHAR(80) NOT NULL DEFAULT 'Madurai',
+  `capacity_litres` DECIMAL(10,2) NOT NULL DEFAULT 15000.00,
+  `manager_name` VARCHAR(100) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 42. Milk Collection Booths
+CREATE TABLE IF NOT EXISTS `booths` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL UNIQUE,
+  `name` VARCHAR(120) NOT NULL,
+  `taluk` VARCHAR(80) NOT NULL DEFAULT 'Melur',
+  `village` VARCHAR(100) NOT NULL,
+  `district` VARCHAR(80) NOT NULL DEFAULT 'Madurai',
+  `assigned_bmc_id` VARCHAR(36) NOT NULL,
+  `capacity_litres` DECIMAL(10,2) NOT NULL DEFAULT 5000.00,
+  `operator_name` VARCHAR(100) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`assigned_bmc_id`) REFERENCES `bmcs` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 43. BMC Booth Assignments
+CREATE TABLE IF NOT EXISTS `bmc_booth_assignments` (
+  `bmc_id` VARCHAR(36) NOT NULL,
+  `booth_id` VARCHAR(36) NOT NULL,
+  `assigned_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`bmc_id`, `booth_id`),
+  FOREIGN KEY (`bmc_id`) REFERENCES `bmcs` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`booth_id`) REFERENCES `booths` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 44. Farmer Booth Assignments
+CREATE TABLE IF NOT EXISTS `farmer_booth_assignments` (
+  `farmer_user_id` VARCHAR(36) NOT NULL,
+  `booth_id` VARCHAR(36) NOT NULL,
+  `assigned_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`farmer_user_id`, `booth_id`),
+  FOREIGN KEY (`farmer_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`booth_id`) REFERENCES `booths` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 45. Milk Logistics Vendors / Collectors
+CREATE TABLE IF NOT EXISTS `vendors` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL UNIQUE,
+  `name` VARCHAR(100) NOT NULL,
+  `vehicle_number` VARCHAR(50) NOT NULL,
+  `vehicle_type` VARCHAR(60) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `route_name` VARCHAR(150) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 46. Milk Transactions (Authoritative Ledger for Route A and Route B)
+CREATE TABLE IF NOT EXISTS `milk_transactions` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `farmer_user_id` VARCHAR(36) NULL,
+  `farmer_name` VARCHAR(100) NULL,
+  `booth_id` VARCHAR(36) NOT NULL,
+  `collection_date` DATE NOT NULL,
+  `session` ENUM('morning', 'evening') NOT NULL,
+  `quantity_litres` DECIMAL(8,2) NOT NULL,
+  `route` ENUM('direct', 'vendor') NOT NULL,
+  `vendor_id` VARCHAR(36) NULL,
+  `vendor_name` VARCHAR(100) NULL,
+  `measurement_method` ENUM('farmer_wise', 'combined') NOT NULL,
+  `individual_allocation` ENUM('measured', 'not_available') NOT NULL DEFAULT 'measured',
+  `status` ENUM('recorded', 'included_in_receipt', 'corrected') NOT NULL DEFAULT 'recorded',
+  `created_by_user_id` VARCHAR(36) NOT NULL,
+  `notes` VARCHAR(255) NULL,
+  `receipt_id` VARCHAR(50) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`farmer_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`booth_id`) REFERENCES `booths` (`id`) ON DELETE RESTRICT,
+  INDEX `idx_trans_date_booth` (`collection_date`, `booth_id`),
+  INDEX `idx_trans_farmer` (`farmer_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 47. Digital Booth Receipts (Stage 2 Output: Booth -> BMC Dispatch)
+CREATE TABLE IF NOT EXISTS `booth_receipts` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `booth_id` VARCHAR(36) NOT NULL,
+  `booth_name` VARCHAR(120) NOT NULL,
+  `bmc_id` VARCHAR(36) NOT NULL,
+  `bmc_name` VARCHAR(120) NOT NULL,
+  `collection_date` DATE NOT NULL,
+  `session` ENUM('morning', 'evening', 'full_day') NOT NULL,
+  `dispatch_quantity` DECIMAL(10,2) NOT NULL,
+  `measurement_basis` ENUM('farmer_wise', 'combined', 'mixed') NOT NULL,
+  `included_record_ids` JSON NOT NULL,
+  `total_records_count` INT NOT NULL DEFAULT 0,
+  `total_farmers_count` INT NOT NULL DEFAULT 0,
+  `created_by_user_id` VARCHAR(36) NOT NULL,
+  `status` ENUM('draft', 'confirmed', 'sent_to_bmc') NOT NULL DEFAULT 'draft',
+  `verification_code` VARCHAR(50) NOT NULL,
+  `notes` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `submitted_at` DATETIME NULL,
+  FOREIGN KEY (`booth_id`) REFERENCES `booths` (`id`) ON DELETE RESTRICT,
+  FOREIGN KEY (`bmc_id`) REFERENCES `bmcs` (`id`) ON DELETE RESTRICT,
+  INDEX `idx_booth_rcpt_date` (`collection_date`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 48. BMC Deliveries (Stage 3 Ledger: Intake & Quantity Verification)
+CREATE TABLE IF NOT EXISTS `bmc_deliveries` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `booth_receipt_id` VARCHAR(50) NOT NULL,
+  `booth_id` VARCHAR(36) NOT NULL,
+  `booth_name` VARCHAR(120) NOT NULL,
+  `bmc_id` VARCHAR(36) NOT NULL,
+  `collection_date` DATE NOT NULL,
+  `dispatch_time` DATETIME NOT NULL,
+  `declared_dispatch_quantity` DECIMAL(10,2) NOT NULL,
+  `measured_received_quantity` DECIMAL(10,2) NULL,
+  `difference_litres` DECIMAL(8,2) NULL,
+  `status` ENUM('pending_arrival', 'matched', 'mismatch_investigation', 'resolved', 'escalated_to_union') NOT NULL DEFAULT 'pending_arrival',
+  `received_at` DATETIME NULL,
+  `received_by_user_id` VARCHAR(36) NULL,
+  `discrepancy_case_id` VARCHAR(50) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`booth_receipt_id`) REFERENCES `booth_receipts` (`id`) ON DELETE RESTRICT,
+  FOREIGN KEY (`booth_id`) REFERENCES `booths` (`id`) ON DELETE RESTRICT,
+  FOREIGN KEY (`bmc_id`) REFERENCES `bmcs` (`id`) ON DELETE RESTRICT,
+  INDEX `idx_bmc_deliv_date` (`collection_date`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 49. Discrepancy Cases (Quantity Mismatch Traceability Ledger)
+CREATE TABLE IF NOT EXISTS `discrepancy_cases` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `bmc_delivery_id` VARCHAR(50) NOT NULL,
+  `booth_id` VARCHAR(36) NOT NULL,
+  `booth_name` VARCHAR(120) NOT NULL,
+  `bmc_id` VARCHAR(36) NOT NULL,
+  `bmc_name` VARCHAR(120) NOT NULL,
+  `collection_date` DATE NOT NULL,
+  `declared_quantity` DECIMAL(10,2) NOT NULL,
+  `measured_quantity` DECIMAL(10,2) NOT NULL,
+  `difference_litres` DECIMAL(8,2) NOT NULL,
+  `difference_percent` DECIMAL(5,2) NOT NULL,
+  `status` ENUM('open', 'under_investigation', 'resolved', 'escalated_to_union') NOT NULL DEFAULT 'open',
+  `resolution_reason` VARCHAR(255) NULL,
+  `resolved_at` DATETIME NULL,
+  `resolved_by_user_id` VARCHAR(36) NULL,
+  `union_review_notes` TEXT NULL,
+  `union_reviewed_at` DATETIME NULL,
+  `created_by_user_id` VARCHAR(36) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`bmc_delivery_id`) REFERENCES `bmc_deliveries` (`id`) ON DELETE RESTRICT,
+  INDEX `idx_disc_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 50. Discrepancy Investigation Notes
+CREATE TABLE IF NOT EXISTS `discrepancy_notes` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `discrepancy_id` VARCHAR(50) NOT NULL,
+  `author_name` VARCHAR(100) NOT NULL,
+  `note` TEXT NOT NULL,
+  `evidence_reference` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`discrepancy_id`) REFERENCES `discrepancy_cases` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 51. BMC Daily Receipts (Stage 4 Output: BMC -> Union Submission)
+CREATE TABLE IF NOT EXISTS `bmc_receipts` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `bmc_id` VARCHAR(36) NOT NULL,
+  `bmc_name` VARCHAR(120) NOT NULL,
+  `union_id` VARCHAR(36) NOT NULL DEFAULT 'union-madurai-01',
+  `collection_date` DATE NOT NULL,
+  `included_delivery_ids` JSON NOT NULL,
+  `total_booths_count` INT NOT NULL DEFAULT 0,
+  `total_declared_quantity` DECIMAL(12,2) NOT NULL,
+  `total_received_quantity` DECIMAL(12,2) NOT NULL,
+  `net_difference` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `has_discrepancies` TINYINT(1) NOT NULL DEFAULT 0,
+  `unresolved_cases_count` INT NOT NULL DEFAULT 0,
+  `created_by_user_id` VARCHAR(36) NOT NULL,
+  `status` ENUM('draft', 'sent_to_union', 'reviewed_by_union') NOT NULL DEFAULT 'draft',
+  `verification_code` VARCHAR(50) NOT NULL,
+  `union_review_notes` TEXT NULL,
+  `reviewed_by_user_id` VARCHAR(36) NULL,
+  `reviewed_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `submitted_at` DATETIME NULL,
+  FOREIGN KEY (`bmc_id`) REFERENCES `bmcs` (`id`) ON DELETE RESTRICT,
+  INDEX `idx_bmcr_date` (`collection_date`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 52. Cattle Insemination & Breeding History
+CREATE TABLE IF NOT EXISTS `insemination_records` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `cow_id` VARCHAR(36) NOT NULL,
+  `date` DATE NOT NULL,
+  `bull_id` VARCHAR(50) NOT NULL,
+  `breed` VARCHAR(80) NOT NULL,
+  `technician_name` VARCHAR(100) NOT NULL,
+  `pregnancy_status` ENUM('pending', 'confirmed_pregnant', 'not_pregnant') NOT NULL DEFAULT 'pending',
+  `expected_calving_date` DATE NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`cow_id`) REFERENCES `cows` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 53. Audit Events Ledger
+CREATE TABLE IF NOT EXISTS `audit_events` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `actor_id` VARCHAR(36) NULL,
+  `actor_name` VARCHAR(100) NOT NULL,
+  `role` VARCHAR(50) NOT NULL,
+  `action` VARCHAR(100) NOT NULL,
+  `entity_type` VARCHAR(60) NOT NULL,
+  `entity_id` VARCHAR(60) NULL,
+  `reason` VARCHAR(255) NULL,
+  `details` JSON NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

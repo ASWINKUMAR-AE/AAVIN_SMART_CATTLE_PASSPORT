@@ -1,283 +1,448 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator, Image } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, Image, Pressable, Modal, TextInput, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
-import { StatusChip } from '../../components/ui/StatusChip';
-import { GroupedList } from '../../components/ui/GroupedList';
-import { ListRow } from '../../components/ui/ListRow';
 import { Button } from '../../components/ui/Button';
-import { CattleHealthCharts } from '../../components/ui/CattleHealthCharts';
-import { api } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CowDetailsScreen() {
-  const { id, identifier } = useLocalSearchParams<{ id?: string; identifier?: string }>();
-  const { colors, isDark } = useTheme();
+  const params = useLocalSearchParams();
+  const cowId = (params.cowId as string) || 'COW001';
+  const { cows, addMedicalRecord } = useAavinStore();
+  const { colors } = useTheme();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  const [passport, setPassport] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const cow = cows.find(c => c.id === cowId) || cows[0];
 
-  useEffect(() => {
-    fetchPassport();
-  }, [id, identifier]);
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<'profile' | 'medical' | 'vaccines' | 'treatments' | 'breeding'>('profile');
 
-  const fetchPassport = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      let cowId = id;
-      if (!cowId && identifier) {
-        const lookupRes = await api.get(`/cows/lookup/${encodeURIComponent(identifier)}`);
-        if (lookupRes.data?.data?.id) {
-          cowId = lookupRes.data.data.id;
-        }
-      }
+  // Add Medical Record Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [symptoms, setSymptoms] = useState('');
+  const [temp, setTemp] = useState('38.5');
+  const [recommendations, setRecommendations] = useState('');
 
-      if (!cowId) {
-        setError('Cow record identifier not specified');
-        return;
-      }
-
-      const res = await api.get(`/cows/${cowId}/passport`);
-      if (res.data?.data) {
-        setPassport(res.data.data);
-      } else {
-        setError('Digital Passport could not be loaded');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to retrieve digital cattle record');
-    } finally {
-      setLoading(false);
+  const handleSaveMedicalRecord = () => {
+    if (!diagnosis.trim()) {
+      Alert.alert('Required Field', 'Please enter a diagnosis or clinical observation.');
+      return;
     }
+
+    addMedicalRecord(cow.id, {
+      date: new Date().toISOString().split('T')[0],
+      vetName: 'Dr. R. Anand BVSc',
+      diagnosis: diagnosis.trim(),
+      symptoms: symptoms.trim() || 'General health assessment',
+      bodyTemperatureC: parseFloat(temp) || 38.5,
+      heartRateBpm: 70,
+      rumenMotility: 'Normal (3/2min)',
+      recommendations: recommendations.trim() || 'Routine cattle feed & mineral supplement',
+    });
+
+    setModalVisible(false);
+    setDiagnosis('');
+    setSymptoms('');
+    setRecommendations('');
+    Alert.alert('Success', 'Clinical examination record added to Cattle Passport.');
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 12 }]}>
-          Loading Digital Cattle Passport...
-        </Text>
-      </View>
-    );
-  }
-
-  if (error || !passport) {
-    return (
-      <View style={[styles.center, { backgroundColor: colors.background, padding: 24 }]}>
-        <Ionicons name="alert-circle-outline" size={54} color={colors.hold} />
-        <Text style={[Typography.title2, { color: colors.text, marginTop: 16, textAlign: 'center' }]}>
-          Record Not Found
-        </Text>
-        <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 8, textAlign: 'center' }]}>
-          {error || 'Unable to find this cattle passport.'}
-        </Text>
-        <Button title="Go Back" onPress={() => router.back()} style={{ marginTop: 24 }} />
-      </View>
-    );
-  }
-
-  const { cow, healthRecords, treatments, vaccinations, production, collections } = passport;
-  const isWithdrawalActive = cow.active_withdrawal_status === 'active';
+  const hasWithdrawal = cow?.activeWithdrawal?.hasActiveWithdrawal;
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      {/* Passport Header Card */}
-      <Card style={styles.passportCard}>
-        <View style={styles.headerTop}>
-          <View style={styles.badgeHeader}>
-            <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', letterSpacing: 1 }]}>
-              AAVIN DIGITAL CATTLE PASSPORT
-            </Text>
-            <Text style={[Typography.title1, { color: colors.text, marginTop: 4 }]}>
-              {cow.name}
-            </Text>
-            <Text style={[Typography.headline, { color: colors.primary }]}>
-              Tag: {cow.tag_number}
-            </Text>
-          </View>
-          <StatusChip status={isWithdrawalActive ? 'HOLD' : cow.health_status} size="lg" />
-        </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <DemoHeader 
+        title={cow.name}
+        subtitle={`Passport #${cow.cowId} • Tag #${cow.tagId}`}
+        showBack
+      />
 
-        {/* Withdrawal Restriction Notice */}
-        {isWithdrawalActive && (
-          <View style={[styles.withdrawalAlert, { backgroundColor: colors.holdBg, borderColor: colors.hold }]}>
-            <Ionicons name="hand-left" size={24} color={colors.hold} style={{ marginRight: 10 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={[Typography.headline, { color: colors.hold }]}>
-                FOOD SAFETY WITHDRAWAL IN FORCE
-              </Text>
-              <Text style={[Typography.footnote, { color: colors.text, marginTop: 2 }]}>
-                {cow.withdrawal_reason || 'Under active antibiotic/medical treatment.'}
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.hold, fontWeight: '700', marginTop: 4 }]}>
-                Withholding active until: {new Date(cow.withdrawal_end_time).toLocaleDateString('en-IN')}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Cow Details Grid */}
-        <View style={[styles.grid, { borderColor: colors.border }]}>
-          <View style={styles.gridItem}>
-            <Text style={[Typography.caption2, { color: colors.textMuted }]}>BREED</Text>
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.breed}</Text>
-          </View>
-          <View style={styles.gridItem}>
-            <Text style={[Typography.caption2, { color: colors.textMuted }]}>STAGE</Text>
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.lactation_stage}</Text>
-          </View>
-          <View style={styles.gridItem}>
-            <Text style={[Typography.caption2, { color: colors.textMuted }]}>MILKING</Text>
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.milking_status}</Text>
-          </View>
-          <View style={styles.gridItem}>
-            <Text style={[Typography.caption2, { color: colors.textMuted }]}>AVG YIELD</Text>
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.average_daily_yield} L/day</Text>
-          </View>
-        </View>
-
-        {/* Aavin Dairy Company Health & Nutrition Scorecard */}
-        <View style={[styles.scorecardBox, { backgroundColor: isDark ? '#0f172a' : '#F0FDF4', borderColor: isDark ? '#1e293b' : '#BBF7D0' }]}>
-          <View style={styles.scorecardHeader}>
-            <Ionicons name="shield-checkmark" size={20} color="#16A34A" />
-            <Text style={[Typography.subhead, { color: '#16A34A', fontWeight: '700', marginLeft: 6 }]}>
-              Aavin Milk Quality & Health Scorecard
-            </Text>
-          </View>
-
-          <View style={styles.scorecardGrid}>
-            <View style={styles.scorecardItem}>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>MILK SAFETY INDEX</Text>
-              <Text style={[Typography.headline, { color: (cow.milk_safety_index || 98) >= 90 ? '#16A34A' : '#DC2626', fontWeight: '800' }]}>
-                {cow.milk_safety_index || 98}/100 { (cow.milk_safety_index || 98) >= 90 ? '⭐ Premium' : '⚠️ Hold' }
-              </Text>
-            </View>
-            <View style={styles.scorecardItem}>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>SOMATIC CELLS (SCC)</Text>
-              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                {Number(cow.somatic_cell_count || 145000).toLocaleString('en-IN')} cells/mL
-              </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A' }]}>Mastitis Risk: Low</Text>
-            </View>
-            <View style={styles.scorecardItem}>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>BREEDING / REPRODUCTION</Text>
-              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600', textTransform: 'capitalize' }]}>
-                {(cow.insemination_status || 'not_bred').replace('_', ' ')}
-              </Text>
-              {cow.last_calving_date && (
-                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Calved: {cow.last_calving_date}</Text>
-              )}
-            </View>
-            <View style={styles.scorecardItem}>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>PREVENTIVE CARE</Text>
-              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>
-                Dewormed: {cow.last_deworming_date || '2026-09-10'}
-              </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A' }]}>
-                Vaccines: {(cow.vaccination_status || 'up_to_date').replace(/_/g, ' ')}
-              </Text>
-            </View>
-          </View>
-
-          {/* Daily Nutrition Breakdown */}
-          <View style={[styles.feedBar, { borderTopColor: isDark ? '#1e293b' : '#DCFCE7' }]}>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 4, fontWeight: '700' }]}>
-              DAILY FEED & NUTRITION RATION
-            </Text>
-            <Text style={[Typography.footnote, { color: colors.text }]}>
-              🌾 Green Fodder: <Text style={{ fontWeight: '700' }}>{cow.daily_green_fodder_kg || '25.0'} kg</Text> • Concentrate: <Text style={{ fontWeight: '700' }}>{cow.daily_concentrate_kg || '4.0'} kg</Text> • Mineral Mix: <Text style={{ fontWeight: '700' }}>{cow.mineral_mixture_grams || '50'}g</Text>
-            </Text>
-          </View>
-        </View>
-
-        {/* QR Identification Token Box */}
-        <View style={[styles.qrContainer, { backgroundColor: isDark ? colors.background : '#F8FAFC' }]}>
-          <Ionicons name="qr-code" size={54} color={colors.primary} />
-          <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 8 }]}>
-            DIGITAL PASSPORT TOKEN:
-          </Text>
-          <Text style={[Typography.footnote, { color: colors.text, fontWeight: '700', letterSpacing: 0.5 }]}>
-            {cow.qr_token || 'TOKEN-ACTIVE-VERIFIED'}
-          </Text>
-          <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 4 }]}>
-            Show this QR to the Collection Centre operator or Vet
-          </Text>
-        </View>
-      </Card>
-
-      {/* Visual Charts & Predictive Health / Vaccination Hub */}
-      <View style={{ marginBottom: 16 }}>
-        <CattleHealthCharts
-          cow={cow}
-          production={production}
-          vaccinations={vaccinations}
-          healthRecords={healthRecords}
-        />
-      </View>
-
-      {/* Clinical Health Records */}
-      <GroupedList title="Veterinary Clinical History">
-        {healthRecords.length === 0 ? (
-          <ListRow title="No clinical examinations recorded yet" subtitle="Healthy baseline" isLast />
-        ) : (
-          healthRecords.map((hr: any, idx: number) => (
-            <ListRow
-              key={hr.id}
-              title={hr.diagnosis}
-              subtitle={`${new Date(hr.examination_date).toLocaleDateString('en-IN')} • By ${hr.vet_name}`}
-              icon="medkit-outline"
-              rightComponent={<StatusChip status={hr.health_status_assigned} size="sm" />}
-              isLast={idx === healthRecords.length - 1}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Cow Profile Hero Card */}
+        <Card style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <Image
+              source={{ uri: cow.photoUrl || 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=500' }}
+              style={styles.heroImage}
             />
-          ))
-        )}
-      </GroupedList>
-
-      {/* Treatments & Withdrawal Restrictions */}
-      <GroupedList title="Treatment & Medicine Records">
-        {treatments.length === 0 ? (
-          <ListRow title="No treatments recorded" subtitle="No active medication" isLast />
-        ) : (
-          treatments.map((tr: any, idx: number) => (
-            <ListRow
-              key={tr.id}
-              title={tr.brand_name || tr.custom_medicine_name || 'Prescription Medicine'}
-              subtitle={`Withdrawal: ${tr.withdrawal_period_days} days • Dose: ${tr.dosage}`}
-              icon="bandage-outline"
-              rightComponent={
-                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                  {new Date(tr.milk_withholding_end_time).toLocaleDateString('en-IN')}
+            <View style={styles.heroMeta}>
+              <View style={styles.tagBadge}>
+                <Ionicons name="pricetag" size={14} color="#0072BC" />
+                <Text style={styles.tagText}>{cow.tagId}</Text>
+              </View>
+              <Text style={[Typography.title2, { color: colors.text, fontWeight: '900', marginTop: 4 }]}>
+                {cow.name}
+              </Text>
+              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700' }]}>
+                {cow.breed}
+              </Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2 }]}>
+                Owner: {cow.farmerName}
+              </Text>
+              <View style={[styles.verifBadge, { backgroundColor: cow.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
+                <Ionicons 
+                  name={cow.verificationStatus === 'verified' ? 'checkmark-circle' : 'time'} 
+                  size={12} 
+                  color={cow.verificationStatus === 'verified' ? '#15803D' : '#B45309'} 
+                />
+                <Text style={[styles.verifText, { color: cow.verificationStatus === 'verified' ? '#15803D' : '#B45309' }]}>
+                  {cow.verificationStatus === 'verified' ? 'Aavin Verified Passport' : 'Pending Verification'}
                 </Text>
-              }
-              isLast={idx === treatments.length - 1}
-            />
-          ))
-        )}
-      </GroupedList>
+              </View>
+            </View>
+          </View>
 
-      {/* Recent Collections */}
-      <GroupedList title="Recent Collection Centre Intakes">
-        {collections.length === 0 ? (
-          <ListRow title="No collection records found" isLast />
-        ) : (
-          collections.map((col: any, idx: number) => (
-            <ListRow
-              key={col.id}
-              title={`${col.quantity_litres} Litres • Fat: ${col.fat_percentage}%`}
-              subtitle={`Receipt #${col.receipt_number} • Rs.${col.calculated_amount_inr}`}
-              icon="water-outline"
-              rightComponent={<StatusChip status={col.decision || 'CLEAR'} size="sm" />}
-              isLast={idx === collections.length - 1}
-            />
-          ))
+          {/* Active Medicine Withdrawal Alert Banner */}
+          {hasWithdrawal && (
+            <View style={styles.withdrawalBanner}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="warning" size={24} color="#DC2626" />
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={[Typography.headline, { color: '#B91C1C', fontWeight: '900' }]}>
+                    ⚠️ ACTIVE MILK WITHDRAWAL RESTRICTION
+                  </Text>
+                  <Text style={[Typography.subhead, { color: '#7F1D1D', fontWeight: '700', marginTop: 2 }]}>
+                    Medicine: {cow.activeWithdrawal?.medicineName}
+                  </Text>
+                  <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
+                    Reason: {cow.activeWithdrawal?.reason}
+                  </Text>
+                  <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800', marginTop: 4 }]}>
+                    Withholding End Date: {cow.activeWithdrawal?.withdrawalEndDate} ({cow.activeWithdrawal?.daysRemaining} days remaining)
+                  </Text>
+                  <Text style={[Typography.caption2, { color: '#7F1D1D', marginTop: 4, fontStyle: 'italic' }]}>
+                    Notice: Milk from this animal contains veterinary drug residues and must NOT be poured into the collection booth.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Quick Stats Grid */}
+          <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
+            <View style={styles.statCol}>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Daily Yield</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{cow.dailyMilkYield.toFixed(1)} L</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Lactation Stage</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{cow.lactationStage.toUpperCase()}</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Age</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{cow.approxAgeMonths} Mo</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Health</Text>
+              <Text style={[styles.statValue, { color: cow.healthStatus === 'healthy' ? '#16A34A' : '#DC2626' }]}>
+                {cow.healthStatus === 'healthy' ? 'Healthy' : 'Hold'}
+              </Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* Sub Navigation Tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
+          <View style={styles.tabsContainer}>
+            {[
+              { key: 'profile', label: 'Overview', icon: 'information-circle' },
+              { key: 'medical', label: `Clinical (${cow.medicalHistory.length})`, icon: 'fitness' },
+              { key: 'vaccines', label: `Vaccines (${cow.vaccinationHistory.length})`, icon: 'shield-checkmark' },
+              { key: 'treatments', label: `Treatments (${cow.treatmentRecords.length})`, icon: 'medkit' },
+              { key: 'breeding', label: `Breeding (${cow.inseminationHistory.length})`, icon: 'heart' },
+            ].map((tab) => (
+              <Pressable
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key as any)}
+                style={[
+                  styles.tabBtn,
+                  activeTab === tab.key && { backgroundColor: colors.primary, borderColor: colors.primary },
+                ]}
+              >
+                <Ionicons 
+                  name={tab.icon as any} 
+                  size={15} 
+                  color={activeTab === tab.key ? '#FFFFFF' : colors.textSecondary} 
+                  style={{ marginRight: 6 }} 
+                />
+                <Text style={[styles.tabLabel, { color: activeTab === tab.key ? '#FFFFFF' : colors.textSecondary }]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+
+        {/* TAB 1: OVERVIEW */}
+        {activeTab === 'profile' && (
+          <Card style={styles.tabContentCard}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
+              Animal Identification & Pedigree
+            </Text>
+
+            <View style={styles.specRow}>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>12-Digit Tag Number:</Text>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>{cow.tagId}</Text>
+            </View>
+            <View style={styles.specRow}>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Date of Birth:</Text>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.dateOfBirth}</Text>
+            </View>
+            <View style={styles.specRow}>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Gender:</Text>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.sex.toUpperCase()}</Text>
+            </View>
+            <View style={styles.specRow}>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Milking Status:</Text>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.currentStatus.toUpperCase()}</Text>
+            </View>
+            <View style={styles.specRow}>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Physical Marks:</Text>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600', flex: 1, textAlign: 'right' }]}>
+                {cow.identificationMarks}
+              </Text>
+            </View>
+
+            <View style={[styles.noteBox, { backgroundColor: colors.background, marginTop: 14 }]}>
+              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
+                ℹ️ Digital Passport registered on Aavin Milk Safety Twin ledger. Barcode/Tag ID authenticated for Madurai District Union.
+              </Text>
+            </View>
+          </Card>
         )}
-      </GroupedList>
-    </ScrollView>
+
+        {/* TAB 2: MEDICAL HISTORY */}
+        {activeTab === 'medical' && (
+          <Card style={styles.tabContentCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+                Clinical Examinations Log
+              </Text>
+              <Button
+                title="+ Add Exam"
+                size="sm"
+                onPress={() => setModalVisible(true)}
+              />
+            </View>
+
+            {cow.medicalHistory.length === 0 ? (
+              <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
+                No prior clinical examinations recorded.
+              </Text>
+            ) : (
+              cow.medicalHistory.map((m) => (
+                <View key={m.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
+                  <View style={styles.historyItemHeader}>
+                    <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
+                      {m.diagnosis}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{m.date}</Text>
+                  </View>
+                  <Text style={[Typography.caption1, { color: colors.text, marginTop: 4 }]}>
+                    Symptoms: {m.symptoms}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Temp: {m.bodyTemperatureC}°C • Heart Rate: {m.heartRateBpm} bpm • Rumen: {m.rumenMotility}
+                  </Text>
+                  <Text style={[Typography.caption1, { color: '#047857', fontWeight: '600', marginTop: 4 }]}>
+                    Recommendations: {m.recommendations}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 2 }]}>
+                    Examined by: {m.vetName}
+                  </Text>
+                </View>
+              ))
+            )}
+          </Card>
+        )}
+
+        {/* TAB 3: VACCINES */}
+        {activeTab === 'vaccines' && (
+          <Card style={styles.tabContentCard}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
+              Vaccination Records
+            </Text>
+
+            {cow.vaccinationHistory.length === 0 ? (
+              <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
+                No vaccination entries logged yet.
+              </Text>
+            ) : (
+              cow.vaccinationHistory.map((v) => (
+                <View key={v.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
+                  <View style={styles.historyItemHeader}>
+                    <Text style={[Typography.subhead, { color: '#15803D', fontWeight: '800' }]}>
+                      🛡️ {v.vaccineName}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{v.date}</Text>
+                  </View>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
+                    Batch: {v.batchNumber} • Administered by: {v.administeredBy}
+                  </Text>
+                  <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
+                    Next Due Date: {v.nextDueDate}
+                  </Text>
+                </View>
+              ))
+            )}
+          </Card>
+        )}
+
+        {/* TAB 4: TREATMENTS */}
+        {activeTab === 'treatments' && (
+          <Card style={styles.tabContentCard}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
+              Prescribed Treatments & Drug Withdrawals
+            </Text>
+
+            {cow.treatmentRecords.length === 0 ? (
+              <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
+                No treatments on record. Animal is in healthy status.
+              </Text>
+            ) : (
+              cow.treatmentRecords.map((t) => (
+                <View key={t.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
+                  <View style={styles.historyItemHeader}>
+                    <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800' }]}>
+                      💊 {t.medicineName}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t.date}</Text>
+                  </View>
+                  <Text style={[Typography.caption1, { color: colors.text, marginTop: 2 }]}>
+                    Generic: {t.genericName} • Dosage: {t.dosage} ({t.route})
+                  </Text>
+                  <Text style={[Typography.caption1, { color: '#991B1B', fontWeight: '700', marginTop: 4 }]}>
+                    Withdrawal Period: {t.withdrawalPeriodDays} Days (Withhold until {t.withdrawalEndDate})
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Reason: {t.reason}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 2 }]}>
+                    Vet: {t.vetName}
+                  </Text>
+                </View>
+              ))
+            )}
+          </Card>
+        )}
+
+        {/* TAB 5: BREEDING */}
+        {activeTab === 'breeding' && (
+          <Card style={styles.tabContentCard}>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
+              Artificial Insemination & Breeding History
+            </Text>
+
+            {cow.inseminationHistory.length === 0 ? (
+              <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
+                No insemination records logged.
+              </Text>
+            ) : (
+              cow.inseminationHistory.map((ins) => (
+                <View key={ins.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
+                  <View style={styles.historyItemHeader}>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      Semen Bull: {ins.bullId}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{ins.date}</Text>
+                  </View>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Breed: {ins.breed} • AI Tech: {ins.technicianName}
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: ins.pregnancyStatus === 'confirmed_pregnant' ? '#DCFCE7' : '#FEF3C7', marginTop: 6 }]}>
+                    <Text style={[styles.statusBadgeText, { color: ins.pregnancyStatus === 'confirmed_pregnant' ? '#15803D' : '#B45309' }]}>
+                      Status: {ins.pregnancyStatus.replace('_', ' ').toUpperCase()}
+                    </Text>
+                  </View>
+                  {ins.expectedCalvingDate && (
+                    <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', marginTop: 4 }]}>
+                      Expected Calving: {ins.expectedCalvingDate}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
+          </Card>
+        )}
+      </ScrollView>
+
+      {/* Add Examination Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={[Typography.title2, { color: colors.text }]}>Add Clinical Examination</Text>
+              <Pressable onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>
+                Diagnosis / Primary Finding *
+              </Text>
+              <TextInput
+                placeholder="e.g. Mild mastitis check, optimal lactation, digestion check"
+                placeholderTextColor={colors.textMuted}
+                value={diagnosis}
+                onChangeText={setDiagnosis}
+                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
+              />
+
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
+                Symptoms Observed
+              </Text>
+              <TextInput
+                placeholder="e.g. Normal appetite, clear mucosal membrane"
+                placeholderTextColor={colors.textMuted}
+                value={symptoms}
+                onChangeText={setSymptoms}
+                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
+              />
+
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
+                Body Temperature (°C)
+              </Text>
+              <TextInput
+                placeholder="38.5"
+                placeholderTextColor={colors.textMuted}
+                value={temp}
+                onChangeText={setTemp}
+                keyboardType="numeric"
+                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
+              />
+
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
+                Diet & Treatment Recommendations
+              </Text>
+              <TextInput
+                placeholder="e.g. Continue green fodder 20kg + 50g mineral mix"
+                placeholderTextColor={colors.textMuted}
+                value={recommendations}
+                onChangeText={setRecommendations}
+                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
+              />
+
+              <Button
+                title="Save Examination to Passport"
+                onPress={handleSaveMedicalRecord}
+                style={{ marginTop: 18 }}
+              />
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
   );
 }
 
@@ -285,76 +450,160 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
+  scrollContent: {
     padding: 16,
     paddingBottom: 40,
   },
-  passportCard: {
-    padding: 18,
+  heroCard: {
+    padding: 16,
     marginBottom: 16,
   },
-  headerTop: {
+  heroTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
   },
-  badgeHeader: {
+  heroImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 16,
+  },
+  heroMeta: {
     flex: 1,
+    marginLeft: 14,
   },
-  withdrawalAlert: {
+  tagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: '#EAF5FC',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0072BC',
+  },
+  verifBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    gap: 4,
+  },
+  verifText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  withdrawalBanner: {
+    backgroundColor: '#FEF2F2',
     borderWidth: 1.5,
+    borderColor: '#EF4444',
+    borderRadius: 12,
+    padding: 12,
     marginTop: 14,
   },
-  grid: {
+  statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    marginVertical: 16,
-    paddingVertical: 10,
   },
-  gridItem: {
-    width: '50%',
-    paddingVertical: 6,
+  statCol: {
+    alignItems: 'center',
   },
-  scorecardBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
+  statValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  tabsScroll: {
     marginBottom: 16,
   },
-  scorecardHeader: {
+  tabsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tabBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
   },
-  scorecardGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 10,
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: '700',
   },
-  scorecardItem: {
-    width: '50%',
-    paddingRight: 6,
-  },
-  feedBar: {
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  qrContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  tabContentCard: {
     padding: 16,
-    borderRadius: 14,
+  },
+  specRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F1F5F9',
+  },
+  noteBox: {
+    padding: 12,
+    borderRadius: 10,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  historyItem: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  historyItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  inputField: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
   },
 });

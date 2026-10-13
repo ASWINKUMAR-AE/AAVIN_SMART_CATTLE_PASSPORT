@@ -33,9 +33,41 @@ export default function CollectionLayout() {
         }}
       />
       <Tabs.Screen
+        name="contribution-workflow"
+        options={{
+          title: 'Intermediary Intake',
+          headerTitle: 'Intermediary & Farmer Intake',
+          tabBarIcon: ({ color, size }) => <Ionicons name="people-circle-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="booth-ledger"
+        options={{
+          title: 'Booth Ledger',
+          headerTitle: 'Village Booth Digital Ledger',
+          tabBarIcon: ({ color, size }) => <Ionicons name="book-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="plant-dispatch"
+        options={{
+          title: 'Plant Dispatch',
+          headerTitle: 'Dispatch & Plant Reconciliation',
+          tabBarIcon: ({ color, size }) => <Ionicons name="git-network-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="intermediaries"
+        options={{
+          title: 'Karai-Pathu',
+          headerTitle: 'Intermediaries Directory',
+          tabBarIcon: ({ color, size }) => <Ionicons name="bicycle-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="new-collection"
         options={{
-          title: 'Milk Intake',
+          title: 'Cow Intake',
           tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
         }}
       />

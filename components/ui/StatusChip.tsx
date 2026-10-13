@@ -9,11 +9,12 @@ export type StatusType = 'CLEAR' | 'REVIEW' | 'HOLD' | 'healthy' | 'under_treatm
 interface StatusChipProps {
   status: StatusType | string;
   label?: string;
+  customText?: string;
   size?: 'sm' | 'md' | 'lg';
   style?: ViewStyle;
 }
 
-export const StatusChip: React.FC<StatusChipProps> = ({ status, label, size = 'md', style }) => {
+export const StatusChip: React.FC<StatusChipProps> = ({ status, label, customText, size = 'md', style }) => {
   const { colors } = useTheme();
 
   const getStatusConfig = () => {
@@ -80,7 +81,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({ status, label, size = 'm
     >
       <Ionicons name={config.icon} size={iconSize} color={config.color} style={styles.icon} />
       <Text style={[Typography.caption1, { color: config.color, fontSize, fontWeight: '700' }]}>
-        {label || config.defaultLabel}
+        {label || customText || config.defaultLabel}
       </Text>
     </View>
   );

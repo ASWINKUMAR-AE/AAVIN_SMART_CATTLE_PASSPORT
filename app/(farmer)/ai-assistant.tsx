@@ -1,195 +1,146 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform, TextInput, Pressable } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
-import { api } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Message {
   id: string;
   sender: 'user' | 'ai';
   text: string;
-  isFallback?: boolean;
-  provider?: string;
 }
 
 export default function AIAssistantScreen() {
   const { user } = useAuth();
-  const { colors, isDark } = useTheme();
+  const { cows } = useAavinStore();
+  const { colors } = useTheme();
+
+  const farmerId = user?.associatedId || 'FARMER001';
+  const myCows = cows.filter(c => c.farmerId === farmerId);
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'init-1',
       sender: 'ai',
-      text: user?.preferredLanguage === 'ta'
-        ? 'வணக்கம்! நான் உங்கள் ஆவின் பால் பண்ணை AI உதவியாளர். உங்கள் பசுக்களின் பால் உற்பத்தி, தீவனம் மற்றும் சுகாதார பதிவுகள் பற்றி என்னிடம் கேட்கலாம்.'
-        : 'Welcome! I am your Aavin Dairy Intelligence Assistant. Ask me about your cattle feeding, milk yield trends, or recorded quality metrics.',
+      text: `Vanakkam ${user?.fullName || 'Farmer'}! I am your Aavin Cattle Passport AI Advisor. You have ${myCows.length} registered cows (Kamadhenu & Lakshmi). Ask me about feeding, mastitis care, milk withdrawal guidelines, or Aavin procurement incentives!`,
     },
   ]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const sendMessage = async (textToSend = inputText) => {
-    if (!textToSend.trim()) return;
+  const generateLocalAIResponse = (query: string): string => {
+    const q = query.toLowerCase();
+    if (q.includes('withdrawal') || q.includes('medicine') || q.includes('antibiotic')) {
+      return '⚠️ Veterinary Milk Withdrawal Notice: If a cow receives intramammary or injectable antibiotics (such as Amoxicillin or Enrofloxacin), its milk must be strictly discarded for the duration of the prescribed withdrawal period (typically 72 to 96 hours). Mixing treated milk can cause antibiotic residue penalties at the Aavin BMC.';
+    }
+    if (q.includes('mastitis') || q.includes('swelling') || q.includes('udder')) {
+      return '🩺 Udder Health Guide: Strip cups and California Mastitis Test (CMT) should be performed before milking. For early signs of quarter swelling or flakes, contact Dr. Anand at Melur Dispensary immediately. Always teat-dip in 0.5% povidone-iodine post-milking.';
+    }
+    if (q.includes('feed') || q.includes('grass') || q.includes('diet') || q.includes('nutrition')) {
+      return '🌿 Recommended Feeding Protocol: Provide 20-25 kg of fresh Co-4 Hybrid Napier green grass, 5 kg dry paddy straw for rumen fiber, and 3-4 kg of Aavin balanced cattle feed pellets with 50g chelated mineral mixture daily per milking cow.';
+    }
+    if (q.includes('fat') || q.includes('snf') || q.includes('price') || q.includes('rate')) {
+      return '🥛 Quality Pricing Schedule: Aavin standard cow milk requires 4.0% Fat and 8.5% SNF at base rate ₹36.50/L. Higher fat earns ₹0.35 per 0.1 point increment plus a ₹1.00 clean milk incentive bonus.';
+    }
+    return `Based on your cattle passport records for ${myCows.map(c => c.name).join(' & ')}, daily production is optimal. Ensure clean stainless steel cans and deliver to Melur Booth within 2 hours of milking to maintain low bacterial counts.`;
+  };
+
+  const handleSend = () => {
+    if (!inputText.trim()) return;
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: `usr-${Date.now()}`,
       sender: 'user',
-      text: textToSend.trim(),
+      text: inputText.trim(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
+    const query = inputText;
     setInputText('');
     setLoading(true);
 
-    try {
-      const res = await api.post('/ai/chat', {
-        message: textToSend.trim(),
-        language: user?.preferredLanguage || 'en',
-      });
-
-      const aiData = res.data?.data;
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+    setTimeout(() => {
+      const aiReply: Message = {
+        id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: aiData?.text || 'Record analyzed.',
-        isFallback: aiData?.isFallback,
-        provider: aiData?.provider,
+        text: generateLocalAIResponse(query),
       };
-
-      setMessages((prev) => [...prev, aiMsg]);
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          text: 'AI services temporarily unreachable. Your verified dairy records remain safely recorded in phpMyAdmin database.',
-        },
-      ]);
-    } finally {
+      setMessages(prev => [...prev, aiReply]);
       setLoading(false);
-    }
+    }, 400);
   };
-
-  const quickPrompts = user?.preferredLanguage === 'ta'
-    ? [
-        'பால் கொழுப்பு (FAT) மற்றும் SNF எப்படி அதிகரிப்பது?',
-        'Co-4 புல் மற்றும் தாது கலவை அளவு என்ன?',
-        'மருந்து கொடுத்த பின் பால் நிறுத்த காலம் என்றால் என்ன?',
-      ]
-    : [
-        'How to improve milk FAT & SNF naturally?',
-        'Optimal feeding ratio of Co-4 green grass and mineral mix',
-        'Why does veterinary withdrawal hold milk supply?',
-      ];
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={80}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView contentContainerStyle={styles.chatScroll}>
-        {/* Safety Disclaimer Banner */}
-        <View style={[styles.disclaimerBox, { backgroundColor: colors.primaryLight }]}>
-          <Ionicons name="information-circle" size={18} color={colors.primary} style={{ marginRight: 6 }} />
-          <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1 }]}>
-            AI provides farm advisory grounded in your records. All clinical diagnoses and withdrawal rules are determined strictly by Aavin Veterinarians.
-          </Text>
-        </View>
+      <DemoHeader 
+        title="Aavin Cattle AI Advisor"
+        subtitle="Local Knowledge Engine • Bovine Care & Safety"
+        showBack
+      />
 
-        {/* Quick Suggestion Pills */}
-        <View style={styles.quickPromptsRow}>
-          {quickPrompts.map((p, idx) => (
-            <Button
-              key={idx}
-              title={p}
-              variant="outline"
-              size="sm"
-              onPress={() => sendMessage(p)}
-              style={styles.promptBtn}
-            />
-          ))}
-        </View>
-
-        {/* Messages List */}
-        {messages.map((msg) => {
-          const isUser = msg.sender === 'user';
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {messages.map((m) => {
+          const isUser = m.sender === 'user';
           return (
             <View
-              key={msg.id}
+              key={m.id}
               style={[
-                styles.messageBubbleWrapper,
-                isUser ? styles.userBubbleWrapper : styles.aiBubbleWrapper,
+                styles.bubbleRow,
+                { justifyContent: isUser ? 'flex-end' : 'flex-start' },
               ]}
             >
               {!isUser && (
-                <View style={[styles.avatarCircle, { backgroundColor: colors.primary }]}>
-                  <Text style={{ fontSize: 14 }}>🤖</Text>
+                <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="sparkles" size={16} color={colors.primary} />
                 </View>
               )}
               <View
                 style={[
-                  styles.messageBubble,
+                  styles.bubble,
                   {
                     backgroundColor: isUser ? colors.primary : colors.card,
-                    borderColor: isDark ? colors.border : 'transparent',
-                    borderWidth: isDark ? 1 : 0,
+                    borderColor: isUser ? colors.primary : colors.border,
                   },
                 ]}
               >
                 <Text
                   style={[
-                    Typography.body,
-                    { color: isUser ? '#FFFFFF' : colors.text },
+                    Typography.subhead,
+                    { color: isUser ? '#FFFFFF' : colors.text, lineHeight: 22 },
                   ]}
                 >
-                  {msg.text}
+                  {m.text}
                 </Text>
-
-                {msg.isFallback && (
-                  <View style={styles.fallbackIndicator}>
-                    <Text style={[Typography.caption2, { color: colors.review, fontWeight: '700' }]}>
-                      ⚠️ Answered via fallback provider ({msg.provider})
-                    </Text>
-                  </View>
-                )}
               </View>
             </View>
           );
         })}
-
-        {loading && (
-          <View style={styles.loadingBubble}>
-            <Text style={[Typography.footnote, { color: colors.textSecondary }]}>
-              Analyzing farm intelligence...
-            </Text>
-          </View>
-        )}
       </ScrollView>
 
-      {/* Input Bar */}
-      <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <TextField
-            placeholder={user?.preferredLanguage === 'ta' ? 'கேள்வி கேட்கவும்...' : 'Ask farm advisor...'}
-            value={inputText}
-            onChangeText={setInputText}
-            clearButton
-          />
-        </View>
-        <Button
-          title="Send"
-          icon="send"
-          size="sm"
-          onPress={() => sendMessage()}
-          disabled={!inputText.trim() || loading}
+      {/* Input Box */}
+      <View style={[styles.inputContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <TextInput
+          placeholder="Ask about cattle health, feed, or milk safety..."
+          placeholderTextColor={colors.textMuted}
+          value={inputText}
+          onChangeText={setInputText}
+          style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
         />
+        <Pressable 
+          onPress={handleSend} 
+          disabled={!inputText.trim() || loading}
+          style={[styles.sendBtn, { backgroundColor: inputText.trim() ? colors.primary : colors.border }]}
+        >
+          <Ionicons name="send" size={18} color="#FFFFFF" />
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -199,70 +150,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  chatScroll: {
+  scrollContent: {
     padding: 16,
+    gap: 12,
     paddingBottom: 20,
   },
-  disclaimerBox: {
+  bubbleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-  quickPromptsRow: {
-    marginBottom: 16,
-  },
-  promptBtn: {
-    marginBottom: 6,
-  },
-  messageBubbleWrapper: {
-    flexDirection: 'row',
-    marginVertical: 6,
-    maxWidth: '88%',
-  },
-  userBubbleWrapper: {
-    alignSelf: 'flex-end',
-    justifyContent: 'flex-end',
-  },
-  aiBubbleWrapper: {
-    alignSelf: 'flex-start',
     alignItems: 'flex-start',
+    gap: 8,
   },
-  avatarCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 6,
     marginTop: 4,
   },
-  messageBubble: {
+  bubble: {
+    maxWidth: '82%',
+    padding: 12,
     borderRadius: 16,
-    padding: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
   },
-  fallbackIndicator: {
-    marginTop: 6,
-    paddingTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-  },
-  loadingBubble: {
-    padding: 12,
-    alignSelf: 'flex-start',
-    marginLeft: 34,
-  },
-  inputBar: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 12,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  input: {
+    flex: 1,
+    height: 44,
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
+    fontSize: 14,
+  },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

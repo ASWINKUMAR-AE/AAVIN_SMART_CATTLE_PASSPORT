@@ -9,6 +9,7 @@ interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
   title: string;
   description?: string;
+  message?: string;
   actionTitle?: string;
   onAction?: () => void;
   style?: ViewStyle;
@@ -18,11 +19,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   icon = 'file-tray-outline',
   title,
   description,
+  message,
   actionTitle,
   onAction,
   style,
 }) => {
   const { colors } = useTheme();
+  const textContent = description || message;
 
   return (
     <View style={[styles.container, style]}>
@@ -32,14 +35,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <Text style={[Typography.title3, { color: colors.text, marginTop: 16, textAlign: 'center' }]}>
         {title}
       </Text>
-      {description && (
+      {textContent && (
         <Text
           style={[
             Typography.subhead,
             { color: colors.textSecondary, marginTop: 8, textAlign: 'center', maxWidth: 280 },
           ]}
         >
-          {description}
+          {textContent}
         </Text>
       )}
       {actionTitle && onAction && (

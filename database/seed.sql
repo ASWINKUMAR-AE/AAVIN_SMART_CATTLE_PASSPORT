@@ -14,9 +14,12 @@ INSERT INTO `roles` (`id`, `name`, `display_name`, `description`) VALUES
 ('role-farmer', 'farmer', 'Farmer / Cattle Owner', 'Manage cows, daily production, feed records, view payment ledgers'),
 ('role-vet', 'veterinary', 'Veterinary Doctor', 'Perform clinical checks, prescribe medicine, set withdrawal periods'),
 ('role-centre', 'collection_operator', 'Collection Centre Operator', 'Scan QR, enter milk quantities, record analyzer tests, issue receipts'),
+('role-booth', 'booth', 'Booth Staff', 'Manage booth collections, review daily intakes, issue receipts'),
+('role-bmc', 'bmc', 'BMC Staff', 'Receive bulk milk from booths, verify volumes, investigate discrepancies, issue BMC receipts'),
+('role-union', 'union', 'Aavin Union Executive', 'Review BMC receipts, audit collection volumes, oversee dispute resolutions'),
 ('role-vendor', 'transport_vendor', 'Milk Transport / Logistics Vendor', 'Dispatch and transport bulk milk batches to Aavin central dairy');
 
--- 2. Users (Admin, 2 Farmers, 1 Vet, 1 Collection Operator, 1 Vendor)
+-- 2. Users (Admin, 2 Farmers, 1 Vet, 1 Collection Operator, 1 Vendor, 1 Booth, 1 BMC, 1 Union)
 -- Password for all: Password@123
 INSERT INTO `users` (`id`, `username`, `email`, `phone`, `password_hash`, `full_name`, `status`, `preferred_language`) VALUES
 ('usr-admin-01', 'admin_aavin', 'admin.madurai@aavin.tn.gov.in', '9842000001', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'Dr. S. Sundaram (Admin)', 'active', 'en'),
@@ -24,6 +27,9 @@ INSERT INTO `users` (`id`, `username`, `email`, `phone`, `password_hash`, `full_
 ('usr-farmer-02', 'farmer_selvi', 'selvi.farms@gmail.com', '9842000003', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'M. Selvi (Farmer)', 'active', 'ta'),
 ('usr-vet-01', 'vet_anand', 'dr.anand.vet@aavin.tn.gov.in', '9842000004', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'Dr. R. Anand BVSc (Veterinary Officer)', 'active', 'en'),
 ('usr-centre-01', 'operator_kannan', 'kannan.cc@aavin.tn.gov.in', '9842000005', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'P. Kannan (Centre In-Charge)', 'active', 'en'),
+('usr-booth-01', 'booth_kannan', 'booth.kannan@aavin.tn.gov.in', '9842000009', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'P. Kannan (Booth Officer)', 'active', 'ta'),
+('usr-bmc-01', 'bmc_raman', 'raman.bmc@aavin.tn.gov.in', '9842000007', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'M. Ramanathan (BMC Manager)', 'active', 'en'),
+('usr-union-01', 'union_director', 'director.union@aavin.tn.gov.in', '9842000008', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'Er. K. Rajendran (Union GM)', 'active', 'en'),
 ('usr-vendor-01', 'vendor_kumar', 'kumar.transport@gmail.com', '9842000006', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'V. Kumar (Tanker Logistics)', 'active', 'en');
 
 -- 3. User Roles Mapping
@@ -33,6 +39,9 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
 ('usr-farmer-02', 'role-farmer'),
 ('usr-vet-01', 'role-vet'),
 ('usr-centre-01', 'role-centre'),
+('usr-booth-01', 'role-booth'),
+('usr-bmc-01', 'role-bmc'),
+('usr-union-01', 'role-union'),
 ('usr-vendor-01', 'role-vendor');
 
 -- 4. Collection Centres (Madurai District)
@@ -215,5 +224,56 @@ INSERT INTO `ai_provider_settings` (`id`, `active_provider`, `is_enabled`, `fall
 INSERT INTO `audit_logs` (`id`, `actor_user_id`, `action`, `entity_type`, `entity_id`, `details`, `ip_address`) VALUES
 ('aud-001', 'usr-admin-01', 'SYSTEM_INIT', 'system', 'system-root', '{"event": "Aavin Smart Cattle Passport initialized with sample seed data"}', '127.0.0.1'),
 ('aud-002', 'usr-vet-01', 'TREATMENT_RECORDED_WITHDRAWAL_SET', 'treatment_records', 'trt-001', '{"cow_tag": "TN-MDU-COW-1002", "withdrawal_days": 4, "medicine": "Amoxicillin/Cloxacillin"}', '127.0.0.1');
+
+-- 33. BMCs (Bulk Milk Coolers)
+INSERT INTO `bmcs` (`id`, `code`, `name`, `location`, `district`, `capacity_litres`, `manager_name`, `phone`) VALUES
+('bmc-mdu-01', 'AAVIN-BMC-MDU-01', 'Melur Bulk Milk Cooling Centre', 'Madurai-Trichy NH Road, Melur', 'Madurai', 15000.00, 'M. Ramanathan', '9842000007'),
+('bmc-mdu-02', 'AAVIN-BMC-MDU-02', 'Vadipatti Bulk Milk Cooling Centre', 'Alanganallur Road, Vadipatti', 'Madurai', 12000.00, 'T. Senthil Kumar', '9842000015');
+
+-- 34. Collection Booths
+INSERT INTO `booths` (`id`, `code`, `name`, `taluk`, `village`, `district`, `assigned_bmc_id`, `capacity_litres`, `operator_name`, `phone`) VALUES
+('booth-mdu-01', 'AAVIN-BOOTH-MDU-01', 'Melur Town Primary Milk Producers Co-op Booth #1', 'Melur', 'Melur', 'Madurai', 'bmc-mdu-01', 4000.00, 'P. Kannan', '9842000009'),
+('booth-mdu-02', 'AAVIN-BOOTH-MDU-02', 'Navinipatti Village Milk Collection Booth #2', 'Melur', 'Navinipatti', 'Madurai', 'bmc-mdu-01', 3500.00, 'S. Muthu', '9842000011'),
+('booth-mdu-03', 'AAVIN-BOOTH-MDU-03', 'Alanganallur Village Collection Booth #3', 'Vadipatti', 'Alanganallur', 'Madurai', 'bmc-mdu-02', 3000.00, 'K. Vasanthan', '9842000012');
+
+-- 35. BMC Booth Assignments
+INSERT INTO `bmc_booth_assignments` (`bmc_id`, `booth_id`) VALUES
+('bmc-mdu-01', 'booth-mdu-01'),
+('bmc-mdu-01', 'booth-mdu-02'),
+('bmc-mdu-02', 'booth-mdu-03');
+
+-- 36. Farmer Booth Assignments
+INSERT INTO `farmer_booth_assignments` (`farmer_user_id`, `booth_id`) VALUES
+('usr-farmer-01', 'booth-mdu-01'),
+('usr-farmer-02', 'booth-mdu-01');
+
+-- 37. Vendors
+INSERT INTO `vendors` (`id`, `code`, `name`, `vehicle_number`, `vehicle_type`, `phone`, `route_name`) VALUES
+('vend-mdu-01', 'VEND-MDU-501', 'V. Kumar Milk Transport', 'TN-59-BZ-4819', 'Insulated Stainless Steel Tanker (3000L)', '9842000006', 'Melur Rural -> Melur BMC Hub');
+
+-- 38. Initial Milk Transactions (Route A Direct & Route B Vendor)
+INSERT INTO `milk_transactions` (`id`, `farmer_user_id`, `farmer_name`, `booth_id`, `collection_date`, `session`, `quantity_litres`, `route`, `vendor_id`, `vendor_name`, `measurement_method`, `individual_allocation`, `status`, `created_by_user_id`, `notes`) VALUES
+('mtx-001', 'usr-farmer-01', 'K. Murugesan', 'booth-mdu-01', CURRENT_DATE(), 'morning', 14.50, 'direct', NULL, NULL, 'farmer_wise', 'measured', 'recorded', 'usr-booth-01', 'Morning farm direct supply, Kamadhenu cow'),
+('mtx-002', 'usr-farmer-02', 'M. Selvi', 'booth-mdu-01', CURRENT_DATE(), 'morning', 10.00, 'direct', NULL, NULL, 'farmer_wise', 'measured', 'recorded', 'usr-booth-01', 'Direct supply, Ganga cow'),
+('mtx-003', NULL, NULL, 'booth-mdu-01', CURRENT_DATE(), 'morning', 75.50, 'vendor', 'vend-mdu-01', 'V. Kumar Milk Transport', 'combined', 'not_available', 'recorded', 'usr-booth-01', 'Vendor combined collection from Navinipatti cluster');
+
+-- 39. Seed Booth Receipt (Stage 2 -> Stage 3)
+INSERT INTO `booth_receipts` (`id`, `booth_id`, `booth_name`, `bmc_id`, `bmc_name`, `collection_date`, `session`, `dispatch_quantity`, `measurement_basis`, `included_record_ids`, `total_records_count`, `total_farmers_count`, `created_by_user_id`, `status`, `verification_code`) VALUES
+('BR-2026-MDU-001', 'booth-mdu-01', 'Melur Town Primary Milk Producers Co-op Booth #1', 'bmc-mdu-01', 'Melur Bulk Milk Cooling Centre', CURRENT_DATE(), 'morning', 1000.00, 'mixed', '["mtx-001", "mtx-002", "mtx-003"]', 3, 2, 'usr-booth-01', 'sent_to_bmc', 'VCODE-MDU-BR-1001-AAVIN');
+
+-- 40. Seed BMC Deliveries
+INSERT INTO `bmc_deliveries` (`id`, `booth_receipt_id`, `booth_id`, `booth_name`, `bmc_id`, `collection_date`, `dispatch_time`, `declared_dispatch_quantity`, `measured_received_quantity`, `difference_litres`, `status`, `received_at`, `received_by_user_id`) VALUES
+('DEL-2026-001', 'BR-2026-MDU-001', 'booth-mdu-01', 'Melur Town Primary Milk Producers Co-op Booth #1', 'bmc-mdu-01', CURRENT_DATE(), NOW(), 1000.00, 970.00, 30.00, 'mismatch_investigation', NOW(), 'usr-bmc-01');
+
+-- 41. Discrepancy Case (Difference = 1000 - 970 = 30L)
+INSERT INTO `discrepancy_cases` (`id`, `bmc_delivery_id`, `booth_id`, `booth_name`, `bmc_id`, `bmc_name`, `collection_date`, `declared_quantity`, `measured_quantity`, `difference_litres`, `difference_percent`, `status`, `created_by_user_id`) VALUES
+('DISC-MDU-101', 'DEL-2026-001', 'booth-mdu-01', 'Melur Town Primary Milk Producers Co-op Booth #1', 'bmc-mdu-01', 'Melur Bulk Milk Cooling Centre', CURRENT_DATE(), 1000.00, 970.00, 30.00, 3.00, 'under_investigation', 'usr-bmc-01');
+
+INSERT INTO `discrepancy_notes` (`id`, `discrepancy_id`, `author_name`, `note`, `evidence_reference`) VALUES
+('dnote-001', 'DISC-MDU-101', 'M. Ramanathan (BMC Manager)', 'Dipstick and flow-meter calibrated calibration check showed 970L. Tanker valve #2 inspection requested.', 'FLOWMETER-CAL-9921');
+
+-- 42. Insemination Records
+INSERT INTO `insemination_records` (`id`, `cow_id`, `date`, `bull_id`, `breed`, `technician_name`, `pregnancy_status`, `expected_calving_date`) VALUES
+('ins-001', 'cow-mdu-004', DATE_SUB(NOW(), INTERVAL 90 DAY), 'BULL-JERSEY-MDU-44', 'Jersey', 'Dr. R. Anand BVSc', 'confirmed_pregnant', DATE_ADD(NOW(), INTERVAL 190 DAY));
 
 SET FOREIGN_KEY_CHECKS = 1;

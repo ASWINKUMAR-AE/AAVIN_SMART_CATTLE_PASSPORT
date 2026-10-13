@@ -5,9 +5,12 @@ import { Typography } from '../../constants/Typography';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTranslation } from '../../context/LanguageContext';
+
 interface LargeTitleHeaderProps {
   title: string;
   subtitle?: string;
+  showLanguageSwitch?: boolean;
   rightAction?: {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
@@ -24,11 +27,13 @@ interface LargeTitleHeaderProps {
 export const LargeTitleHeader: React.FC<LargeTitleHeaderProps> = ({
   title,
   subtitle,
+  showLanguageSwitch = true,
   rightAction,
   rightActions,
   onLogout,
 }) => {
   const { colors } = useTheme();
+  const { language, toggleLanguage } = useTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -45,6 +50,20 @@ export const LargeTitleHeader: React.FC<LargeTitleHeaderProps> = ({
           </Text>
         </View>
         <View style={styles.actionsRow}>
+          {showLanguageSwitch && (
+            <Pressable
+              onPress={toggleLanguage}
+              style={[
+                styles.langPill,
+                { backgroundColor: colors.skyBlueLight, borderColor: colors.border }
+              ]}
+              accessibilityLabel="Switch Language between English and Tamil"
+            >
+              <Text style={[Typography.caption2, { color: colors.primaryDark, fontWeight: '800' }]}>
+                {language === 'en' ? '🌐 தமிழ்' : '🌐 EN'}
+              </Text>
+            </Pressable>
+          )}
           {rightActions && rightActions.map((action, idx) => (
             <Pressable
               key={idx}
@@ -70,7 +89,7 @@ export const LargeTitleHeader: React.FC<LargeTitleHeaderProps> = ({
             >
               <Ionicons name="log-out-outline" size={16} color={colors.hold || '#DC2626'} />
               <Text style={[Typography.caption1, { color: colors.hold || '#DC2626', fontWeight: '700', marginLeft: 4 }]}>
-                Logout
+                {language === 'ta' ? 'வெளியேறு' : 'Logout'}
               </Text>
             </Pressable>
           )}
@@ -107,6 +126,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  langPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,

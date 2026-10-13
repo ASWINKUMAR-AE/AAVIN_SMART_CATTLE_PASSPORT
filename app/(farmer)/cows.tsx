@@ -1,147 +1,195 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, RefreshControl } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, FlatList, Pressable, TextInput, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAavinStore } from '../../store/AavinStoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
+import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { StatusChip } from '../../components/ui/StatusChip';
-import { TextField } from '../../components/ui/TextField';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { QRScannerModal } from '../../components/scanner/QRScannerModal';
-import { api } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
+import { EmptyState } from '../../components/ui/EmptyState';
 
-export default function CowsListScreen() {
+export default function FarmerCowsScreen() {
+  const { user } = useAuth();
+  const { cows } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
 
-  const [cows, setCows] = useState<any[]>([]);
-  const [search, setSearch] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [scannerVisible, setScannerVisible] = useState(false);
+  const farmerId = user?.associatedId || 'FARMER001';
+  const myCows = cows.filter(c => c.farmerId === farmerId);
 
-  const loadCows = async () => {
-    try {
-      const res = await api.get(`/cows${search ? `?search=${encodeURIComponent(search)}` : ''}`);
-      if (res.data?.data) {
-        setCows(res.data.data);
-      }
-    } catch (e) {
-      console.warn('Failed to load cows:', e);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [healthFilter, setHealthFilter] = useState<'all' | 'healthy' | 'under_treatment'>('all');
+
+  const filteredCows = myCows.filter(c => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = c.name.toLowerCase().includes(q);
+      const matchTag = c.tagId.includes(q);
+      const matchBreed = c.breed.toLowerCase().includes(q);
+      if (!matchName && !matchTag && !matchBreed) return false;
     }
-  };
-
-  useEffect(() => {
-    loadCows();
-  }, [search]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadCows();
-    setRefreshing(false);
-  };
-
-  const handleScan = (scannedValue: string) => {
-    router.push({ pathname: '/(farmer)/cow-details', params: { identifier: scannedValue } });
-  };
-
-  const renderCowCard = ({ item }: { item: any }) => {
-    const isUnderWithdrawal = item.active_withdrawal_status === 'active';
-
-    return (
-      <Card
-        onPress={() => router.push({ pathname: '/(farmer)/cow-details', params: { id: item.id } })}
-        style={styles.cowCard}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.infoCol}>
-            <Text style={[Typography.title3, { color: colors.text }]}>{item.name}</Text>
-            <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
-              Tag #{item.tag_number}
-            </Text>
-            <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 2 }]}>
-              {item.breed} • {item.lactation_stage} lactation
-            </Text>
-          </View>
-          <StatusChip status={isUnderWithdrawal ? 'HOLD' : item.health_status} />
-        </View>
-
-        {isUnderWithdrawal && (
-          <View style={[styles.withdrawalBanner, { backgroundColor: colors.holdBg }]}>
-            <Ionicons name="warning" size={14} color={colors.hold} style={{ marginRight: 4 }} />
-            <Text style={[Typography.caption1, { color: colors.hold, fontWeight: '700' }]}>
-              Active Withdrawal Hold (Antibiotic treatment)
-            </Text>
-          </View>
-        )}
-
-        <View style={[styles.divider, { backgroundColor: colors.separator }]} />
-
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Text style={[Typography.caption2, { color: colors.textMuted }]}>DAILY YIELD</Text>
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>
-              ~{item.average_daily_yield} L/day
-            </Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={[Typography.caption2, { color: colors.textMuted }]}>VET IN-CHARGE</Text>
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>
-              {item.assigned_vet_name || 'Dr. Anand'}
-            </Text>
-          </View>
-          <View style={[styles.metaItem, { alignItems: 'flex-end' }]}>
-            <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
-              VIEW PASSPORT →
-            </Text>
-          </View>
-        </View>
-      </Card>
-    );
-  };
+    if (healthFilter === 'healthy') return c.healthStatus === 'healthy';
+    if (healthFilter === 'under_treatment') return c.healthStatus === 'under_treatment' || c.activeWithdrawal?.hasActiveWithdrawal;
+    return true;
+  });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.topBar}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <TextField
-            placeholder="Search by tag number or name..."
-            value={search}
-            onChangeText={setSearch}
-            icon="search-outline"
-            clearButton
+      <DemoHeader 
+        title="Smart Cattle Passport"
+        subtitle={`${myCows.length} Cows Registered in Aavin Dairy Twin`}
+        showBack
+      />
+
+      {/* Top Search & Filter */}
+      <View style={[styles.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View style={styles.topActionRow}>
+          <View style={[styles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
+            <TextInput
+              placeholder="Search by Cow Name, 12-digit Tag ID, Breed..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={[styles.searchInput, { color: colors.text }]}
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+
+          <Button
+            title="+ Add Cow"
+            size="sm"
+            onPress={() => router.push('/(farmer)/register-cow')}
           />
         </View>
-        <Button
-          title="Add Cow"
-          icon="add"
-          size="sm"
-          onPress={() => router.push('/(farmer)/register-cow')}
-        />
+
+        {/* Health Filter Chips */}
+        <View style={styles.chipsRow}>
+          {(['all', 'healthy', 'under_treatment'] as const).map(f => (
+            <Pressable
+              key={f}
+              onPress={() => setHealthFilter(f)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: healthFilter === f ? colors.primary : colors.background,
+                  borderColor: healthFilter === f ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: healthFilter === f ? '#FFFFFF' : colors.textSecondary },
+                ]}
+              >
+                {f === 'all' ? 'All Cows' : f === 'healthy' ? 'Healthy Only' : 'Under Treatment / Warning'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <FlatList
-        data={cows}
+        data={filteredCows}
         keyExtractor={(item) => item.id}
-        renderItem={renderCowCard}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         ListEmptyComponent={
           <EmptyState
+            title="No Cows Found"
+            message="No registered cattle match your search criteria."
             icon="paw-outline"
-            title="No Cattle Records Found"
-            description="Register your dairy cows to generate their unique cattle passports and QR codes."
-            actionTitle="Register Cow"
-            onAction={() => router.push('/(farmer)/register-cow')}
           />
         }
-      />
+        renderItem={({ item }) => {
+          const hasWithdrawal = item.activeWithdrawal?.hasActiveWithdrawal;
+          return (
+            <Pressable 
+              onPress={() => router.push(`/(farmer)/cow-details?cowId=${item.id}` as any)}
+            >
+              <Card style={[styles.cowCard, hasWithdrawal && { borderColor: '#EF4444', borderWidth: 1.5 }]}>
+                <View style={styles.cardHeader}>
+                  <Image
+                    source={{ uri: item.photoUrl || 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=200' }}
+                    style={styles.cowThumb}
+                  />
 
-      <QRScannerModal
-        visible={scannerVisible}
-        onClose={() => setScannerVisible(false)}
-        onScan={handleScan}
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={styles.nameRow}>
+                      <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+                        {item.name}
+                      </Text>
+                      <View style={[styles.statusBadge, { backgroundColor: item.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
+                        <Text style={[styles.statusBadgeText, { color: item.verificationStatus === 'verified' ? '#15803D' : '#B45309' }]}>
+                          {item.verificationStatus.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* 12-Digit Tag Badge */}
+                    <View style={styles.tagBadge}>
+                      <Ionicons name="pricetag" size={12} color="#0072BC" />
+                      <Text style={styles.tagText}>Tag: {item.tagId}</Text>
+                    </View>
+
+                    <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
+                      {item.breed} • {item.sex === 'female' ? 'Cow' : 'Bull'} • {item.approxAgeMonths} Months
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Active Withdrawal Warning Alert on Card */}
+                {hasWithdrawal && (
+                  <View style={styles.withdrawalCardAlert}>
+                    <Ionicons name="warning" size={16} color="#DC2626" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800' }]}>
+                        ACTIVE MEDICINE WITHDRAWAL
+                      </Text>
+                      <Text style={[Typography.caption2, { color: '#991B1B' }]}>
+                        {item.activeWithdrawal?.medicineName} (Ends: {item.activeWithdrawal?.withdrawalEndDate})
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Metrics Row */}
+                <View style={[styles.metricsRow, { borderTopColor: colors.border }]}>
+                  <View style={styles.metricItem}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Daily Yield</Text>
+                    <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+                      {item.dailyMilkYield.toFixed(1)} L/day
+                    </Text>
+                  </View>
+
+                  <View style={styles.metricItem}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Lactation</Text>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
+                      {item.lactationStage.toUpperCase()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.metricItem}>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Health Status</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                      <View style={[styles.healthDot, { backgroundColor: item.healthStatus === 'healthy' ? '#16A34A' : '#DC2626' }]} />
+                      <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700', marginLeft: 4 }]}>
+                        {item.healthStatus.replace('_', ' ').toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </Card>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -151,43 +199,112 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  topBar: {
+  filterBar: {
+    padding: 14,
+    borderBottomWidth: 1,
+  },
+  topActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    gap: 10,
+    marginBottom: 10,
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   listContent: {
     padding: 16,
-    paddingBottom: 40,
+    gap: 14,
   },
   cowCard: {
-    marginBottom: 12,
+    padding: 14,
   },
   cardHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cowThumb: {
+    width: 68,
+    height: 68,
+    borderRadius: 12,
+  },
+  nameRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  infoCol: {
-    flex: 1,
+  statusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  withdrawalBanner: {
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  tagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
+    backgroundColor: '#EAF5FC',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    gap: 4,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0072BC',
+  },
+  withdrawalCardAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: 10,
+    borderRadius: 10,
     marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
   },
-  divider: {
-    height: 1,
-    marginVertical: 12,
-  },
-  metaRow: {
+  metricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  metaItem: {
-    flex: 1,
+  metricItem: {
+    alignItems: 'flex-start',
+  },
+  healthDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });
