@@ -159,3 +159,78 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError({"nonFieldErrors": "Unable to create account; the phone, Farmer ID, or Pashu Aadhaar may already be registered."})
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.message_dict if hasattr(exc, "message_dict") else exc.messages)
+
+
+class FarmerProfileUpdateSerializer(FarmerProfileSerializer):
+    verificationStatus = serializers.ChoiceField(source='verification_status', choices=['pending', 'verified'], required=False)
+    numberOfCows = serializers.IntegerField(source='number_of_cows', read_only=True)
+
+    def validate_farmerIdCode(self, value):
+        value = value.strip().upper()
+        if FarmerProfile.objects.filter(farmer_id_code__iexact=value).exclude(user=self.context['farmer']).exists():
+            raise serializers.ValidationError('This Farmer ID code is already registered.')
+        return value
+
+
+class CowUpdateSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    milkCapacity = serializers.DecimalField(source='milk_capacity', max_digits=8, decimal_places=2,
+                                            min_value=Decimal('0.01'), required=False)
+
+
+class FarmerUpdateSerializer(serializers.Serializer):
+    phone = serializers.CharField(validators=[phone_validator], required=False)
+    fullName = serializers.CharField(max_length=150, required=False)
+    personalDetails = FarmerProfileUpdateSerializer(required=False)
+    cows = CowUpdateSerializer(many=True, required=False)
+
+    def validate_phone(self, value):
+        if User.objects.filter(phone=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError('An account with this phone already exists.')
+        return value
+
+    def validate_cows(self, cows):
+        ids = [cow.get('id') for cow in cows]
+        if None in ids or len(ids) != len(set(ids)):
+            raise serializers.ValidationError('Provide a unique saved cow ID for each update.')
+        owned = set(self.instance.cows.filter(pk__in=ids).values_list('pk', flat=True))
+        if set(ids) != owned:
+            raise serializers.ValidationError('Only saved cows belonging to this Farmer can be updated.')
+        return cows
+
+    def validate(self, attrs):
+        details = attrs.get('personalDetails')
+        if details is not None and not FarmerProfile.objects.filter(user=self.instance).exists():
+            if not all(details.get(field) for field in ['farmer_id_code', 'address', 'village']):
+                raise serializers.ValidationError({'personalDetails': 'Complete Farmer ID, address and village before saving or verifying this account.'})
+        return attrs
+
+    def update(self, user, validated_data):
+        try:
+            with transaction.atomic():
+                if 'phone' in validated_data:
+                    user.phone = validated_data['phone']
+                if 'fullName' in validated_data:
+                    user.full_name = validated_data['fullName']
+                user.full_clean()
+                user.save(update_fields=['phone', 'full_name'])
+                if 'personalDetails' in validated_data:
+                    profile = FarmerProfile.objects.filter(user=user).first() or FarmerProfile(user=user)
+                    for field, value in validated_data['personalDetails'].items():
+                        setattr(profile, field, value)
+                    profile.number_of_cows = user.cows.count()
+                    profile.full_clean()
+                    profile.save()
+                for changes in validated_data.get('cows', []):
+                    cow = user.cows.select_for_update().get(pk=changes['id'])
+                    for field, value in changes.items():
+                        if field != 'id':
+                            setattr(cow, field, value)
+                    cow.full_clean()
+                    cow.save()
+                return user
+        except IntegrityError:
+            raise serializers.ValidationError('Phone or Farmer ID is already registered.')
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict if hasattr(exc, 'message_dict') else exc.messages)

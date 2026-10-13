@@ -55,7 +55,7 @@ Registration, login, and `/auth/me` now return `user.personalDetails` (null for 
 
 **GET `/api/v1/farmers`** requires a Society Bearer token and returns `data.farmers`, an array of these user objects. It always lists only Farmers belonging to that Society; query parameters cannot widen its scope. Accounts without profiles remain included with null personal details. Other roles receive 403 and unauthenticated callers receive 401.
 
-The frontend maps backend `society` to the existing `booth` route without changing screen labels. Login uses the backend exclusively, sends exact passwords, and restores sessions through `/auth/me`. Registration saves every form field to PostgreSQL before updating its local cache; the existing Society directory reloads its own Farmers from the server. Editing and verification controls remain local features outside this integration.
+The frontend maps backend `society` to the existing `booth` route without changing screen labels. Login uses the backend exclusively, sends exact passwords, and restores sessions through `/auth/me`. Registration saves every form field to PostgreSQL before updating its local cache; the existing Society directory reloads its own Farmers from the server. Society farmer editing and KYC controls use the update endpoint below.
 
 ## Farmer cattle
 
@@ -72,4 +72,18 @@ Only Society-created Farmers accept cattle. The backend assigns `farmer_id` from
 
 Each cow is a separate `accounts_cow` row linked to `accounts_user.id`. `user.cows` is returned in registration, login, current-user lookup, and the Society's farmer directory. Each entry contains `id` (cow UUID), `farmerId` (farmer UUID), `pashuAadhaar`, `breed`, `milkCapacity` (decimal string), `name`, and `createdAt`. Accounts with no cattle return an empty array. Society listing permissions also protect nested cow records.
 
-The frontend restores these records into its cache using server IDs, preserves local clinical data for matching tags, and replaces the current society's cached cattle on refresh. Birth dates, health history, cattle editing, and verification are outside this registration API. Existing locally enrolled cattle require a separate reviewed import; this migration does not copy device storage.
+The frontend restores these records into its cache using server IDs, preserves local clinical data for matching tags, and replaces the current society's cached cattle on refresh. Birth dates, health history, RFID/breed changes, and cattle verification are outside this API. Existing locally enrolled cattle require a separate reviewed import; this migration does not copy device storage.
+
+## Society farmer edits and KYC
+
+`PATCH /api/v1/farmers/<farmer UUID>` requires a Society access token. Only that Society's own Farmers can be updated (404 for other Farmers, 403 for other roles, 401 when unauthenticated). Example:
+
+```json
+{
+  "fullName": "Updated Farmer",
+  "personalDetails": {"address": "New Street", "verificationStatus": "verified", "bankName": "Example Bank"},
+  "cows": [{"id": "SAVED-COW-UUID", "name": "Lakshmi", "milkCapacity": 14.5}]
+}
+```
+
+All fields are optional. `phone` is also editable and unique; changing it preserves the existing password. Partial profile updates retain unspecified fields. Farmer ID remains unique; KYC accepts `pending` or `verified`. Counts derive from database cow rows. Cow updates require distinct saved IDs owned by this Farmer; only name and milk capacity change. Omitted cows are retained. Account, profile, and cow edits are atomic, with refreshed `data.user` returned on success. An account without a profile needs Farmer ID, address, and village before KYC.

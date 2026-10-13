@@ -15,7 +15,7 @@ This backend implements phone/password login, JWT access and refresh tokens, rol
 
 A BMC can have any number of Societies. When a Union registers a Society, it supplies the ID of an active BMC belonging to that Union. When a BMC registers a Society, the Society automatically belongs to that BMC. Registration requires authentication; there is no public signup or Union registration API.
 
-The existing login and Society Farmer registration forms are connected to Django without layout changes. Society accounts use the existing Booth screens. The Society Farmers directory loads its own registered accounts from PostgreSQL. Cattle enrollment is persisted in PostgreSQL and restored on login and society directory refresh. Milk, payments, clinical records, editing, verification, and AI features remain local/demo workflows outside this integration. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
+The existing login and Society Farmer registration forms are connected to Django without layout changes. Society accounts use the existing Booth screens. The Society Farmers directory loads its own registered accounts from PostgreSQL. Cattle enrollment is persisted in PostgreSQL and restored on login and society directory refresh. Society farmer profile edits, cow name/milk-capacity edits, and farmer KYC verification also persist through the API. Milk, payments, clinical records, cattle verification, and AI features remain local/demo workflows outside this integration. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
 
 ## Backend setup
 
@@ -89,7 +89,7 @@ backend/.venv/bin/python backend/manage.py check
 backend/.venv/bin/python backend/manage.py test --settings=config.test_settings
 ```
 
-The 26 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
+The 31 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
 
 See [API details](docs/api.md), [architecture](docs/architecture.md), and [database notes](database/README.md).
 
@@ -118,3 +118,5 @@ backend/.venv/bin/python backend/manage.py migrate accounts 0003_cow
 ```
 
 For the hosted Docker service, deploy the updated backend image and run `python manage.py migrate` with its database environment before serving traffic. The frontend requires the updated API to persist cattle.
+
+Society farmer edits and KYC use `PATCH /api/v1/farmers/<farmer UUID>`. It accepts partial account/profile fields and updates to existing cow IDs. The backend restricts changes to the Society's own Farmers and each Farmer's own cows, saves atomically, and returns the refreshed account/cattle. Farmer assignment, cow RFID and breed are fixed in this edit flow. Counts derive from saved cattle. Existing accounts without a profile must first save Farmer ID, address, and village before KYC. Verify the actual Society screen controls with `node scripts/test-society-farmers.cjs`.

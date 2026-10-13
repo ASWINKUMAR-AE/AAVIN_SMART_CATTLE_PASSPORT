@@ -320,3 +320,80 @@ class AccountTests(APITestCase):
         self.assertEqual(self.client.get('/api/v1/farmers').data['data']['farmers'], [])
         with self.assertRaises(ValidationError):
             Cow(farmer=self.society, pashu_aadhaar='123456789013', breed='Jersey Cross', milk_capacity=12).full_clean()
+
+    def create_profile_and_cow(self):
+        from .models import Cow, FarmerProfile
+        FarmerProfile.objects.create(user=self.farmer, farmer_id_code='FARM-EDIT', address='Old Street', village='Melur')
+        return Cow.objects.create(farmer=self.farmer, pashu_aadhaar='123456789012', breed='Jersey Cross', milk_capacity=12, name='Old name')
+
+    def test_society_updates_profile_cows_and_kyc_persistently(self):
+        cow = self.create_profile_and_cow()
+        self.authenticate_as(self.society)
+        payload = {'phone':'9842000088', 'fullName':'Updated Farmer',
+                   'personalDetails': {'farmerIdCode':'farm-edit', 'address':'New Street', 'verificationStatus':'verified', 'bankName':'New Bank', 'numberOfCows':999},
+                   'cows':[{'id':str(cow.pk), 'name':'Lakshmi', 'milkCapacity':15.5}]}
+        response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', payload, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.farmer.refresh_from_db(); cow.refresh_from_db()
+        self.assertEqual(self.farmer.phone, '9842000088')
+        self.assertTrue(self.farmer.check_password(PASSWORD))
+        self.assertEqual(self.farmer.parent, self.society)
+        profile = self.farmer.farmer_profile
+        self.assertEqual(profile.address, 'New Street')
+        self.assertEqual(profile.village, 'Melur')
+        self.assertEqual(profile.verification_status, 'verified')
+        self.assertEqual(profile.number_of_cows, 1)
+        self.assertEqual(cow.name, 'Lakshmi')
+        self.assertEqual(float(cow.milk_capacity), 15.5)
+        listed = self.client.get('/api/v1/farmers').data['data']['farmers'][0]
+        self.assertEqual(listed['personalDetails']['verificationStatus'], 'verified')
+        self.assertEqual(listed['cows'][0]['name'], 'Lakshmi')
+        response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'personalDetails':{'verificationStatus':'pending'}}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['data']['user']['personalDetails']['verificationStatus'], 'pending')
+
+    def test_farmer_updates_are_society_scoped(self):
+        self.create_profile_and_cow()
+        other = User.objects.create_user('9842000010', PASSWORD, full_name='Other Society', role='society', parent=self.bmc)
+        for actor, expected in [(other,404),(self.union,403),(self.bmc,403),(self.farmer,403)]:
+            self.authenticate_as(actor)
+            response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'fullName':'Forbidden'}, format='json')
+            self.assertEqual(response.status_code, expected, response.data)
+        self.client.credentials()
+        self.assertEqual(self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {}).status_code, 401)
+
+    def test_invalid_cow_and_duplicate_phone_updates_are_atomic(self):
+        cow = self.create_profile_and_cow()
+        self.authenticate_as(self.society)
+        for changes in [{'phone':self.society.phone}, {'cows':[{'id':str(cow.pk),'milkCapacity':0}]},
+                        {'cows':[{'name':'missing id'}]}, {'personalDetails':{'verificationStatus':'invalid'}}]:
+            response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'fullName':'Should not save', **changes}, format='json')
+            self.assertEqual(response.status_code, 400, response.data)
+            self.farmer.refresh_from_db()
+            self.assertEqual(self.farmer.full_name, 'Farmer One')
+
+    def test_cow_ownership_and_save_failure_do_not_partially_update_farmer(self):
+        from unittest.mock import patch
+        from django.db import IntegrityError
+        from .models import Cow
+        cow = self.create_profile_and_cow()
+        other = User.objects.create_user('9842000011', PASSWORD, full_name='Other Farmer', role='farmer', parent=self.society)
+        other_cow = Cow.objects.create(farmer=other, pashu_aadhaar='123456789013', breed='Jersey', milk_capacity=10)
+        self.authenticate_as(self.society)
+        response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'cows':[{'id':str(other_cow.pk),'name':'Wrong owner'}]}, format='json')
+        self.assertEqual(response.status_code, 400, response.data)
+        with patch.object(Cow, 'save', side_effect=IntegrityError('test failure')):
+            response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'fullName':'Rollback',
+                'personalDetails':{'verificationStatus':'verified'}, 'cows':[{'id':str(cow.pk),'name':'Rollback'}]}, format='json')
+        self.assertEqual(response.status_code, 400, response.data)
+        self.farmer.refresh_from_db()
+        self.assertEqual(self.farmer.full_name, 'Farmer One')
+        self.assertEqual(self.farmer.farmer_profile.verification_status, 'pending')
+
+    def test_legacy_farmer_needs_complete_profile_for_kyc(self):
+        self.authenticate_as(self.society)
+        response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'personalDetails':{'verificationStatus':'verified'}}, format='json')
+        self.assertEqual(response.status_code, 400, response.data)
+        response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'personalDetails':{'farmerIdCode':'FARM-LEGACY',
+            'address':'Street','village':'Melur','verificationStatus':'verified'}}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)

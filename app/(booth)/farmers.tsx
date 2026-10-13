@@ -29,12 +29,12 @@ import { Farmer, Cow } from '../../types/aavin';
 
 export default function BoothFarmersScreen() {
   const { user } = useAuth();
-  const { farmers: storedFarmers, booths, cows, verifyFarmer, updateFarmer, replaceSocietyFarmers, cacheFarmer } = useAavinStore();
+  const { farmers: storedFarmers, booths, cows, replaceSocietyFarmers, cacheFarmer } = useAavinStore();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
+  const boothId = user?.associatedId || '';
+  const booth = booths.find(b => b.id === boothId) || { id: boothId, name: user?.fullName || 'Society' };
 
   const [loadedForSociety, setLoadedForSociety] = useState<string | null>(null);
   const farmers = loadedForSociety === user?.associatedId
@@ -96,7 +96,6 @@ export default function BoothFarmersScreen() {
   const [formAddress, setFormAddress] = useState('');
   const [formCommunity, setFormCommunity] = useState('');
   const [formBoothId, setFormBoothId] = useState('');
-  const [formCowsCount, setFormCowsCount] = useState('1');
   const [formStatus, setFormStatus] = useState<'verified' | 'pending'>('verified');
   const [formBankAccName, setFormBankAccName] = useState('');
   const [formBankName, setFormBankName] = useState('');
@@ -138,10 +137,20 @@ export default function BoothFarmersScreen() {
     );
   });
 
-  const handleToggleVerification = (farmerId: string, currentStatus: 'verified' | 'pending') => {
+  const [verifyingFarmerId, setVerifyingFarmerId] = useState<string | null>(null);
+  const handleToggleVerification = async (farmerId: string, currentStatus: 'verified' | 'pending') => {
+    if (verifyingFarmerId || user?.role !== 'booth') return;
     const nextStatus = currentStatus === 'verified' ? 'pending' : 'verified';
-    verifyFarmer(farmerId, nextStatus);
-    Alert.alert('KYC Updated', `Farmer status set to ${nextStatus.toUpperCase()}.`);
+    setVerifyingFarmerId(farmerId);
+    try {
+      const account = await AccountsApi.updateFarmer(farmerId, { personalDetails: { verificationStatus: nextStatus } });
+      cacheFarmer(mapFarmer(account), mapCows(account));
+      Alert.alert('KYC Updated', `Farmer status set to ${nextStatus.toUpperCase()}.`);
+    } catch (error) {
+      Alert.alert('Unable to update KYC', apiErrorMessage(error));
+    } finally {
+      setVerifyingFarmerId(null);
+    }
   };
 
   const handleOpenEditModal = (farmer: Farmer) => {
@@ -151,18 +160,17 @@ export default function BoothFarmersScreen() {
     setFormIdCode(farmer.farmerIdCode);
     setFormVillage(farmer.village);
     setFormAddress(farmer.address);
-    setFormCommunity(farmer.community || 'Melur Taluk');
+    setFormCommunity(farmer.community || '');
     setFormBoothId(farmer.assignedBoothId || booth.id);
-    setFormCowsCount(String(farmer.numberOfCows || 1));
     setFormStatus(farmer.verificationStatus);
-    setFormBankAccName(farmer.bankAccountName || farmer.name);
-    setFormBankName(farmer.bankName || 'Canara Bank - Melur');
+    setFormBankAccName(farmer.bankAccountName || '');
+    setFormBankName(farmer.bankName || '');
     setFormBankAccNum(farmer.bankAccountNumber || '');
-    setFormBankIfsc(farmer.bankIfsc || 'CNRB0001092');
+    setFormBankIfsc(farmer.bankIfsc || '');
     setFormUpiId(farmer.upiId || '');
 
     // Load cows belonging to this farmer so the operator can edit cow name and capacity
-    const farmerCows = cows.filter(c => c.farmerId === farmer.id);
+    const farmerCows = cows.filter(c => c.farmerId === farmer.id && c.backendSynced);
     if (farmerCows.length > 0) {
       setEditingFarmerCows(farmerCows.map(c => ({
         id: c.id,
@@ -174,15 +182,7 @@ export default function BoothFarmersScreen() {
         originalCow: c,
       })));
     } else {
-      setEditingFarmerCows([{
-        id: `COW_DRAFT_${farmer.id}_1`,
-        cowId: `COW-${farmer.farmerIdCode}-01`,
-        tagId: `10010000${Math.floor(1000 + Math.random() * 9000)}`,
-        breed: 'Jersey Cross',
-        name: 'Lakshmi',
-        dailyMilkYield: 12,
-        originalCow: null,
-      }]);
+      setEditingFarmerCows([]);
     }
     setActiveEditCowSlide(0);
     setErrors({});
@@ -344,7 +344,7 @@ export default function BoothFarmersScreen() {
       const created = mapFarmer(account);
       cacheFarmer(created, mapCows(account));
 
-      setIsRegistering(false);
+      setLoadedForSociety(user.associatedId);
       handleCloseRegisterModal();
 
       Alert.alert(
@@ -352,13 +352,21 @@ export default function BoothFarmersScreen() {
         `Successfully enrolled ${created.name} (${created.farmerIdCode}) and ${regCows.length} cattle passports with 12-digit Pashu Aadhaar RFID tags at ${booth.name}.`
       );
     } catch (err: any) {
-      setIsRegistering(false);
       Alert.alert('Enrollment Error', apiErrorMessage(err));
+    } finally {
+      setIsRegistering(false);
     }
   };
 
   const handleSaveFarmer = async () => {
+    if (isSaving || user?.role !== 'booth') return;
     const newErrors: Record<string, string> = {};
+    if (!formIdCode.trim()) newErrors.farmerIdCode = 'Farmer ID Code is required.';
+    for (const cow of editingFarmerCows) {
+      if (!Number.isFinite(Number(cow.dailyMilkYield)) || Number(cow.dailyMilkYield) <= 0) {
+        newErrors.cows = 'Enter a positive daily milk capacity for each cow.';
+      }
+    }
 
     if (!formName.trim()) {
       newErrors.name = 'Farmer name is required.';
@@ -367,7 +375,7 @@ export default function BoothFarmersScreen() {
     const cleanPhone = formPhone.trim().replace(/\D/g, '');
     if (!cleanPhone) {
       newErrors.phone = 'Mobile phone number is required.';
-    } else if (cleanPhone.length !== 10) {
+    } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       newErrors.phone = 'Enter a valid 10-digit Indian phone number.';
     }
 
@@ -376,11 +384,6 @@ export default function BoothFarmersScreen() {
     }
     if (!formAddress.trim()) {
       newErrors.address = 'Street / Door address is required.';
-    }
-
-    const parsedCows = parseInt(formCowsCount, 10);
-    if (isNaN(parsedCows) || parsedCows < 0) {
-      newErrors.cows = 'Enter a valid number of cattle (0 or more).';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -393,69 +396,36 @@ export default function BoothFarmersScreen() {
 
     setIsSaving(true);
     try {
-      const updatedFarmerData: Farmer = {
-        ...editingFarmer,
-        name: formName.trim(),
-        mobileNumber: cleanPhone,
-        farmerIdCode: formIdCode.trim() || editingFarmer.farmerIdCode,
-        village: formVillage.trim(),
-        address: formAddress.trim(),
-        community: formCommunity.trim() || 'Melur Taluk',
-        assignedBoothId: formBoothId,
-        numberOfCows: editingFarmerCows.length || parsedCows,
-        verificationStatus: formStatus,
-        bankAccountName: formBankAccName.trim() || undefined,
-        bankName: formBankName.trim() || undefined,
-        bankAccountNumber: formBankAccNum.trim() || undefined,
-        bankIfsc: formBankIfsc.trim() || undefined,
-        upiId: formUpiId.trim() || undefined,
-      };
-
-      const updatedCowsToSave: Cow[] = editingFarmerCows.map((ec, idx) => {
-        if (ec.originalCow) {
-          return {
-            ...ec.originalCow,
-            name: ec.name.trim() || ec.originalCow.name,
-            dailyMilkYield: typeof ec.dailyMilkYield === 'number' ? ec.dailyMilkYield : parseFloat(String(ec.dailyMilkYield)) || 10,
-          };
-        } else {
-          return {
-            id: `COW${String(cows.length + idx + 1).padStart(3, '0')}`,
-            cowId: ec.cowId,
-            tagId: ec.tagId,
-            farmerId: editingFarmer.id,
-            farmerName: formName.trim(),
-            breed: ec.breed,
-            name: ec.name.trim() || `Cow (${ec.breed})`,
-            dateOfBirth: '2023-04-15',
-            approxAgeMonths: 36,
-            sex: 'female' as const,
-            currentStatus: 'lactating' as const,
-            dailyMilkYield: typeof ec.dailyMilkYield === 'number' ? ec.dailyMilkYield : parseFloat(String(ec.dailyMilkYield)) || 10,
-            healthStatus: 'healthy' as const,
-            lactationStage: 'peak' as const,
-            identificationMarks: 'Govt 12-digit RFID Tag',
-            verificationStatus: 'verified' as const,
-            medicalHistory: [],
-            vaccinationHistory: [],
-            inseminationHistory: [],
-            treatmentRecords: [],
-            createdAt: new Date().toISOString(),
-          };
-        }
+      const account = await AccountsApi.updateFarmer(editingFarmer.id, {
+        fullName: formName.trim(),
+        phone: cleanPhone,
+        personalDetails: {
+          farmerIdCode: formIdCode.trim().toUpperCase(),
+          village: formVillage.trim(),
+          address: formAddress.trim(),
+          community: formCommunity.trim(),
+          verificationStatus: formStatus,
+          bankAccountName: formBankAccName.trim(),
+          bankName: formBankName.trim(),
+          bankAccountNumber: formBankAccNum.trim(),
+          bankIfsc: formBankIfsc.trim().toUpperCase(),
+          upiId: formUpiId.trim(),
+        },
+        cows: editingFarmerCows.filter(cow => cow.originalCow?.backendSynced).map(cow => ({
+          id: cow.id,
+          name: cow.name.trim(),
+          milkCapacity: Number(cow.dailyMilkYield),
+        })),
       });
-
-      updateFarmer(updatedFarmerData, updatedCowsToSave);
-      setIsSaving(false);
+      const savedFarmer = mapFarmer(account);
+      cacheFarmer(savedFarmer, mapCows(account));
       handleCloseModal();
-
-      Alert.alert(
-        'Farmer & Cattle Data Updated',
-        `Successfully updated profile for ${updatedFarmerData.name} and ${updatedCowsToSave.length} cattle passports (name & capacity synced).`
-      );
+      Alert.alert('Farmer & Cattle Data Updated', `Saved ${savedFarmer.name}'s profile and cattle details.`);
     } catch (err: any) {
       setIsSaving(false);
-      Alert.alert('Error', err?.message || 'Failed to update farmer data. Please try again.');
+      Alert.alert('Error', apiErrorMessage(err));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -609,6 +579,7 @@ export default function BoothFarmersScreen() {
 
                 <Pressable
                   onPress={() => handleToggleVerification(item.id, item.verificationStatus)}
+                  disabled={verifyingFarmerId !== null}
                   style={[
                     styles.statusPill,
                     {
@@ -768,6 +739,7 @@ export default function BoothFarmersScreen() {
 
                 <Pressable
                   onPress={() => handleToggleVerification(item.id, item.verificationStatus)}
+                  disabled={verifyingFarmerId !== null}
                   style={[
                     styles.kycToggleBtn,
                     {
@@ -926,7 +898,7 @@ export default function BoothFarmersScreen() {
                   Assigned Collection Booth:
                 </Text>
                 <View style={styles.boothChipsRow}>
-                  {booths.map(b => (
+                  {booths.filter(b => b.id === boothId).map(b => (
                     <Pressable
                       key={b.id}
                       onPress={() => setFormBoothId(b.id)}

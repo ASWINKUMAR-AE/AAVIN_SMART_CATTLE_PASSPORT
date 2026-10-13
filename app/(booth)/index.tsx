@@ -29,6 +29,7 @@ export default function BoothDashboard() {
 
   const boothId = user?.associatedId || 'BOOTH001';
   const booth = booths.find(b => b.id === boothId) || booths[0];
+  const boothDisplayName = user?.fullName || booth.name;
   const assignedBmc = bmcs.find(b => b.id === booth.assignedBmcId) || bmcs[0];
 
   const stats = getBoothStats(booth.id);
@@ -51,7 +52,7 @@ export default function BoothDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={booth.name}
-        subtitle={`Booth #${booth.code} • Linked to BMC: ${assignedBmc.name}`}
+        subtitle={`Booth: ${boothDisplayName} • Linked to BMC: ${assignedBmc.name}`}
       />
 
       <ScrollView 
@@ -84,7 +85,7 @@ export default function BoothDashboard() {
           <View style={styles.darkOverlayLayer}>
             <View style={styles.heroCardHeaderRow}>
               <View style={styles.heroHeaderPill}>
-                <Text style={styles.heroHeaderPillText}>Booth #{booth.code} ›</Text>
+                <Text style={styles.heroHeaderPillText} numberOfLines={1}>{boothDisplayName} ›</Text>
               </View>
               <View style={[styles.heroStatusBadge, { backgroundColor: todayReceipt ? '#16A34A' : '#D97706' }]}>
                 <Text style={styles.heroStatusBadgeText}>
@@ -336,6 +337,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   heroHeaderPill: {
+    flexShrink: 1,
+    marginRight: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
     paddingHorizontal: 10,
     paddingVertical: 4,
