@@ -80,7 +80,7 @@ export default function AIAssistantScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <DemoHeader 
+      <DemoHeader
         title="Aavin Cattle AI Advisor"
         subtitle="Local Knowledge Engine • Bovine Care & Safety"
         showBack
@@ -134,8 +134,8 @@ export default function AIAssistantScreen() {
           onChangeText={setInputText}
           style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
         />
-        <Pressable 
-          onPress={handleSend} 
+        <Pressable
+          onPress={handleSend}
           disabled={!inputText.trim() || loading}
           style={[styles.sendBtn, { backgroundColor: inputText.trim() ? colors.primary : colors.border }]}
         >

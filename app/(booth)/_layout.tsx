@@ -1,70 +1,75 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { FloatingAavinTabBar } from '../../components/navigation/FloatingAavinTabBar';
 
 export default function BoothLayout() {
   const { colors } = useTheme();
 
   return (
     <Tabs
+      tabBar={(props) => <FloatingAavinTabBar {...props} />}
       screenOptions={{
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.primary,
         headerTitleStyle: { color: colors.text, fontWeight: '700' },
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        headerShown: false,
       }}
     >
+      {/* 1. Home */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Booth Overview',
+          title: 'Home',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="record-milk"
-        options={{
-          title: 'Record Milk',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="review-collection"
-        options={{
-          title: 'Closure & Receipt',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="sent-receipts"
-        options={{
-          title: 'Dispatches',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="send-outline" size={size} color={color} />,
-        }}
-      />
+
+      {/* 2. Farmers */}
       <Tabs.Screen
         name="farmers"
         options={{
           title: 'Farmers',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
         }}
       />
-      {/* Hidden Subroutes */}
+
+      {/* 3. Record Milk */}
+      <Tabs.Screen
+        name="record-milk"
+        options={{
+          title: 'Record Milk',
+          headerShown: false,
+        }}
+      />
+
+      {/* 4. Receipts */}
+      <Tabs.Screen
+        name="review-collection"
+        options={{
+          title: 'Receipts',
+          headerShown: false,
+        }}
+      />
+
+      {/* 5. Profile */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerShown: false,
+        }}
+      />
+
+      {/* Subroutes (Hidden from Bottom Bar) */}
+      <Tabs.Screen
+        name="sent-receipts"
+        options={{
+          href: null,
+          title: 'Dispatches',
+          headerShown: false,
+        }}
+      />
       <Tabs.Screen
         name="receipt-preview"
         options={{

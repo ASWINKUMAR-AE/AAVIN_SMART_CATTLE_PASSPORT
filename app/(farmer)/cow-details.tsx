@@ -1,62 +1,29 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, Pressable, Modal, TextInput, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StyleSheet, View, Text, ScrollView, Image, Pressable } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CowDetailsScreen() {
   const params = useLocalSearchParams();
   const cowId = (params.cowId as string) || 'COW001';
-  const { cows, addMedicalRecord } = useAavinStore();
+  const { cows } = useAavinStore();
   const { colors } = useTheme();
-  const router = useRouter();
 
   const cow = cows.find(c => c.id === cowId) || cows[0];
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'profile' | 'medical' | 'vaccines' | 'treatments' | 'breeding'>('profile');
 
-  // Add Medical Record Modal
-  const [modalVisible, setModalVisible] = useState(false);
-  const [diagnosis, setDiagnosis] = useState('');
-  const [symptoms, setSymptoms] = useState('');
-  const [temp, setTemp] = useState('38.5');
-  const [recommendations, setRecommendations] = useState('');
-
-  const handleSaveMedicalRecord = () => {
-    if (!diagnosis.trim()) {
-      Alert.alert('Required Field', 'Please enter a diagnosis or clinical observation.');
-      return;
-    }
-
-    addMedicalRecord(cow.id, {
-      date: new Date().toISOString().split('T')[0],
-      vetName: 'Dr. R. Anand BVSc',
-      diagnosis: diagnosis.trim(),
-      symptoms: symptoms.trim() || 'General health assessment',
-      bodyTemperatureC: parseFloat(temp) || 38.5,
-      heartRateBpm: 70,
-      rumenMotility: 'Normal (3/2min)',
-      recommendations: recommendations.trim() || 'Routine cattle feed & mineral supplement',
-    });
-
-    setModalVisible(false);
-    setDiagnosis('');
-    setSymptoms('');
-    setRecommendations('');
-    Alert.alert('Success', 'Clinical examination record added to Cattle Passport.');
-  };
-
   const hasWithdrawal = cow?.activeWithdrawal?.hasActiveWithdrawal;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title={cow.name}
         subtitle={`Passport #${cow.cowId} • Tag #${cow.tagId}`}
         showBack
@@ -85,10 +52,10 @@ export default function CowDetailsScreen() {
                 Owner: {cow.farmerName}
               </Text>
               <View style={[styles.verifBadge, { backgroundColor: cow.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
-                <Ionicons 
-                  name={cow.verificationStatus === 'verified' ? 'checkmark-circle' : 'time'} 
-                  size={12} 
-                  color={cow.verificationStatus === 'verified' ? '#15803D' : '#B45309'} 
+                <Ionicons
+                  name={cow.verificationStatus === 'verified' ? 'checkmark-circle' : 'time'}
+                  size={12}
+                  color={cow.verificationStatus === 'verified' ? '#15803D' : '#B45309'}
                 />
                 <Text style={[styles.verifText, { color: cow.verificationStatus === 'verified' ? '#15803D' : '#B45309' }]}>
                   {cow.verificationStatus === 'verified' ? 'Aavin Verified Passport' : 'Pending Verification'}
@@ -164,11 +131,11 @@ export default function CowDetailsScreen() {
                   activeTab === tab.key && { backgroundColor: colors.primary, borderColor: colors.primary },
                 ]}
               >
-                <Ionicons 
-                  name={tab.icon as any} 
-                  size={15} 
-                  color={activeTab === tab.key ? '#FFFFFF' : colors.textSecondary} 
-                  style={{ marginRight: 6 }} 
+                <Ionicons
+                  name={tab.icon as any}
+                  size={15}
+                  color={activeTab === tab.key ? '#FFFFFF' : colors.textSecondary}
+                  style={{ marginRight: 6 }}
                 />
                 <Text style={[styles.tabLabel, { color: activeTab === tab.key ? '#FFFFFF' : colors.textSecondary }]}>
                   {tab.label}
@@ -219,16 +186,10 @@ export default function CowDetailsScreen() {
         {/* TAB 2: MEDICAL HISTORY */}
         {activeTab === 'medical' && (
           <Card style={styles.tabContentCard}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                Clinical Examinations Log
-              </Text>
-              <Button
-                title="+ Add Exam"
-                size="sm"
-                onPress={() => setModalVisible(true)}
-              />
-            </View>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
+              Clinical Examinations Log
+            </Text>
+
 
             {cow.medicalHistory.length === 0 ? (
               <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
@@ -370,78 +331,6 @@ export default function CowDetailsScreen() {
           </Card>
         )}
       </ScrollView>
-
-      {/* Add Examination Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-          <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
-            <View style={styles.modalHeader}>
-              <Text style={[Typography.title2, { color: colors.text }]}>Add Clinical Examination</Text>
-              <Pressable onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </Pressable>
-            </View>
-
-            <ScrollView>
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>
-                Diagnosis / Primary Finding *
-              </Text>
-              <TextInput
-                placeholder="e.g. Mild mastitis check, optimal lactation, digestion check"
-                placeholderTextColor={colors.textMuted}
-                value={diagnosis}
-                onChangeText={setDiagnosis}
-                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
-              />
-
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
-                Symptoms Observed
-              </Text>
-              <TextInput
-                placeholder="e.g. Normal appetite, clear mucosal membrane"
-                placeholderTextColor={colors.textMuted}
-                value={symptoms}
-                onChangeText={setSymptoms}
-                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
-              />
-
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
-                Body Temperature (°C)
-              </Text>
-              <TextInput
-                placeholder="38.5"
-                placeholderTextColor={colors.textMuted}
-                value={temp}
-                onChangeText={setTemp}
-                keyboardType="numeric"
-                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
-              />
-
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
-                Diet & Treatment Recommendations
-              </Text>
-              <TextInput
-                placeholder="e.g. Continue green fodder 20kg + 50g mineral mix"
-                placeholderTextColor={colors.textMuted}
-                value={recommendations}
-                onChangeText={setRecommendations}
-                style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
-              />
-
-              <Button
-                title="Save Examination to Passport"
-                onPress={handleSaveMedicalRecord}
-                style={{ marginTop: 18 }}
-              />
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -582,28 +471,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  inputField: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
 });
+
