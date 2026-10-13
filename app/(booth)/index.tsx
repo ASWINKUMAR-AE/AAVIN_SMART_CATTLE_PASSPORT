@@ -129,52 +129,6 @@ export default function BoothDashboard() {
           </Pressable>
         </View>
 
-        {/* Dispatch Pipeline Overview */}
-        <Card style={styles.pipelineCard}>
-          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-            Milk Collection Chain Node
-          </Text>
-
-          <View style={styles.pipelineFlow}>
-            <Pressable 
-              onPress={() => router.push('/(booth)/farmers')}
-              style={styles.flowNode}
-            >
-              <Text style={{ fontSize: 24 }}>👨‍🌾</Text>
-              <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', marginTop: 4 }]}>
-                Farmers ›
-              </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '800' }]}>
-                {stats.farmersAttended} Supplied
-              </Text>
-            </Pressable>
-
-            <Ionicons name="arrow-forward" size={18} color="#94A3B8" />
-
-            <View style={[styles.flowNode, { backgroundColor: colors.primaryLight, padding: 8, borderRadius: 10 }]}>
-              <Text style={{ fontSize: 24 }}>🏢</Text>
-              <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', marginTop: 4 }]}>
-                Melur Booth
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '900' }]}>
-                {stats.eligibleReceiptTotal.toFixed(1)} L
-              </Text>
-            </View>
-
-            <Ionicons name="arrow-forward" size={18} color="#94A3B8" />
-
-            <View style={styles.flowNode}>
-              <Text style={{ fontSize: 24 }}>❄️</Text>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700', marginTop: 4 }]}>
-                East BMC
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800' }]}>
-                {todayReceipt?.status === 'sent_to_bmc' ? 'Dispatched' : 'Pending'}
-              </Text>
-            </View>
-          </View>
-        </Card>
-
         {/* Today's Recorded Entries List */}
         <Card style={styles.entriesCard}>
           <View style={styles.entriesHeader}>
@@ -303,18 +257,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pipelineCard: {
-    padding: 16,
-  },
-  pipelineFlow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  flowNode: {
-    alignItems: 'center',
   },
   entriesCard: {
     padding: 16,
