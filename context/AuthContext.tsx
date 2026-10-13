@@ -4,7 +4,7 @@ import { DemoUser, UserRole } from '../types/aavin';
 import { SEED_DEMO_USERS } from '../data/seedData';
 import { api, setSecureItem, deleteSecureItem, getSecureItem, initializeApiClient } from '../services/api';
 import { Config } from '../constants/Config';
-import { apiErrorMessage, BackendUser, mapAccount, mapFarmer, mapSociety } from '../services/accountMapping';
+import { apiErrorMessage, BackendUser, mapAccount, mapCows, mapFarmer, mapSociety } from '../services/accountMapping';
 import { useAavinStore } from '../store/AavinStoreContext';
 
 const AUTH_USER_KEY = '@aavin_auth_user_v2';
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const appUser = mapAccount(account);
     if (account.role === 'society') cacheSociety(mapSociety(account));
     if (account.role === 'farmer') {
-      cacheFarmer(mapFarmer(account));
+      cacheFarmer(mapFarmer(account), mapCows(account));
       if (account.parent) cacheSociety(mapSociety(account.parent));
     }
     await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(appUser));

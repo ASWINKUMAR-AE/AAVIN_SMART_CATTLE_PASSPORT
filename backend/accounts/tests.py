@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -8,6 +9,7 @@ PASSWORD = 'CattleSecure!874'
 
 class AccountTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.union = User.objects.create_superuser('9842000001', PASSWORD, full_name='Madurai Union')
         self.bmc = User.objects.create_user('9842000002', PASSWORD, full_name='BMC One', role='bmc', parent=self.union)
         self.society = User.objects.create_user('9842000003', PASSWORD, full_name='Society One', role='society', parent=self.bmc)
@@ -226,3 +228,95 @@ class AccountTests(APITestCase):
         self.assertEqual(good.status_code, 200)
         bad = self.client.post('/api/v1/auth/login', {'phone': self.farmer.phone, 'password': 'SecurePassword!879'})
         self.assertEqual(bad.status_code, 401)
+
+    def cow_payload(self, **changes):
+        cow = {'pashuAadhaar': '123456789012', 'breed': 'Jersey Cross', 'milkCapacity': '12.50', 'name': 'Lakshmi'}
+        cow.update(changes)
+        return cow
+
+    def test_registration_saves_cows_and_returns_them_on_login_me_and_listing(self):
+        from decimal import Decimal
+        from .models import Cow, FarmerProfile
+        self.authenticate_as(self.society)
+        payload = self.profile_payload(numberOfCows=99)
+        payload['cows'] = [self.cow_payload(farmerId=str(self.farmer.pk)),
+                           self.cow_payload(pashuAadhaar='123456789013', name='', breed='HF Cross')]
+        response = self.client.post('/api/v1/auth/register', payload, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        user = User.objects.get(phone=payload['phone'])
+        self.assertEqual(FarmerProfile.objects.get(user=user).number_of_cows, 2)
+        self.assertEqual(Cow.objects.filter(farmer=user).count(), 2)
+        cow = Cow.objects.get(pashu_aadhaar='123456789012')
+        self.assertEqual(cow.milk_capacity, Decimal('12.50'))
+        self.assertEqual(cow.name, 'Lakshmi')
+        saved = response.data['data']['user']['cows']
+        self.assertEqual({item['farmerId'] for item in saved}, {str(user.pk)})
+        self.assertEqual({item['id'] for item in saved}, {str(item.pk) for item in user.cows.all()})
+        self.assertTrue(all(item['createdAt'] for item in saved))
+        listed = self.client.get('/api/v1/farmers').data['data']['farmers']
+        self.assertEqual(next(item for item in listed if item['id'] == str(user.pk))['cows'], saved)
+        self.client.credentials()
+        login = self.client.post('/api/v1/auth/login', {'phone': user.phone, 'password': user.phone})
+        self.assertEqual(login.status_code, 200, login.data)
+        self.assertEqual(login.data['data']['user']['cows'], saved)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+login.data['data']['accessToken'])
+        self.assertEqual(self.client.get('/api/v1/auth/me').data['data']['user']['cows'], saved)
+
+    def test_invalid_cows_do_not_create_farmer_or_profile(self):
+        from .models import Cow, FarmerProfile
+        self.authenticate_as(self.society)
+        cases = [[], [self.cow_payload(pashuAadhaar='123')],
+                 [self.cow_payload(pashuAadhaar='12345678901x')],
+                 [self.cow_payload(breed='')], [self.cow_payload(milkCapacity='0')],
+                 [self.cow_payload(milkCapacity='-1')], [self.cow_payload(milkCapacity='NaN')],
+                 [self.cow_payload(), self.cow_payload()]]
+        for cows in cases:
+            with self.subTest(cows=cows):
+                payload = {**self.profile_payload(), 'cows': cows}
+                response = self.client.post('/api/v1/auth/register', payload, format='json')
+                self.assertEqual(response.status_code, 400, response.data)
+                self.assertIn('cows', response.data['errors'])
+                self.assertFalse(User.objects.filter(phone=payload['phone']).exists())
+                self.assertEqual(FarmerProfile.objects.count(), 0)
+                self.assertEqual(Cow.objects.count(), 0)
+
+    def test_existing_tag_cannot_be_registered_to_another_farmer(self):
+        from .models import Cow
+        Cow.objects.create(farmer=self.farmer, pashu_aadhaar='123456789012', breed='HF Cross', milk_capacity=10)
+        self.authenticate_as(self.society)
+        payload = {**self.profile_payload(), 'cows': [self.cow_payload()]}
+        response = self.client.post('/api/v1/auth/register', payload, format='json')
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn('pashuAadhaar', response.data['errors']['cows'][0])
+        self.assertFalse(User.objects.filter(phone=payload['phone']).exists())
+        self.assertEqual(Cow.objects.count(), 1)
+
+    def test_cow_save_failure_rolls_back_farmer_profile_and_all_cows(self):
+        from unittest.mock import patch
+        from django.db import IntegrityError
+        from .models import Cow, FarmerProfile
+        self.authenticate_as(self.society)
+        payload = {**self.profile_payload(), 'cows': [self.cow_payload(), self.cow_payload(pashuAadhaar='123456789013')]}
+        original_save = Cow.save
+        def fail_second(cow, *args, **kwargs):
+            if cow.pashu_aadhaar.endswith('13'):
+                raise IntegrityError('simulated concurrent tag collision')
+            return original_save(cow, *args, **kwargs)
+        with patch.object(Cow, 'save', fail_second):
+            response = self.client.post('/api/v1/auth/register', payload, format='json')
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertFalse(User.objects.filter(phone=payload['phone']).exists())
+        self.assertEqual(FarmerProfile.objects.count(), 0)
+        self.assertEqual(Cow.objects.count(), 0)
+
+    def test_cows_are_only_registered_for_farmers_and_listed_to_their_society(self):
+        from .models import Cow
+        self.authenticate_as(self.union)
+        response = self.register('bmc', cows=[self.cow_payload()])
+        self.assertEqual(response.status_code, 400, response.data)
+        Cow.objects.create(farmer=self.farmer, pashu_aadhaar='123456789012', breed='Jersey Cross', milk_capacity=12)
+        other = User.objects.create_user('9842000010', PASSWORD, full_name='Other Society', role='society', parent=self.bmc)
+        self.authenticate_as(other)
+        self.assertEqual(self.client.get('/api/v1/farmers').data['data']['farmers'], [])
+        with self.assertRaises(ValidationError):
+            Cow(farmer=self.society, pashu_aadhaar='123456789013', breed='Jersey Cross', milk_capacity=12).full_clean()

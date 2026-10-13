@@ -52,18 +52,29 @@ interface AavinState {
   notifications: InAppNotification[];
 }
 
-interface InitialCow {
-  pashuAadhaar: string;
-  breed: string;
-  milkCapacity: number;
-  name?: string;
+// Preserve local clinical records while refreshing the fields stored by the backend.
+function mergeRegisteredCows(existing: Cow[], incoming: Cow[], farmerIds: Set<string>): Cow[] {
+  const refreshed = incoming.map(cow => {
+    const cached = existing.find(item => item.id === cow.id ||
+      (item.farmerId === cow.farmerId && item.tagId === cow.tagId));
+    return {
+      ...cow, ...cached,
+      id: cow.id, cowId: cow.cowId, tagId: cow.tagId,
+      backendSynced: cow.backendSynced,
+      farmerId: cow.farmerId, farmerName: cow.farmerName,
+      breed: cow.breed, name: cow.name, dailyMilkYield: cow.dailyMilkYield,
+      createdAt: cow.createdAt,
+    };
+  });
+  return [...refreshed, ...existing.filter(cow => !farmerIds.has(cow.farmerId) ||
+    (!cow.backendSynced && !incoming.some(item => item.farmerId === cow.farmerId && item.tagId === cow.tagId)))];
 }
 
 interface AavinStoreContextType extends AavinState {
   isLoading: boolean;
-  cacheFarmer: (farmer: Farmer, initialCows?: InitialCow[]) => void;
+  cacheFarmer: (farmer: Farmer, cows?: Cow[]) => void;
   cacheSociety: (society: Booth) => void;
-  replaceSocietyFarmers: (societyId: string, farmers: Farmer[]) => void;
+  replaceSocietyFarmers: (societyId: string, farmers: Farmer[], cows?: Cow[]) => void;
   // Farmer actions
   addFarmer: (
     farmerData: Omit<Farmer, 'id' | 'createdAt'>,
@@ -211,44 +222,25 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return next;
     });
   }, []);
-  // The backend persists farmer accounts; cattle passports remain in the local store.
-  const cacheFarmer = useCallback((farmer: Farmer, initialCows: InitialCow[] = []) => updateBackendCache(previous => {
-    const createdAt = new Date().toISOString();
-    const newCows: Cow[] = initialCows.map((cow, index) => ({
-      id: `COW-${farmer.id}-${cow.pashuAadhaar}`,
-      cowId: `COW-${farmer.farmerIdCode}-${String(index + 1).padStart(2, '0')}`,
-      tagId: cow.pashuAadhaar,
-      farmerId: farmer.id,
-      farmerName: farmer.name,
-      breed: cow.breed,
-      name: cow.name || `Cow #${index + 1} (${cow.breed})`,
-      dateOfBirth: '2023-04-15',
-      approxAgeMonths: 36,
-      sex: 'female',
-      currentStatus: 'lactating',
-      dailyMilkYield: cow.milkCapacity,
-      healthStatus: 'healthy',
-      lactationStage: 'peak',
-      identificationMarks: 'Govt 12-digit RFID Tag',
-      verificationStatus: 'verified',
-      medicalHistory: [],
-      vaccinationHistory: [],
-      inseminationHistory: [],
-      treatmentRecords: [],
-      createdAt,
-    }));
-    return {
-      ...previous,
-      farmers: [farmer, ...previous.farmers.filter(item => item.id !== farmer.id)],
-      cows: [...newCows, ...previous.cows.filter(item => !newCows.some(cow => cow.id === item.id))],
-    };
-  }), [updateBackendCache]);
+  const cacheFarmer = useCallback((farmer: Farmer, cows?: Cow[]) => updateBackendCache(previous => ({
+    ...previous,
+    farmers: [farmer, ...previous.farmers.filter(item => item.id !== farmer.id)],
+    cows: cows === undefined ? previous.cows : mergeRegisteredCows(previous.cows, cows, new Set([farmer.id])),
+  })), [updateBackendCache]);
   const cacheSociety = useCallback((society: Booth) => updateBackendCache(previous => ({
     ...previous, booths: [society, ...previous.booths.filter(item => item.id !== society.id)],
   })), [updateBackendCache]);
-  const replaceSocietyFarmers = useCallback((societyId: string, records: Farmer[]) => updateBackendCache(previous => ({
-    ...previous, farmers: [...records, ...previous.farmers.filter(item => item.assignedBoothId !== societyId && !records.some(record => record.id === item.id))],
-  })), [updateBackendCache]);
+  const replaceSocietyFarmers = useCallback((societyId: string, records: Farmer[], cows?: Cow[]) => updateBackendCache(previous => {
+    const farmerIds = new Set([
+      ...records.map(farmer => farmer.id),
+      ...previous.farmers.filter(farmer => farmer.assignedBoothId === societyId).map(farmer => farmer.id),
+    ]);
+    return {
+      ...previous,
+      farmers: [...records, ...previous.farmers.filter(item => item.assignedBoothId !== societyId && !farmerIds.has(item.id))],
+      cows: cows === undefined ? previous.cows : mergeRegisteredCows(previous.cows, cows, farmerIds),
+    };
+  }), [updateBackendCache]);
 
   // 1. Farmer Actions
   const addFarmer = useCallback((

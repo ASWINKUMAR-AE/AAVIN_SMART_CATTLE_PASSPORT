@@ -18,7 +18,7 @@ Only a Society can register a Farmer. BMC or Union can register a Society. Only 
 
 Invalid credentials and inactive accounts return 401. Unauthenticated registration returns 401, forbidden role creation returns 403, and invalid fields or duplicate phones return 400. Successful registration returns 201. Login has a rate limit of 10 requests per minute per client.
 
-Legacy `usernameOrPhone` is accepted for frontend compatibility, but must contain a phone number. Username/email login is not supported. The unchanged frontend still needs future integration for the Society role and updated registration requirements.
+Legacy `usernameOrPhone` is accepted for frontend compatibility, but must contain a phone number. Username/email login is not supported. The frontend maps Society accounts to its Booth screens and submits Farmer profiles and cattle on enrollment.
 
 Outside the API base, `/admin/` provides manual account administration, `/health` checks service availability, and `/ready` tests database connectivity. Previous non-authentication APIs are not ported in this step.
 
@@ -56,3 +56,20 @@ Registration, login, and `/auth/me` now return `user.personalDetails` (null for 
 **GET `/api/v1/farmers`** requires a Society Bearer token and returns `data.farmers`, an array of these user objects. It always lists only Farmers belonging to that Society; query parameters cannot widen its scope. Accounts without profiles remain included with null personal details. Other roles receive 403 and unauthenticated callers receive 401.
 
 The frontend maps backend `society` to the existing `booth` route without changing screen labels. Login uses the backend exclusively, sends exact passwords, and restores sessions through `/auth/me`. Registration saves every form field to PostgreSQL before updating its local cache; the existing Society directory reloads its own Farmers from the server. Editing and verification controls remain local features outside this integration.
+
+## Farmer cattle
+
+Farmer registrations accept an optional, nonempty `cows` array:
+
+```json
+"cows": [
+  {"pashuAadhaar": "123456789012", "breed": "Jersey Cross", "milkCapacity": 12.5, "name": "Lakshmi"},
+  {"pashuAadhaar": "123456789013", "breed": "HF Cross", "milkCapacity": 15}
+]
+```
+
+Only Society-created Farmers accept cattle. The backend assigns `farmer_id` from the newly created account; clients cannot choose a different owner. Tags must contain exactly 12 digits and be unique across the database and within the request. Breed is required, milk capacity must be positive with at most two decimal places, and name is optional. Invalid cattle reject the whole registration; database failures roll back the account, profile, and all cows. When cattle are supplied, `personalDetails.numberOfCows` is derived from the array length.
+
+Each cow is a separate `accounts_cow` row linked to `accounts_user.id`. `user.cows` is returned in registration, login, current-user lookup, and the Society's farmer directory. Each entry contains `id` (cow UUID), `farmerId` (farmer UUID), `pashuAadhaar`, `breed`, `milkCapacity` (decimal string), `name`, and `createdAt`. Accounts with no cattle return an empty array. Society listing permissions also protect nested cow records.
+
+The frontend restores these records into its cache using server IDs, preserves local clinical data for matching tags, and replaces the current society's cached cattle on refresh. Birth dates, health history, cattle editing, and verification are outside this registration API. Existing locally enrolled cattle require a separate reviewed import; this migration does not copy device storage.

@@ -20,7 +20,7 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { AccountsApi } from '../../services/accountsApi';
-import { apiErrorMessage, mapFarmer } from '../../services/accountMapping';
+import { apiErrorMessage, mapCows, mapFarmer } from '../../services/accountMapping';
 
 export interface CowFormItem {
   id: string;
@@ -209,14 +209,15 @@ export default function RegisterFarmerScreen() {
           bankAccountName: bankAccountName.trim(), bankName: bankName.trim(),
           bankAccountNumber: bankAccountNumber.trim(), bankIfsc: bankIfsc.trim().toUpperCase(), upiId: upiId.trim(),
         },
+        cows: cowEntries.map((c, idx) => ({
+          pashuAadhaar: c.pashuAadhaar.trim().replace(/\D/g, ''),
+          breed: c.breed.trim(),
+          milkCapacity: parseFloat(c.milkCapacity),
+          name: c.name.trim() || `Cow #${idx + 1} (${c.breed.trim()})`,
+        })),
       });
       const created = mapFarmer(account);
-      cacheFarmer(created, cowEntries.map((c, idx) => ({
-        pashuAadhaar: c.pashuAadhaar.trim().replace(/\D/g, ''),
-        breed: c.breed.trim(),
-        milkCapacity: parseFloat(c.milkCapacity),
-        name: c.name.trim() || `Cow #${idx + 1} (${c.breed.trim()})`,
-      })));
+      cacheFarmer(created, mapCows(account));
       const boothName = booths.find(b => b.id === assignedBoothId)?.name || 'Booth Center';
 
       Alert.alert(

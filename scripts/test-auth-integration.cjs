@@ -30,7 +30,7 @@ function authHarness() {
   const saved = new Map();
   const effects = [];
   const states = [];
-  const cache = { farmers: [], societies: [] };
+  const cache = { farmers: [], societies: [], cows: [] };
   const calls=[];
   let post = async () => { throw new Error('No mock response'); };
   let get = async () => { throw new Error('No mock response'); };
@@ -56,11 +56,33 @@ function authHarness() {
     '../services/api':secure,
     '../constants/Config':{Config:{STORAGE_KEYS:keys}},
     '../services/accountMapping':mapping,
-    '../store/AavinStoreContext':{useAavinStore:()=>({isLoading:false,cacheFarmer:f=>cache.farmers.push(f),cacheSociety:s=>cache.societies.push(s)})},
+    '../store/AavinStoreContext':{useAavinStore:()=>({isLoading:false,cacheFarmer:(f,cows)=>{cache.farmers.push(f);if(cows)cache.cows.push(...cows);},cacheSociety:s=>cache.societies.push(s)})},
   });
   const value=AuthProvider({children:null}).props.value;
   return {value,saved,effects,states,cache,calls,setPost:f=>{post=f;},setGet:f=>{get=f;}};
 }
+function storeHarness() {
+  const states = [];
+  let persisted;
+  const react = {
+    createContext: () => ({Provider: 'Provider'}),
+    createElement: (type, props) => ({type, props}),
+    useState: initial => {
+      const index = states.length;
+      states.push(initial);
+      return [initial, update => {states[index] = typeof update === 'function' ? update(states[index]) : update;}];
+    },
+    useCallback: fn => fn, useEffect: () => {}, useContext: () => {},
+  };
+  const {AavinStoreProvider} = load('store/AavinStoreContext.tsx', {
+    react,
+    '@react-native-async-storage/async-storage': {setItem: async (_key,json) => {persisted = JSON.parse(json);}},
+    '../data/seedData': new Proxy({}, {get: (_target,key) => key === 'SEED_UNION' ? {} : []}),
+    '../services/workflowApi': {WorkflowApi: {}},
+  });
+  return {value: AavinStoreProvider({children: null}).props.value, state: () => states[0], persisted: () => persisted};
+}
+
 (async () => {
   for (const [role,expected] of [['farmer','farmer'],['society','booth'],['bmc','bmc'],['union','union']]) {
     const h=authHarness();
@@ -104,6 +126,47 @@ function authHarness() {
   assert.equal(sent.url,'/auth/register');assert.equal(sent.data.role,'farmer');assert.equal('password' in sent.data,false);assert.equal(sent.data.personalDetails.numberOfCows,0);
   assert.equal((await AccountsApi.listFarmers())[0].id,'farmer-uuid');
 
+  // Cattle payloads and server UUIDs survive login, account reload and society refresh.
+  const cowAccount = {...account('farmer'), cows: [{id:'cow-uuid',farmerId:'farmer-uuid',
+    pashuAadhaar:'123456789012',breed:'Jersey Cross',milkCapacity:'12.50',name:'Lakshmi',createdAt:'2026-10-13T00:00:00Z'}]};
+  const mappedCows = mapping.mapCows(cowAccount);
+  assert.equal(mappedCows[0].id, 'cow-uuid');
+  assert.equal(mappedCows[0].farmerId, 'farmer-uuid');
+  assert.equal(mappedCows[0].dailyMilkYield, 12.5);
+  assert.equal(mapping.mapCows(account('farmer')), undefined);
+  await AccountsApi.registerFarmer({phone:'9842000001',fullName:'Farmer',parentId:'society-uuid',
+    personalDetails:account('farmer').personalDetails,
+    cows:[{pashuAadhaar:'123456789012',breed:'Jersey Cross',milkCapacity:12.5,name:'Lakshmi'}]});
+  assert.equal(sent.data.cows[0].pashuAadhaar, '123456789012');
+  const loginWithCows = authHarness();
+  loginWithCows.setPost(async () => ({data:{data:{accessToken:'access',refreshToken:'refresh',user:cowAccount}}}));
+  assert.equal((await loginWithCows.value.login('9842000001','password')).success, true);
+  assert.equal(loginWithCows.cache.cows[0].id, 'cow-uuid');
+  const store = storeHarness();
+  const farmer = mapping.mapFarmer(cowAccount);
+  const cowWithHistory = {...mappedCows[0], medicalHistory:[{id:'medical-1'}],healthStatus:'under_treatment'};
+  store.value.cacheFarmer(farmer, [cowWithHistory]);
+  store.value.cacheFarmer(farmer, mappedCows);
+  assert.equal(store.state().cows.length, 1);
+  assert.equal(store.state().cows[0].medicalHistory.length, 1);
+  assert.equal(store.state().cows[0].healthStatus, 'under_treatment');
+  assert.equal(store.persisted().cows[0].id, 'cow-uuid');
+  store.value.cacheFarmer(farmer);
+  assert.equal(store.state().cows.length, 1);
+  const otherFarmer = {...farmer,id:'other-farmer',assignedBoothId:'other-society'};
+  store.value.cacheFarmer(otherFarmer, [{...mappedCows[0],id:'other-cow',farmerId:'other-farmer',tagId:'123456789013'}]);
+  store.value.replaceSocietyFarmers(farmer.assignedBoothId, [farmer], [{...mappedCows[0],dailyMilkYield:18}]);
+  assert.equal(store.state().cows.find(cow=>cow.id==='cow-uuid').dailyMilkYield, 18);
+  assert.equal(store.state().cows.length, 2);
+  store.value.cacheFarmer(farmer, [
+    ...mappedCows,
+    {...mappedCows[0],id:'legacy-local-cow',tagId:'123456789014',backendSynced:undefined},
+  ]);
+  store.value.replaceSocietyFarmers(farmer.assignedBoothId, [], []);
+  assert.equal(store.state().cows.length, 2);
+  assert.ok(store.state().cows.some(cow=>cow.id==='other-cow'));
+  assert.ok(store.state().cows.some(cow=>cow.id==='legacy-local-cow'));
+
   // Exercise the actual Axios refresh interceptor with isolated transport/storage.
   let interceptor, refreshCalls = 0, refreshedRequests = [];
   const secureItems = new Map([['refresh', 'refresh-value'], ['access', 'expired']]);
@@ -131,5 +194,5 @@ function authHarness() {
   refreshResponse=async()=>{throw {response:{status:401}};};
   await assert.rejects(interceptor(expired('/farmers')));
   assert.equal(secureItems.has('refresh'),false);
-  console.log('Frontend integration checks passed: four roles, exact passwords, no demo fallback, restored/invalid sessions, logout, profile mapping, registration and listing.');
+  console.log('Frontend integration checks passed: four roles, exact passwords, no demo fallback, restored/invalid sessions, logout, profile mapping, registration, listing and persisted cattle.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

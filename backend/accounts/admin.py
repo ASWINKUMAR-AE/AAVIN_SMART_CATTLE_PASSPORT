@@ -29,9 +29,17 @@ class AccountAdmin(UserAdmin):
     readonly_fields = ("created_by",)
 
 
-from .models import FarmerProfile
+from .models import Cow, FarmerProfile
 
 @admin.register(FarmerProfile)
 class FarmerProfileAdmin(admin.ModelAdmin):
     list_display = ('farmer_id_code', 'user', 'village', 'verification_status')
     search_fields = ('farmer_id_code', 'user__phone', 'user__full_name')
+
+
+@admin.register(Cow)
+class CowAdmin(admin.ModelAdmin):
+    list_display = ('pashu_aadhaar', 'farmer', 'breed', 'milk_capacity', 'name')
+    search_fields = ('pashu_aadhaar', 'name', 'farmer__phone', 'farmer__full_name')
+    list_filter = ('breed',)
+    readonly_fields = ('id', 'created_at')

@@ -1,9 +1,26 @@
+from decimal import Decimal
 from django.contrib.auth import authenticate, password_validation
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
-from .models import FarmerProfile, User, phone_validator
+from rest_framework.validators import UniqueValidator
+from .models import Cow, FarmerProfile, User, phone_validator
+
+
+class CowSerializer(serializers.ModelSerializer):
+    farmerId = serializers.UUIDField(source='farmer_id', read_only=True)
+    pashuAadhaar = serializers.RegexField(source='pashu_aadhaar', regex=r'^[0-9]{12}$',
+        max_length=12, validators=[UniqueValidator(queryset=Cow.objects.all(),
+        message='This Pashu Aadhaar is already registered.')])
+    milkCapacity = serializers.DecimalField(source='milk_capacity', max_digits=8,
+                                            decimal_places=2, min_value=Decimal('0.01'))
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+
+    class Meta:
+        model = Cow
+        fields = ['id', 'farmerId', 'pashuAadhaar', 'breed', 'milkCapacity', 'name', 'createdAt']
+        read_only_fields = ['id']
 
 class FarmerProfileSerializer(serializers.ModelSerializer):
     farmerIdCode = serializers.CharField(source='farmer_id_code', max_length=64)
@@ -44,10 +61,11 @@ class UserSerializer(serializers.ModelSerializer):
     parentId = serializers.UUIDField(source="parent_id", read_only=True, allow_null=True)
     parent = ParentAccountSerializer(read_only=True)
     personalDetails = FarmerProfileSerializer(source='farmer_profile', read_only=True, allow_null=True)
+    cows = CowSerializer(many=True, read_only=True)
     createdAt = serializers.DateTimeField(source='date_joined', read_only=True)
     class Meta:
         model = User
-        fields = ["id", "phone", "fullName", "role", "roles", "parentId", "parent", "personalDetails", "createdAt"]
+        fields = ["id", "phone", "fullName", "role", "roles", "parentId", "parent", "personalDetails", "cows", "createdAt"]
     def get_roles(self, obj):
         return [obj.role]
 
@@ -74,6 +92,13 @@ class RegisterSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=User.Role.choices)
     parentId = serializers.UUIDField(required=False)
     personalDetails = FarmerProfileSerializer(required=False)
+    cows = CowSerializer(many=True, required=False, allow_empty=False)
+
+    def validate_cows(self, cows):
+        tags = [cow['pashu_aadhaar'] for cow in cows]
+        if len(tags) != len(set(tags)):
+            raise serializers.ValidationError('Each cow must have a different Pashu Aadhaar.')
+        return cows
 
     def validate(self, attrs):
         actor = self.context["request"].user
@@ -95,6 +120,11 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError({"phone": "An account with this phone already exists."})
         if 'personalDetails' in attrs and attrs['role'] != User.Role.FARMER:
             raise serializers.ValidationError({'personalDetails': 'Only Farmer accounts have personal details.'})
+        if 'cows' in attrs:
+            if attrs['role'] != User.Role.FARMER:
+                raise serializers.ValidationError({'cows': 'Only Farmer accounts can register cows.'})
+            if 'personalDetails' in attrs:
+                attrs['personalDetails']['number_of_cows'] = len(attrs['cows'])
         if 'password' not in attrs:
             if attrs['role'] != User.Role.FARMER:
                 raise serializers.ValidationError({'password': 'Password is required.'})
@@ -120,8 +150,12 @@ class RegisterSerializer(serializers.Serializer):
                     profile = FarmerProfile(user=user, **details)
                     profile.full_clean()
                     profile.save()
+                for details in validated_data.get('cows', []):
+                    cow = Cow(farmer=user, **details)
+                    cow.full_clean()
+                    cow.save()
                 return user
         except IntegrityError:
-            raise serializers.ValidationError({"nonFieldErrors": "Unable to create account; the phone or Farmer ID may already be registered."})
+            raise serializers.ValidationError({"nonFieldErrors": "Unable to create account; the phone, Farmer ID, or Pashu Aadhaar may already be registered."})
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.message_dict if hasattr(exc, "message_dict") else exc.messages)

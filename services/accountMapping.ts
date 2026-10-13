@@ -1,4 +1,18 @@
-import { Booth, DemoUser, Farmer, UserRole } from '../types/aavin';
+import { Booth, Cow, DemoUser, Farmer, UserRole } from '../types/aavin';
+
+export interface CowRegistration {
+  pashuAadhaar: string;
+  breed: string;
+  milkCapacity: number;
+  name?: string;
+}
+
+export interface BackendCow extends Omit<CowRegistration, 'milkCapacity'> {
+  id: string;
+  farmerId: string;
+  milkCapacity: string | number;
+  createdAt: string;
+}
 
 export interface PersonalDetails {
   farmerIdCode: string;
@@ -28,7 +42,36 @@ export interface BackendUser {
   parentId: string | null;
   parent: BackendParent | null;
   personalDetails: PersonalDetails | null;
+  cows?: BackendCow[];
   createdAt: string;
+}
+
+// Undefined preserves cached cattle when talking to a server predating this API.
+export function mapCows(account: BackendUser): Cow[] | undefined {
+  return account.cows?.map(cow => ({
+    id: cow.id,
+    backendSynced: true,
+    cowId: `COW-${cow.pashuAadhaar}`,
+    tagId: cow.pashuAadhaar,
+    farmerId: cow.farmerId,
+    farmerName: account.fullName,
+    breed: cow.breed,
+    name: cow.name || `Cow (${cow.breed})`,
+    dailyMilkYield: Number(cow.milkCapacity),
+    createdAt: cow.createdAt,
+    dateOfBirth: '',
+    approxAgeMonths: 0,
+    sex: 'female',
+    currentStatus: 'lactating',
+    healthStatus: 'healthy',
+    lactationStage: 'peak',
+    identificationMarks: 'Govt 12-digit RFID Tag',
+    verificationStatus: 'pending',
+    medicalHistory: [],
+    vaccinationHistory: [],
+    inseminationHistory: [],
+    treatmentRecords: [],
+  }));
 }
 
 export function mapAccount(account: BackendUser): DemoUser {

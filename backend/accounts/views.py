@@ -77,5 +77,5 @@ class FarmerListView(APIView):
         from rest_framework.exceptions import PermissionDenied
         if request.user.role != User.Role.SOCIETY:
             raise PermissionDenied('Only Society accounts can list their Farmers.')
-        farmers = User.objects.filter(role=User.Role.FARMER, parent=request.user).select_related('parent', 'farmer_profile').order_by('date_joined', 'id')
+        farmers = User.objects.filter(role=User.Role.FARMER, parent=request.user).select_related('parent', 'farmer_profile').prefetch_related('cows').order_by('date_joined', 'id')
         return success({'farmers': UserSerializer(farmers, many=True).data})

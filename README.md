@@ -15,7 +15,7 @@ This backend implements phone/password login, JWT access and refresh tokens, rol
 
 A BMC can have any number of Societies. When a Union registers a Society, it supplies the ID of an active BMC belonging to that Union. When a BMC registers a Society, the Society automatically belongs to that BMC. Registration requires authentication; there is no public signup or Union registration API.
 
-The existing login and Society Farmer registration forms are connected to Django without layout changes. Society accounts use the existing Booth screens. The Society Farmers directory loads its own registered accounts from PostgreSQL. Milk, cattle, payments, editing, verification, and AI features remain local/demo workflows outside this integration. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
+The existing login and Society Farmer registration forms are connected to Django without layout changes. Society accounts use the existing Booth screens. The Society Farmers directory loads its own registered accounts from PostgreSQL. Cattle enrollment is persisted in PostgreSQL and restored on login and society directory refresh. Milk, payments, clinical records, editing, verification, and AI features remain local/demo workflows outside this integration. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
 
 ## Backend setup
 
@@ -89,7 +89,7 @@ backend/.venv/bin/python backend/manage.py check
 backend/.venv/bin/python backend/manage.py test --settings=config.test_settings
 ```
 
-The 21 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
+The 26 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
 
 See [API details](docs/api.md), [architecture](docs/architecture.md), and [database notes](database/README.md).
 
@@ -104,3 +104,17 @@ The Society registration form persists Farmer personal details in PostgreSQL. Th
 Before deploying the updated API, run `python manage.py migrate` in the backend environment. Rebuild/restart the hosted Django container to expose the extended registration and `GET /api/v1/farmers`; frontend code alone cannot update the hosted server.
 
 The default frontend API is `https://aavin.todayworld.in/api/v1`. Set `EXPO_PUBLIC_API_URL` or use the existing Server Settings to override it. Run isolated frontend behaviour checks with `node scripts/test-auth-integration.cjs` and backend tests with `python manage.py test accounts --settings=config.test_settings` from `backend/`.
+
+### Cattle enrollment
+
+Both Farmer enrollment forms submit a `cows` array with each cow's `pashuAadhaar` (12 digits), `breed`, `milkCapacity` (positive litres/day, up to two decimal places), and optional `name`. `accounts_cow` stores one row per cow; `farmer_id` references the Farmer UUID in `accounts_user`. Pashu Aadhaar tags are globally unique. The backend saves the account, profile, and cows in one transaction, and derives the profile cattle count from the supplied array.
+
+Registration, login, `/api/v1/auth/me`, and the Society-scoped `/api/v1/farmers` list return saved cows with their UUIDs and farmer IDs. Account-only registrations can still omit `cows`. Previously local cattle are preserved on the device but not automatically imported; clinical data remains local.
+
+Apply `accounts.0003_cow` before starting the updated API:
+
+```bash
+backend/.venv/bin/python backend/manage.py migrate accounts 0003_cow
+```
+
+For the hosted Docker service, deploy the updated backend image and run `python manage.py migrate` with its database environment before serving traffic. The frontend requires the updated API to persist cattle.

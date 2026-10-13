@@ -81,6 +81,7 @@ export interface TreatmentRecord {
 
 export interface Cow {
   id: string;
+  backendSynced?: boolean;
   cowId: string; // e.g. COW-MDU-001
   tagId: string; // 12-digit tag, e.g. 100100001001
   farmerId: string;

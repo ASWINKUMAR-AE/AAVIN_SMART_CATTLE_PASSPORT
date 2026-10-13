@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { AccountsApi } from '../../services/accountsApi';
-import { apiErrorMessage, mapFarmer } from '../../services/accountMapping';
+import { apiErrorMessage, mapCows, mapFarmer } from '../../services/accountMapping';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -47,7 +47,8 @@ export default function BoothFarmersScreen() {
     if (user?.role !== 'booth') return;
     AccountsApi.listFarmers().then(accounts => {
       if (!active) return;
-      replaceSocietyFarmers(user.associatedId, accounts.map(mapFarmer));
+      replaceSocietyFarmers(user.associatedId, accounts.map(mapFarmer),
+        accounts.every(account => account.cows !== undefined) ? accounts.flatMap(account => mapCows(account) || []) : undefined);
       setLoadedForSociety(user.associatedId);
     }).catch(error => {
       if (active) Alert.alert('Unable to load Farmers', apiErrorMessage(error));
@@ -338,9 +339,10 @@ export default function BoothFarmersScreen() {
           bankIfsc: regBankIfsc.trim().toUpperCase() || undefined,
           upiId: regUpiId.trim() || undefined,
         },
+        cows: initialCows,
       });
       const created = mapFarmer(account);
-      cacheFarmer(created, initialCows);
+      cacheFarmer(created, mapCows(account));
 
       setIsRegistering(false);
       handleCloseRegisterModal();

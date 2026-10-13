@@ -1,0 +1,61 @@
+meta {
+  name: 07 Society registers Farmer and cows
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/register
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{societyAccessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+vars:pre-request {
+  newFarmerPhone: 9842000098
+  newFarmerIdCode: FARM-MDU-998
+  firstCowTag: 123456789012
+  secondCowTag: 123456789013
+}
+
+body:json {
+  {
+    "phone": "{{newFarmerPhone}}",
+    "fullName": "Farmer with cattle",
+    "role": "farmer",
+    "personalDetails": {
+      "farmerIdCode": "{{newFarmerIdCode}}",
+      "address": "10 Main Street",
+      "village": "Melur",
+      "numberOfCows": 2
+    },
+    "cows": [
+      {"pashuAadhaar": "{{firstCowTag}}", "breed": "Jersey Cross", "milkCapacity": 12.5, "name": "Lakshmi"},
+      {"pashuAadhaar": "{{secondCowTag}}", "breed": "HF Cross", "milkCapacity": 15}
+    ]
+  }
+}
+
+tests {
+  test("Farmer and linked cattle persisted", function () {
+    expect(res.getStatus()).to.equal(201);
+    const user = res.getBody().data.user;
+    expect(user.personalDetails.numberOfCows).to.equal(2);
+    expect(user.cows).to.have.lengthOf(2);
+    user.cows.forEach(cow => {
+      expect(cow.farmerId).to.equal(user.id);
+      expect(cow.id).to.be.a("string");
+    });
+  });
+}
+
+docs {
+  Creates real records. Log in as Society and select an environment first. Use unused phone, Farmer ID and both Pashu Aadhaar tags. Password defaults to the submitted phone. Duplicate tags or invalid cattle reject the entire registration.
+}
