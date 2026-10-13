@@ -1,6 +1,6 @@
 /**
  * Aavin Smart Cattle Passport - Unified Dev Runner
- * Auto-detects LAN IP, displays Expo Go QR Code in Terminal, and runs Backend + Expo concurrently.
+ * Auto-detects LAN IP, displays Expo Go QR Code in Terminal, and runs Django + Expo concurrently.
  */
 const { spawn } = require('child_process');
 const os = require('os');
@@ -22,8 +22,8 @@ function getLocalIp() {
 const localIp = getLocalIp();
 const expoUrl = `exp://${localIp}:8081`;
 const metroWebUrl = `http://localhost:8081`;
-const portalWebUrl = `http://localhost:4000/qr-portal`;
-const portalLanUrl = `http://${localIp}:4000/qr-portal`;
+const portalWebUrl = `http://localhost:4000/admin/`;
+const portalLanUrl = `http://${localIp}:4000/admin/`;
 const backendApiUrl = `http://${localIp}:4000/api/v1`;
 
 function openBrowser(url) {
@@ -43,16 +43,16 @@ qrcode.generate(expoUrl, { small: true }, (qr) => {
   console.log(qr);
 });
 
-console.log('\x1b[32m%s\x1b[0m', `  🌐 Web QR Portal (Local):    ${portalWebUrl}`);
-console.log('\x1b[32m%s\x1b[0m', `  🌐 Web QR Portal (LAN):      ${portalLanUrl}`);
+console.log('\x1b[32m%s\x1b[0m', `  🌐 Django Admin (Local):    ${portalWebUrl}`);
+console.log('\x1b[32m%s\x1b[0m', `  🌐 Django Admin (LAN):      ${portalLanUrl}`);
 console.log('\x1b[33m%s\x1b[0m', `  📱 Expo Go Mobile App:       ${expoUrl}`);
 console.log(`  💻 Metro Dev Tools:          ${metroWebUrl}`);
 console.log(`  🚀 Backend API & WebSocket:  ${backendApiUrl}`);
 console.log('\x1b[36m%s\x1b[0m', '------------------------------------------------------------------------');
-console.log(`  ✨ Automatically opening Web QR Portal in browser in 2 seconds...`);
+console.log(`  ✨ Automatically opening Django Admin in browser in 2 seconds...`);
 console.log('\x1b[36m%s\x1b[0m', '========================================================================\n');
 
-// Auto open Web QR Portal in browser
+// Auto open Django Admin in browser
 setTimeout(() => {
   openBrowser(portalWebUrl);
 }, 2000);
@@ -64,7 +64,7 @@ concurrently(
   [
     {
       command: 'npm --prefix backend run dev',
-      name: 'BACKEND_WEB',
+      name: 'DJANGO_API',
       prefixColor: 'blue',
     },
     {

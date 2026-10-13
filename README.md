@@ -1,119 +1,98 @@
-# Aavin Smart Cattle Passport — Milk Safety Twin
+# Aavin Smart Cattle Passport
 
-Full-stack dairy management ecosystem for the Aavin milk collection network in Madurai District, Tamil Nadu, India.
+Expo / React Native frontend with a Django REST Framework backend and cloud PostgreSQL.
 
-**Core End-to-End Workflow:**
-**Cow identification → Health check → Milk safety decision → Milk collection & analysis → Farmer payment → Aavin administration**
+## Current backend scope
 
----
+This backend implements phone/password login, JWT access and refresh tokens, role-controlled registration, current-user lookup, logout, and Django Admin. There are exactly four roles:
 
-## Key Features
+| Account role | Who can register it | Parent account |
+| --- | --- | --- |
+| Farmer | Society | Registering Society |
+| Society | BMC or Union | BMC |
+| BMC | Union | Registering Union |
+| Union | Manually through Django Admin or `createsuperuser` | None |
 
-- 🐄 **Digital Cattle Passport & Opaque QR Tokens:** Permanent history of cattle health, breeding, milk yields, and clinical treatments.
-- 🧪 **Deterministic Milk Safety Twin Engine:** Evaluates animal health, veterinary withdrawal restrictions, and analyzer test readings (Fat %, SNF %, Temp, Adulteration) to generate CLEAR, REVIEW, or HOLD decisions.
-- 🩺 **Veterinary Clinical & Withdrawal Management:** Prescribe treatments with automated withdrawal period calculation and live quarantine locking.
-- 🥛 **Collection Centre Intake:** Analyzer measurements entry, instant safety decision reveal animation, and digital receipt generation.
-- 💰 **Transparent 15-Day Fortnight Billing:** Quality incentives, automatic rate calculation, and cycle payment approvals.
-- 🚛 **Milk Transport Logistics:** Batch assembly, chilled tanker temperature logs, custody tracking, and discrepancy reporting.
-- 🤖 **Backend AI Advisor (OpenRouter & Own API):** Grounded advisory in Tamil (தமிழ்) and English. AI fallback disabled by default and never silent. Safety decisions operate 100% independently of AI.
-- 🎨 **Native iOS Design & Motion:** Grouped inset cards, Cupertino typography scale, smooth Reanimated spring feedback, skeleton shimmer, and dark mode.
+A BMC can have any number of Societies. When a Union registers a Society, it supplies the ID of an active BMC belonging to that Union. When a BMC registers a Society, the Society automatically belongs to that BMC. Registration requires authentication; there is no public signup or Union registration API.
 
----
+The frontend is unchanged. Its existing local demo accounts and screens still exist. Its role mapping does not yet recognise `society`, and its older cattle, milk safety, payment, and AI APIs have not been ported in this authentication-only backend replacement. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
 
-## Technology Stack
+## Backend setup
 
-- **Mobile Frontend:** React Native 0.81.4, Expo SDK 54, Expo Router v6, TypeScript strict, Expo Camera, Expo Haptics, Reanimated, Svg Charts.
-- **Backend Server:** Node.js Express TypeScript, MySQL (`mysql2` pool with prepared statements), JWT access & refresh tokens, Socket.IO, Helmet, Rate Limiting, Zod validation.
-- **Database:** MySQL via XAMPP/phpMyAdmin (`aavin_milkflow`), InnoDB, foreign keys, DECIMAL measurements.
-
----
-
-## 🚀 Single Command to Run Full Ecosystem (Website + Backend + Mobile App)
+Python 3.12 or later is recommended. Run from the project root:
 
 ```bash
-npm start
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements.txt
 ```
-*(or `npm run dev`)*
 
-> ✨ **What `npm start` does in one single command:**
-> 1. Starts the **Node.js Express TypeScript Backend & WebSocket Server** on port 4000.
-> 2. Hosts the **Aavin Cattle Digital Passport & Live QR Code Website** at `http://localhost:4000/qr-portal`.
-> 3. Automatically opens the **Web QR Portal in your default browser**.
-> 4. Launches the **Expo Mobile App Metro Bundler** on port 8081 with an in-terminal QR code for instant scanning via the **Expo Go** mobile app.
+On Windows, use `python` and `backend\.venv\Scripts\python.exe` instead.
 
----
+Copy `backend/.env.example` to `backend/.env` if the file does not already exist. Set a random `DJANGO_SECRET_KEY` and the database password. The local `.env` is ignored by Git.
 
-## 🌐 Endpoints & URLs Summary
-
-- **🖥️ Web QR Code Portal (Desktop Browser):** `http://localhost:4000/qr-portal` (or `http://localhost:4000`)
-- **📱 Expo Go Mobile App:** `exp://192.168.0.12:8081` (Auto-detected LAN IP)
-- **💻 Metro Web Dev Server:** `http://localhost:8081`
-- **🚀 Backend REST API & WebSocket:** `http://localhost:4000/api/v1`
-
----
-
-## Quick Start Guide
-
-### 1. Database (XAMPP / phpMyAdmin)
-1. Start **Apache** and **MySQL** in XAMPP.
-2. In `http://localhost/phpmyadmin/`, import `database/schema.sql`.
-3. Select database `aavin_milkflow` and import `database/seed.sql`.
-
-### 2. Run Full Project (Single Command)
-```bash
-npm start
-```
-- **Displaying QR Code in Terminal:** The Expo dev server will print the QR code in your terminal log under the `[EXPO]` stream.
-- **Viewing QR in Browser:** You can also open the Metro Bundler web interface in your browser (usually `http://localhost:8081`) to see a high-resolution QR code.
-- **Scanning:** Open **Expo Go** on Android or Camera on iOS, scan the QR code to load the app.
-- **Tunnel Mode (If on mobile hotspot/restricted Wi-Fi):** `npx expo start --tunnel`
-
-### 3. Individual Component Commands (Optional)
-- **Backend Only:** `npm run backend`
-- **Mobile App Only:** `npm run expo`
-
----
-
-## Demo Accounts (Password: `Password@123`)
-
-| Role | Username | Mobile | Description |
-| :--- | :--- | :--- | :--- |
-| **Aavin Admin** | `admin_aavin` | `9842000001` | Operations, AI Settings, Audit, Review |
-| **Farmer (Owner 1)** | `farmer_murugan` | `9842000002` | Melur Rural, Cows 1001 & 1002 (Under Treatment) |
-| **Farmer (Owner 2)** | `farmer_selvi` | `9842000003` | Navinipatti, Cows 1003 & 1004 |
-| **Veterinary Doctor** | `vet_anand` | `9842000004` | Dr. R. Anand BVSc, Treatments, Withdrawals |
-| **Collection Centre** | `operator_kannan` | `9842000005` | Melur CC Operator, Milk Intake & Receipts |
-| **Transport Vendor** | `vendor_kumar` | `9842000006` | Tanker Logistics to Madurai Dairy Plant |
-
-*Tip: Use the 1-Tap Quick Login buttons on the sign-in screen.*
-
----
-
-## Standalone Builds
-
-- **Android Standalone APK:** `eas build -p android --profile preview`
-- **iOS Simulator / Device:** `eas build -p ios --profile preview`
-
----
-
-## Makefile & Quick Execution
-
-You can use `make` or `npm run`:
+The configured PostgreSQL connection uses host `13.232.41.40`, port `5432`, username `nivas`, database `aavin`, and `sslmode=require`. `aavin` is separate from the existing `college` database. Django migrations create tables inside the existing database; they do not create or drop databases.
 
 ```bash
-make help        # View all available make commands
-make setup       # One-step install and environment setup
-make db-init     # Initialize XAMPP MySQL database (aavin_milkflow)
-make dev         # Run full ecosystem (or npm start)
+backend/.venv/bin/python backend/manage.py migrate
+backend/.venv/bin/python backend/manage.py createsuperuser
+backend/.venv/bin/python backend/manage.py runserver 0.0.0.0:4000
 ```
 
----
+`createsuperuser` prompts for a phone number, full name, and password, and creates a Union administrator. Visit `http://localhost:4000/admin/` to manage accounts. Set `DJANGO_ALLOWED_HOSTS` to include your machine's LAN IP before connecting from another device. Set the allowed browser origins through `FRONTEND_ORIGINS`.
 
-## Documentation Links
+The npm wrappers also work after installing the Python dependencies:
 
-- 📘 [**XAMPP & Database Startup Guide (Step-by-Step)**](XAMPP_SETUP_GUIDE.md)
-- [System Architecture](docs/architecture.md)
-- [Setup & LAN Configuration Guide](docs/setup.md)
-- [REST API Contract Reference](docs/api.md)
-- [Demo Credentials](docs/demo-accounts.md)
-- [Verification & Test Report](docs/test-report.md)
+```bash
+npm run backend
+npm run db:init
+npm --prefix backend test
+```
+
+`npm start` launches Django and the existing Expo frontend together. Install frontend dependencies with `npm install` first. Set `AAVIN_PYTHON` if using a Python environment outside `backend/.venv`. Cloud database reset is disabled.
+
+## Authentication API
+
+All paths below use `/api/v1/auth` and do not require trailing slashes.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/login` | Phone/password login |
+| POST | `/register` | Authenticated, role-controlled account creation |
+| POST | `/refresh` | Exchange a refresh token for an access token |
+| GET | `/me` | Current account |
+| POST | `/logout` | Revoke a supplied refresh token |
+
+Login body:
+
+```json
+{"phone":"9842000001","password":"your-password"}
+```
+
+Login returns `data.accessToken`, `data.refreshToken`, and `data.user`. Protected endpoints require `Authorization: Bearer <accessToken>`. The old frontend field `usernameOrPhone` is accepted only when its value is a phone number.
+
+Registration body:
+
+```json
+{"phone":"9842000002","fullName":"Society Manager","password":"a-strong-password","role":"society"}
+```
+
+A Union creating a Society must additionally supply `parentId` containing the BMC account UUID. For other allowed registrations, the authenticated creator is the parent; clients cannot select another parent.
+
+Refresh and logout bodies use `{"refreshToken":"..."}`. Access tokens expire after 30 minutes and refresh tokens after seven days. Logout revokes the supplied refresh token; issued access tokens remain valid until expiry. A logout request without a refresh token does not revoke one.
+
+`GET /health` checks the service; `GET /ready` checks the PostgreSQL connection.
+
+## Validation
+
+```bash
+backend/.venv/bin/python backend/manage.py check
+backend/.venv/bin/python backend/manage.py test --settings=config.test_settings
+```
+
+The 14 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
+
+See [API details](docs/api.md), [architecture](docs/architecture.md), and [database notes](database/README.md).
+
+## Bruno API collection
+
+Open `bruno/Aavin API` as a collection in Bruno and select the Local environment. See [Bruno setup and request order](bruno/Aavin%20API/README.md).

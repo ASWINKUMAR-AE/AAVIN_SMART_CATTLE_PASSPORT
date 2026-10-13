@@ -1,0 +1,121 @@
+from django.core.exceptions import ValidationError
+from django.test import TestCase, override_settings
+from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
+from .models import User
+
+PASSWORD = 'CattleSecure!874'
+
+class AccountTests(APITestCase):
+    def setUp(self):
+        self.union = User.objects.create_superuser('9842000001', PASSWORD, full_name='Madurai Union')
+        self.bmc = User.objects.create_user('9842000002', PASSWORD, full_name='BMC One', role='bmc', parent=self.union)
+        self.society = User.objects.create_user('9842000003', PASSWORD, full_name='Society One', role='society', parent=self.bmc)
+        self.farmer = User.objects.create_user('9842000004', PASSWORD, full_name='Farmer One', role='farmer', parent=self.society)
+
+    def authenticate_as(self, user):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(user).access_token}')
+
+    def register(self, role, phone='9842000099', **extra):
+        return self.client.post('/api/v1/auth/register', {'phone': phone, 'password': PASSWORD, 'fullName': 'New Account', 'role': role, **extra}, format='json')
+
+    def test_phone_login_for_every_role(self):
+        for user in [self.union, self.bmc, self.society, self.farmer]:
+            response = self.client.post('/api/v1/auth/login', {'phone': user.phone, 'password': PASSWORD})
+            self.assertEqual(response.status_code, 200)
+            data = response.data['data']
+            self.assertEqual(data['user']['roles'], [user.role])
+            self.assertIn('accessToken', data)
+            self.assertIn('refreshToken', data)
+            self.assertNotIn('password', data['user'])
+
+    def test_frontend_phone_alias(self):
+        response = self.client.post('/api/v1/auth/login', {'usernameOrPhone': self.farmer.phone, 'password': PASSWORD})
+        self.assertEqual(response.status_code, 200)
+
+    def test_invalid_password_and_inactive_user(self):
+        response = self.client.post('/api/v1/auth/login', {'phone': self.farmer.phone, 'password': 'wrong'})
+        self.assertEqual(response.status_code, 401)
+        self.farmer.is_active = False
+        self.farmer.save()
+        response = self.client.post('/api/v1/auth/login', {'phone': self.farmer.phone, 'password': PASSWORD})
+        self.assertEqual(response.status_code, 401)
+
+    def test_registration_requires_authentication(self):
+        self.assertEqual(self.register('farmer').status_code, 401)
+
+    def test_complete_creation_permission_matrix(self):
+        allowed = {'union': {'bmc', 'society'}, 'bmc': {'society'}, 'society': {'farmer'}, 'farmer': set()}
+        for actor_index, actor in enumerate([self.union, self.bmc, self.society, self.farmer]):
+            self.authenticate_as(actor)
+            for role_index, role in enumerate(User.Role.values):
+                extra = {'parentId': str(self.bmc.pk)} if actor.role == 'union' and role == 'society' else {}
+                response = self.register(role, phone=f'984201{actor_index}{role_index}99', **extra)
+                if role in allowed[actor.role]:
+                    self.assertEqual(response.status_code, 201, response.data)
+                    user = User.objects.get(pk=response.data['data']['user']['id'])
+                    self.assertEqual(user.created_by, actor)
+                    self.assertEqual(user.parent, self.bmc if extra else actor)
+                    self.assertTrue(user.check_password(PASSWORD))
+                    self.assertNotEqual(user.password, PASSWORD)
+                else:
+                    self.assertEqual(response.status_code, 403, response.data)
+
+    def test_union_society_requires_own_bmc(self):
+        self.authenticate_as(self.union)
+        self.assertEqual(self.register('society').status_code, 400)
+        other_union = User.objects.create_user('9842000010', PASSWORD, full_name='Other Union', role='union')
+        other_bmc = User.objects.create_user('9842000011', PASSWORD, full_name='Other BMC', role='bmc', parent=other_union)
+        self.assertEqual(self.register('society', parentId=str(other_bmc.pk)).status_code, 400)
+        self.assertEqual(self.register('society', parentId=str(self.farmer.pk)).status_code, 400)
+
+    def test_cannot_register_under_another_society(self):
+        self.authenticate_as(self.society)
+        self.assertEqual(self.register('farmer', parentId=str(self.bmc.pk)).status_code, 403)
+
+    def test_duplicate_phone_and_weak_password(self):
+        self.authenticate_as(self.society)
+        self.assertEqual(self.register('farmer', phone=self.farmer.phone).status_code, 400)
+        payload = {'phone': '9842000099', 'password': '123', 'fullName': 'New Farmer', 'role': 'farmer'}
+        self.assertEqual(self.client.post('/api/v1/auth/register', payload).status_code, 400)
+
+    def test_more_than_fifteen_societies_in_one_bmc(self):
+        self.authenticate_as(self.bmc)
+        for index in range(16):
+            self.assertEqual(self.register('society', phone=f'984210{index:04d}').status_code, 201)
+        self.assertEqual(self.bmc.members.count(), 17)
+
+    def test_refresh_me_logout_and_revocation(self):
+        refresh = RefreshToken.for_user(self.farmer)
+        response = self.client.post('/api/v1/auth/refresh', {'refreshToken': str(refresh)})
+        self.assertEqual(response.status_code, 200)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['data']['accessToken']}")
+        self.assertEqual(self.client.get('/api/v1/auth/me').data['data']['user']['id'], str(self.farmer.pk))
+        self.assertEqual(self.client.post('/api/v1/auth/logout', {'refreshToken': str(refresh)}).status_code, 200)
+        self.assertEqual(self.client.post('/api/v1/auth/refresh', {'refreshToken': str(refresh)}).status_code, 401)
+
+    def test_cannot_revoke_another_users_refresh_token(self):
+        self.authenticate_as(self.society)
+        refresh = str(RefreshToken.for_user(self.farmer))
+        self.assertEqual(self.client.post('/api/v1/auth/logout', {'refreshToken': refresh}).status_code, 400)
+        self.assertEqual(self.client.post('/api/v1/auth/refresh', {'refreshToken': refresh}).status_code, 200)
+
+    def test_inactive_account_cannot_refresh(self):
+        refresh = str(RefreshToken.for_user(self.farmer))
+        self.farmer.is_active = False
+        self.farmer.save()
+        self.assertEqual(self.client.post('/api/v1/auth/refresh', {'refreshToken': refresh}).status_code, 401)
+
+    def test_model_rejects_wrong_parent_and_superuser_role(self):
+        with self.assertRaises(ValidationError):
+            User.objects.create_user('9842000099', PASSWORD, full_name='Wrong', role='farmer', parent=self.bmc)
+        with self.assertRaises(ValueError):
+            User.objects.create_superuser('9842000099', PASSWORD, full_name='Wrong', role='farmer')
+
+    def test_admin_union_creation_form_hashes_password(self):
+        from .admin import AccountCreationForm
+        form = AccountCreationForm(data={'phone': '9842000088', 'full_name': 'New Union', 'role': 'union', 'password1': PASSWORD, 'password2': PASSWORD})
+        self.assertTrue(form.is_valid(), form.errors)
+        user = form.save()
+        self.assertTrue(user.check_password(PASSWORD))
+        self.assertIsNone(user.parent)
