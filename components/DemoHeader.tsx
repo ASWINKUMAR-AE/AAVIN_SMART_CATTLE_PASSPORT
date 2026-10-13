@@ -43,8 +43,8 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   const handleConfirmLogout = () => {
     const titleText = language === 'ta' ? 'வெளியேறு (Logout)' : 'Sign Out';
-    const messageText = language === 'ta' 
-      ? 'ஆவின் கணக்கிலிருந்து பாதுகாப்பாக வெளியேற விரும்புகிறீர்களா?' 
+    const messageText = language === 'ta'
+      ? 'ஆவின் கணக்கிலிருந்து பாதுகாப்பாக வெளியேற விரும்புகிறீர்களா?'
       : 'Are you sure you want to securely log out from the Aavin Dairy Portal?';
 
     if (Platform.OS === 'web') {
@@ -111,11 +111,21 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
               style={styles.logoThumbnail}
               resizeMode="contain"
             />
+            <Pressable
+              style={styles.roleBadge}
+              onPress={() => setModalVisible(true)}
+            >
+              <Text style={styles.roleIcon}>{currentMeta.icon}</Text>
+              <Text style={styles.roleLabel}>
+                {currentMeta.label}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            </Pressable>
           </View>
 
           <View style={styles.rightIconsRow}>
             {/* Quick Language Toggle */}
-            <Pressable 
+            <Pressable
               style={styles.langBtn}
               onPress={toggleLanguage}
               accessibilityLabel="Switch Language"
@@ -124,7 +134,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
             </Pressable>
 
             {/* Notification Bell */}
-            <Pressable 
+            <Pressable
               style={styles.iconBtn}
               onPress={() => router.push('/notifications' as any)}
             >
@@ -137,7 +147,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
             </Pressable>
 
             {/* Prominent Real Logout Button */}
-            <Pressable 
+            <Pressable
               style={[styles.iconBtn, styles.logoutIconBtn]}
               onPress={handleConfirmLogout}
               accessibilityLabel="Log Out"
@@ -228,10 +238,10 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
                         {meta.desc}
                       </Text>
                     </View>
-                    <Ionicons 
-                      name={isSelected ? 'checkmark-circle' : 'chevron-forward'} 
-                      size={22} 
-                      color={isSelected ? meta.color : colors.textMuted} 
+                    <Ionicons
+                      name={isSelected ? 'checkmark-circle' : 'chevron-forward'}
+                      size={22}
+                      color={isSelected ? meta.color : colors.textMuted}
                     />
                   </Pressable>
                 );

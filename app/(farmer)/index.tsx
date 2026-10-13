@@ -11,12 +11,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
-  const { 
-    cows, 
-    milkRecords, 
-    getFarmerStats, 
+  const {
+    cows,
+    milkRecords,
+    getFarmerStats,
     booths,
-    boothReceipts 
+    boothReceipts
   } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
@@ -55,12 +55,12 @@ export default function FarmerDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title={`Vanakkam, ${user?.fullName || 'Farmer'}`}
         subtitle={`${assignedBooth?.name || 'Melur Co-op Booth'} • ${farmerCows.length} Cows Registered`}
       />
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
@@ -80,7 +80,7 @@ export default function FarmerDashboard() {
             </View>
 
             {cowsWithWithdrawal.map(c => (
-              <Pressable 
+              <Pressable
                 key={c.id}
                 onPress={() => router.push(`/(farmer)/cow-details?cowId=${c.id}` as any)}
                 style={styles.alertCowItem}
@@ -124,49 +124,6 @@ export default function FarmerDashboard() {
             <Text style={styles.heroSubText}>
               Est. Monthly: ₹{(stats.monthSupply * 37.5).toFixed(0)} ({stats.monthSupply.toFixed(1)} L)
             </Text>
-          </View>
-
-          {/* 4 Circular Action Buttons (from Reference UI: Down, Up-Right, Swap, Plus) */}
-          <View style={styles.heroActionsRow}>
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(farmer)/milk-history')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Supply</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(farmer)/cows')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Cows</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(farmer)/payments')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Payouts</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(farmer)/register-cow')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="add" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Add Cow</Text>
-            </Pressable>
           </View>
         </View>
 
@@ -221,57 +178,9 @@ export default function FarmerDashboard() {
           </Card>
         </View>
 
-        {/* 7-Day Visual Supply Trend */}
-        <Card style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <View>
-              <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                Daily Milk Supply Trend
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-                Calculated from actual recorded entries
-              </Text>
-            </View>
-            <Pressable onPress={() => router.push('/(farmer)/milk-history')}>
-              <Text style={[Typography.footnote, { color: colors.primary, fontWeight: '700' }]}>
-                Full History →
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Bar Chart Bars */}
-          <View style={styles.barsContainer}>
-            {last7DaysData.map((d, index) => {
-              const heightPercent = Math.max((d.qty / maxDailyQty) * 100, 6);
-              const isToday = d.day === 'Today';
-              return (
-                <View key={index} style={styles.barCol}>
-                  <Text style={[styles.barQtyLabel, { color: isToday ? colors.primary : colors.textSecondary }]}>
-                    {d.qty > 0 ? d.qty.toFixed(1) : '-'}
-                  </Text>
-                  <View style={styles.barTrack}>
-                    <View 
-                      style={[
-                        styles.barFill, 
-                        { 
-                          height: `${heightPercent}%`,
-                          backgroundColor: isToday ? colors.primary : '#93C5FD',
-                        }
-                      ]} 
-                    />
-                  </View>
-                  <Text style={[styles.barDayLabel, { color: isToday ? colors.primary : colors.text, fontWeight: isToday ? '800' : '500' }]}>
-                    {d.day}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </Card>
-
         {/* Quick Action Tiles */}
         <View style={styles.actionTilesRow}>
-          <Pressable 
+          <Pressable
             style={[styles.actionTile, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => router.push('/(farmer)/cows')}
           >
@@ -289,7 +198,7 @@ export default function FarmerDashboard() {
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
 
-          <Pressable 
+          <Pressable
             style={[styles.actionTile, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => router.push('/(farmer)/receipts')}
           >
@@ -319,6 +228,35 @@ export default function FarmerDashboard() {
             </Pressable>
           </View>
 
+          {/* Bar Chart Bars */}
+          <View style={styles.barsContainer}>
+            {last7DaysData.map((d, index) => {
+              const heightPercent = Math.max((d.qty / maxDailyQty) * 100, 6);
+              const isToday = d.day === 'Today';
+              return (
+                <View key={index} style={styles.barCol}>
+                  <Text style={[styles.barQtyLabel, { color: isToday ? colors.primary : colors.textSecondary }]}>
+                    {d.qty > 0 ? d.qty.toFixed(1) : '-'}
+                  </Text>
+                  <View style={styles.barTrack}>
+                    <View
+                      style={[
+                        styles.barFill,
+                        {
+                          height: `${heightPercent}%`,
+                          backgroundColor: isToday ? colors.primary : '#93C5FD',
+                        }
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.barDayLabel, { color: isToday ? colors.primary : colors.text, fontWeight: isToday ? '800' : '500' }]}>
+                    {d.day}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
           {farmerRecords.length === 0 ? (
             <View style={styles.emptyBox}>
               <Ionicons name="water-outline" size={32} color={colors.textMuted} />
@@ -327,13 +265,13 @@ export default function FarmerDashboard() {
               </Text>
             </View>
           ) : (
-            farmerRecords.slice(0, 4).map((record) => (
+            farmerRecords.slice(0, 6).map((record) => (
               <View key={record.id} style={[styles.recordRow, { borderBottomColor: colors.border }]}>
                 <View style={[styles.sessionCircle, { backgroundColor: record.session === 'morning' ? '#FEF3C7' : '#E0E7FF' }]}>
-                  <Ionicons 
-                    name={record.session === 'morning' ? 'sunny' : 'moon'} 
-                    size={16} 
-                    color={record.session === 'morning' ? '#D97706' : '#4F46E5'} 
+                  <Ionicons
+                    name={record.session === 'morning' ? 'sunny' : 'moon'}
+                    size={16}
+                    color={record.session === 'morning' ? '#D97706' : '#4F46E5'}
                   />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
@@ -398,7 +336,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    gap: 8,
   },
   statIconBadge: {
     width: 32,
@@ -406,6 +345,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   statNumber: {
     fontSize: 18,
