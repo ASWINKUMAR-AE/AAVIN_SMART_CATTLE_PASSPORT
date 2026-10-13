@@ -132,24 +132,6 @@ export default function LoginScreen() {
             <Text style={styles.heroTitleText}>
               {t('app.title')}
             </Text>
-            <Text style={styles.heroSubtitleText}>
-              {t('app.subtitle')}
-            </Text>
-          </View>
-
-          {/* Hero Dark Floating Card (Directly inspired by Reference Wallet Cards) */}
-          <View style={styles.heroNavyCard}>
-            <View style={styles.cardHeaderStrip}>
-              <View style={styles.cardHeaderBadge}>
-                <Text style={styles.cardBadgeDot}>●</Text>
-                <Text style={styles.cardBadgeTitle}>MILK SAFETY TWIN</Text>
-              </View>
-              <Text style={styles.cardTagText}>ACADEMIC PROTOTYPE</Text>
-            </View>
-
-            <Text style={styles.heroCardBalanceLabel}>Secured Access Portal</Text>
-            <Text style={styles.heroCardBalanceValue}>4-Stage Milk Flow</Text>
-            <Text style={styles.heroCardChainFlow}>Farmer → Booth → BMC → Aavin Union</Text>
           </View>
         </View>
 
@@ -348,73 +330,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: -0.3,
-  },
-  heroSubtitleText: {
-    color: 'rgba(255, 255, 255, 0.88)',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  heroNavyCard: {
-    backgroundColor: '#0D1E36', // Deep navy card matching reference UI
-    borderRadius: 24,
-    padding: 18,
-    shadowColor: '#071325',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.24,
-    shadowRadius: 14,
-    elevation: 8,
-    marginTop: 4,
-  },
-  cardHeaderStrip: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  cardHeaderBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#162846',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  cardBadgeDot: {
-    color: '#78BE20', // Aavin Green dot
-    fontSize: 8,
-    marginRight: 5,
-  },
-  cardBadgeTitle: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  cardTagText: {
-    color: 'rgba(255, 255, 255, 0.65)',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  heroCardBalanceLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  heroCardBalanceValue: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    marginTop: 2,
-  },
-  heroCardChainFlow: {
-    color: '#5EA8EE',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 6,
   },
   whiteContentSheet: {
     backgroundColor: '#FFFFFF',

@@ -150,5 +150,26 @@
     "escalated_to_union": "Escalated to Union",
     "sent_to_union": "Submitted to Union",
     "reviewed_by_union": "Reviewed & Approved by Union"
+  },
+  "nav": {
+    "home": "Home",
+    "milk": "Milk",
+    "myCows": "My Cows",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "farmers": "Farmers",
+    "recordMilk": "Record Milk",
+    "receipts": "Receipts",
+    "deliveries": "Deliveries",
+    "verifyMilk": "Verify Milk",
+    "alerts": "Alerts",
+    "bmcs": "BMCs",
+    "reports": "Reports",
+    "cattle": "Cattle",
+    "treatments": "Treatments",
+    "followUps": "Follow-ups",
+    "verifications": "Verifications",
+    "demoSettings": "Settings",
+    "users": "Users"
   }
 }
