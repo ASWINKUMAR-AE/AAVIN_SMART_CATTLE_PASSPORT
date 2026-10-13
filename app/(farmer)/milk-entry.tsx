@@ -39,7 +39,7 @@ export default function MilkEntryScreen() {
     if (hasWithdrawal) {
       Alert.alert(
         '⚠️ ACTIVE WITHDRAWAL HOLD!',
-        `This cow (${selectedCow.name}) has an active withdrawal restriction until ${selectedCow.activeWithdrawal?.withdrawalEndDate}. This milk must NOT be delivered to the Aavin collection booth! Discard or segregate for calves.`,
+        `This cow (${selectedCow.name}) has an active withdrawal restriction until ${selectedCow.activeWithdrawal?.withdrawalEndDate}. This milk must NOT be delivered to the Aavin collection society! Discard or segregate for calves.`,
         [
           { text: 'Acknowledge', style: 'destructive' }
         ]
@@ -65,7 +65,7 @@ export default function MilkEntryScreen() {
 
       Alert.alert(
         'Milking Logged!',
-        `Logged ${qty.toFixed(2)} L for ${selectedCow.name}. Updated on your dashboard and booth records.`,
+        `Logged ${qty.toFixed(2)} L for ${selectedCow.name}. Updated on your dashboard and society records.`,
         [
           {
             text: 'View History',

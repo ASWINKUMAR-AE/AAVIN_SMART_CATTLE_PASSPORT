@@ -47,7 +47,7 @@ export default function AIAssistantScreen() {
     if (q.includes('fat') || q.includes('snf') || q.includes('price') || q.includes('rate')) {
       return '🥛 Quality Pricing Schedule: Aavin standard cow milk requires 4.0% Fat and 8.5% SNF at base rate ₹36.50/L. Higher fat earns ₹0.35 per 0.1 point increment plus a ₹1.00 clean milk incentive bonus.';
     }
-    return `Based on your cattle passport records for ${myCows.map(c => c.name).join(' & ')}, daily production is optimal. Ensure clean stainless steel cans and deliver to Melur Booth within 2 hours of milking to maintain low bacterial counts.`;
+    return `Based on your cattle passport records for ${myCows.map(c => c.name).join(' & ')}, daily production is optimal. Ensure clean stainless steel cans and deliver to Melur Society within 2 hours of milking to maintain low bacterial counts.`;
   };
 
   const handleSend = () => {

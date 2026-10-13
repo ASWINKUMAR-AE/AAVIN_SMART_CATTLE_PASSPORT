@@ -106,13 +106,13 @@ export default function RecordMilkScreen() {
           vendorName: route === 'vendor' ? vendors.find(v => v.id === selectedVendorId)?.name : undefined,
           measurementMethod: 'farmer_wise',
           individualAllocation: 'measured',
-          createdBy: user?.fullName || 'Booth Officer',
+          createdBy: user?.fullName || 'Society Operator',
           notes: notes.trim() || undefined,
         });
 
         Alert.alert(
           'Milk Intake Recorded Successfully',
-          `Successfully recorded ${qty.toFixed(2)} Litres for ${farmerObj?.name}.\n\nThe collection entry has been logged into the booth ledger and eligible dispatch total.`,
+          `Successfully recorded ${qty.toFixed(2)} Litres for ${farmerObj?.name}.\n\nThe collection entry has been logged into the society ledger and eligible dispatch total.`,
           [
             {
               text: '+ Record Another Entry',
@@ -142,13 +142,13 @@ export default function RecordMilkScreen() {
           vendorName: vendorObj?.name,
           measurementMethod: 'combined',
           individualAllocation: 'not_available',
-          createdBy: user?.fullName || 'Booth Officer',
+          createdBy: user?.fullName || 'Society Operator',
           notes: notes.trim() || 'Bulk intake batch from route vendor cans.',
         });
 
         Alert.alert(
           'Combined Route Batch Recorded',
-          `Successfully recorded ${qty.toFixed(2)} Litres for Vendor ${vendorObj?.name} (Method: Combined Bulk Route).\n\nConsolidated volume added to the eligible BMC dispatch receipt.`,
+          `Successfully recorded ${qty.toFixed(2)} Litres for Vendor ${vendorObj?.name} (Method: Combined Bulk Route).\n\nConsolidated volume added to the eligible society dispatch receipt.`,
           [
             {
               text: '+ Record Another Entry',

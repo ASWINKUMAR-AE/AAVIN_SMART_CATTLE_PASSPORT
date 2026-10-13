@@ -63,7 +63,7 @@ const ROUTE_META_MAP: Record<
     fallbackLabel: 'Profile',
   },
 
-  // Booth Staff
+  // Society Staff
   farmers: {
     outline: 'people-outline',
     filled: 'people',
@@ -184,7 +184,7 @@ export function FloatingAavinTabBar({
 }: FloatingAavinTabBarProps) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { isScrolled, barsVisible } = useScroll();
+  const { isScrolled } = useScroll();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   // Filter to only routes that have a registered icon and not hidden
@@ -197,10 +197,24 @@ export function FloatingAavinTabBar({
   // Active index among visible tabs
   const activeRoute = state.routes[state.index];
   const activeRouteIndex = visibleRoutes.findIndex((route: any) => route.key === activeRoute?.key);
-  const cowDetailsTabIndex = activeRoute?.name === 'cow-details'
-    ? visibleRoutes.findIndex((route: any) => ['cows', 'cattle-registry'].includes(route.name))
+  
+  // Map subroutes to their corresponding parent tab
+  const SUBROUTE_PARENT_MAP: Record<string, string[]> = {
+    'cow-details': ['cows', 'cattle-registry'],
+    'milk-entry': ['milk-history', 'record-milk'],
+    'bmc-analytics': ['bmc-monitoring'],
+  };
+
+  const parentTabNames = SUBROUTE_PARENT_MAP[activeRoute?.name];
+  const parentTabIndex = parentTabNames
+    ? visibleRoutes.findIndex((route: any) => parentTabNames.includes(route.name))
     : -1;
-  const activeVisibleIndex = Math.max(0, activeRouteIndex >= 0 ? activeRouteIndex : cowDetailsTabIndex);
+
+  const activeVisibleIndex = activeRouteIndex >= 0
+    ? activeRouteIndex
+    : parentTabIndex >= 0
+    ? parentTabIndex
+    : 0;
 
   const horizontalMargin = 16;
 
@@ -220,7 +234,7 @@ export function FloatingAavinTabBar({
     };
   }, []);
 
-  if (isKeyboardVisible || !barsVisible) {
+  if (isKeyboardVisible) {
     return null;
   }
 
@@ -271,7 +285,9 @@ export function FloatingAavinTabBar({
                 canPreventDefault: true,
               });
 
-              if (!isFocused && !event.defaultPrevented) {
+              const isDirectlyActive = activeRoute?.name === route.name;
+
+              if ((!isFocused || !isDirectlyActive) && !event.defaultPrevented) {
                 navigation.navigate(route.name);
               }
             };

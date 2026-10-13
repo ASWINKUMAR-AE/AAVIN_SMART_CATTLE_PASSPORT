@@ -55,7 +55,7 @@ export default function UnionReceiptReviewScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="BMC Daily Receipts Review"
         subtitle="Executive Audit & Reconciliation • Madurai District"
         showBack
@@ -80,7 +80,7 @@ export default function UnionReceiptReviewScreen() {
           return (
             <Card style={[styles.card, item.hasDiscrepancies && { borderColor: '#F59E0B', borderWidth: 1.5 }]}>
               <View style={styles.cardHeader}>
-                <View>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
                     {item.id}
                   </Text>
@@ -89,7 +89,7 @@ export default function UnionReceiptReviewScreen() {
                   </Text>
                 </View>
 
-                <View style={[styles.statusBadge, { backgroundColor: isReviewed ? '#DCFCE7' : '#FEF3C7' }]}>
+                <View style={[styles.statusBadge, { backgroundColor: isReviewed ? '#DCFCE7' : '#FEF3C7', flexShrink: 0 }]}>
                   <Text style={[styles.statusText, { color: isReviewed ? '#15803D' : '#B45309' }]}>
                     {isReviewed ? 'REVIEWED & AUDITED' : 'PENDING REVIEW'}
                   </Text>
@@ -99,7 +99,7 @@ export default function UnionReceiptReviewScreen() {
               {/* Volume Comparison Table */}
               <View style={[styles.volumeGrid, { borderTopColor: colors.border }]}>
                 <View style={styles.volItem}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Declared by Booths</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Declared by Societies</Text>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>
                     {item.totalDeclaredQuantity.toFixed(1)} L
                   </Text>
@@ -116,12 +116,12 @@ export default function UnionReceiptReviewScreen() {
                   <Text style={[Typography.caption2, { color: item.netDifference > 0 ? '#DC2626' : '#16A34A' }]}>
                     Net Variance
                   </Text>
-                  <Text 
+                  <Text
                     style={[
-                      Typography.title2, 
-                      { 
-                        fontWeight: '900', 
-                        color: item.netDifference > 0 ? '#DC2626' : '#16A34A' 
+                      Typography.title2,
+                      {
+                        fontWeight: '900',
+                        color: item.netDifference > 0 ? '#DC2626' : '#16A34A'
                       }
                     ]}
                   >
@@ -132,28 +132,30 @@ export default function UnionReceiptReviewScreen() {
 
               {/* Linked Feeder Deliveries list preview */}
               <View style={styles.linkedSection}>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 4 }]}>
+                <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 6 }]}>
                   LINKED FEEDER DELIVERIES ({linkedDeliveries.length})
                 </Text>
                 {linkedDeliveries.map((d) => (
-                  <View key={d.id} style={styles.deliveryRow}>
-                    <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', flex: 1 }]}>
-                      • {d.boothName}
-                    </Text>
-                    <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
+                  <View key={d.id} style={styles.deliveryCard}>
+                    <View style={styles.deliveryTopRow}>
+                      <Text style={[Typography.caption1, { color: colors.primaryDark, fontWeight: '700', flex: 1, minWidth: 0, marginRight: 8 }]} numberOfLines={1}>
+                        • {d.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}
+                      </Text>
+                      <Text
+                        style={[
+                          Typography.caption2,
+                          {
+                            fontWeight: '800',
+                            color: (d.difference || 0) > 0 ? '#DC2626' : '#16A34A',
+                            flexShrink: 0
+                          }
+                        ]}
+                      >
+                        {d.difference !== undefined ? `${d.difference > 0 ? `-${d.difference}L` : 'OK'}` : ''}
+                      </Text>
+                    </View>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
                       Declared: {d.declaredDispatchQuantity}L | Measured: {d.measuredReceivedQuantity || 'Pending'}L
-                    </Text>
-                    <Text 
-                      style={[
-                        Typography.caption2, 
-                        { 
-                          fontWeight: '800', 
-                          color: (d.difference || 0) > 0 ? '#DC2626' : '#16A34A',
-                          marginLeft: 8 
-                        }
-                      ]}
-                    >
-                      {d.difference !== undefined ? `${d.difference > 0 ? `-${d.difference}L` : 'OK'}` : ''}
                     </Text>
                   </View>
                 ))}
@@ -238,6 +240,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
+    overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -249,6 +252,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    flexShrink: 0,
   },
   statusText: {
     fontSize: 10,
@@ -268,9 +272,14 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginVertical: 8,
-    gap: 4,
+    gap: 8,
   },
-  deliveryRow: {
+  deliveryCard: {
+    paddingVertical: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E2E8F0',
+  },
+  deliveryTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

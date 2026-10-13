@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import { FloatingAavinTabBar } from '../../components/navigation/FloatingAavinTabBar';
+import { TAB_BAR_CONTENT_INSET } from '../../components/navigation/curvedNavPath';
 
 export default function UnionLayout() {
   const { colors } = useTheme();
@@ -14,6 +15,7 @@ export default function UnionLayout() {
         headerTintColor: colors.primary,
         headerTitleStyle: { color: colors.text, fontWeight: '700' },
         headerShown: false,
+        sceneStyle: { paddingBottom: TAB_BAR_CONTENT_INSET, backgroundColor: colors.background },
       }}
     >
       {/* 1. Home */}
@@ -57,6 +59,16 @@ export default function UnionLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          headerShown: false,
+        }}
+      />
+
+      {/* Subroutes (Hidden from Bottom Floating Tab Bar) */}
+      <Tabs.Screen
+        name="bmc-analytics"
+        options={{
+          href: null,
+          title: 'BMC Production Analytics',
           headerShown: false,
         }}
       />

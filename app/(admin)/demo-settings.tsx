@@ -35,7 +35,7 @@ export default function AdminDemoSettingsScreen() {
   const handleResetData = () => {
     Alert.alert(
       '⚠️ Reset Demo Dataset?',
-      'This will wipe all client-side changes and restore the pristine initial seed dataset (Farmers, Cows, Booth Receipts, BMC Deliveries, and Discrepancies).\n\nDo you want to proceed?',
+      'This will wipe all client-side changes and restore the pristine initial seed dataset (Farmers, Cows, Society Receipts, BMC Deliveries, and Discrepancies).\n\nDo you want to proceed?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -101,7 +101,7 @@ export default function AdminDemoSettingsScreen() {
             Transit Discrepancy Thresholds
           </Text>
           <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 14 }]}>
-            Threshold tolerance for differences between Booth declared dispatch and BMC flow meter intake.
+            Threshold tolerance for differences between Society declared dispatch and BMC flow meter intake.
           </Text>
 
           <TextField

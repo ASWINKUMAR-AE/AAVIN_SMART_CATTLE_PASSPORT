@@ -135,7 +135,7 @@ export default function FarmerMilkHistoryScreen() {
 
               <View style={styles.cardDetails}>
                 <View style={styles.detailRow}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Collection Booth:</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Collection Society:</Text>
                   <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600' }]}>
                     {booth?.name || item.boothId}
                   </Text>
@@ -152,7 +152,7 @@ export default function FarmerMilkHistoryScreen() {
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Digital Receipt Status:</Text>
                   <View style={[styles.statusBadge, { backgroundColor: item.receiptId ? '#DCFCE7' : '#FEF3C7' }]}>
                     <Text style={[styles.statusText, { color: item.receiptId ? '#15803D' : '#B45309' }]}>
-                      {item.receiptId ? `Included in Receipt #${item.receiptId}` : 'Awaiting Booth Receipt Closure'}
+                      {item.receiptId ? `Included in Receipt #${item.receiptId}` : 'Awaiting Society Receipt Closure'}
                     </Text>
                   </View>
                 </View>

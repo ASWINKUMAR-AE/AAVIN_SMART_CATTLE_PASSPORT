@@ -331,7 +331,7 @@ export default function ReceiptPreviewScreen() {
 
               <View style={styles.reconValuesRow}>
                 <View style={styles.reconValCol}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Booth Declared</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Society Declared</Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>{delivery.declaredDispatchQuantity.toFixed(2)} L</Text>
                 </View>
                 <View style={styles.reconValCol}>

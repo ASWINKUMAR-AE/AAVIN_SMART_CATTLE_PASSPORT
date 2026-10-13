@@ -43,8 +43,8 @@ export default function CollectionLayout() {
       <Tabs.Screen
         name="booth-ledger"
         options={{
-          title: 'Booth Ledger',
-          headerTitle: 'Village Booth Digital Ledger',
+          title: 'Society Ledger',
+          headerTitle: 'Village Society Digital Ledger',
           tabBarIcon: ({ color, size }) => <Ionicons name="book-outline" size={size} color={color} />,
         }}
       />

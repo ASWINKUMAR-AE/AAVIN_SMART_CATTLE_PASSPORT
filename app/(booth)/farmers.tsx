@@ -420,7 +420,7 @@ export default function BoothFarmersScreen() {
 
       Alert.alert(
         'Farmer & Cattle Data Updated',
-        `Successfully updated profile for ${updatedFarmerData.name} and ${updatedCowsToSave.length} cattle passports (name & capacity synced).`
+        `Successfully updated profile for ${updatedFarmerData.name} and ${updatedCowsToSave.length} cattle passports. Changes have been saved to the society database.`
       );
     } catch (err: any) {
       setIsSaving(false);
@@ -479,7 +479,7 @@ export default function BoothFarmersScreen() {
               styles.filterChipText,
               { color: filterScope === 'assigned' ? '#FFFFFF' : colors.textSecondary }
             ]}>
-              This Booth ({assignedCount})
+              This Society ({assignedCount})
             </Text>
           </Pressable>
 
@@ -618,7 +618,7 @@ export default function BoothFarmersScreen() {
                       {item.village}
                     </Text>
                   </View>
-                  <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]} numberOfLines={1}>
                     {item.community || 'Melur Taluk'}
                   </Text>
                 </View>
@@ -630,7 +630,7 @@ export default function BoothFarmersScreen() {
                       {item.bankName ? 'Linked' : 'Pending'}
                     </Text>
                   </View>
-                  <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]} numberOfLines={1}>
                     DBT Bank Account
                   </Text>
                 </View>
@@ -645,7 +645,7 @@ export default function BoothFarmersScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
-                      RESIDENTIAL ADDRESS & BOOTH
+                      RESIDENTIAL ADDRESS & SOCIETY
                     </Text>
                     <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', marginTop: 1 }]}>
                       {item.address}, {item.village} • {assignedBoothObj?.name || item.assignedBoothId}
@@ -886,13 +886,13 @@ export default function BoothFarmersScreen() {
                 <View style={styles.sectionHeaderRow}>
                   <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-                    Booth Assignment & KYC Status
+                    Society Assignment & KYC Status
                   </Text>
                 </View>
 
                 {/* Booth Selector */}
                 <Text style={[Typography.subhead, { color: colors.textSecondary, marginBottom: 8, fontWeight: '600' }]}>
-                  Assigned Collection Booth:
+                  Assigned Collection Society:
                 </Text>
                 <View style={styles.boothChipsRow}>
                   {booths.map(b => (

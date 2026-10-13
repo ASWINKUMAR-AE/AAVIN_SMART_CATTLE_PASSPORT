@@ -12,13 +12,13 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function UnionDashboard() {
   const { user } = useAuth();
-  const { 
-    union, 
-    bmcs, 
-    booths, 
-    bmcReceipts, 
-    discrepancyCases, 
-    getUnionStats 
+  const {
+    union,
+    bmcs,
+    booths,
+    bmcReceipts,
+    discrepancyCases,
+    getUnionStats
   } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
@@ -35,12 +35,12 @@ export default function UnionDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="Aavin Union Headquarters"
         subtitle={`${union.name} • Madurai District Co-op`}
       />
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
@@ -89,51 +89,8 @@ export default function UnionDashboard() {
               </Text>
             </View>
             <Text style={styles.heroSubText}>
-              Booths Dispatched: {stats.totalBoothDispatched.toFixed(1)} L
+              Societies Dispatched: {stats.totalBoothDispatched.toFixed(1)} L
             </Text>
-          </View>
-
-          {/* 4 Circular Action Buttons (from Reference UI: Down, Up-Right, Swap, Plus) */}
-          <View style={styles.heroActionsRow}>
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(union)/receipt-review' as any)}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="document-text" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Receipts</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(union)/bmc-monitoring' as any)}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="business" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>BMCs</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(union)/discrepancies' as any)}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Audit</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(union)/receipt-review' as any)}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Sign-Off</Text>
-            </Pressable>
           </View>
         </View>
 
@@ -144,41 +101,41 @@ export default function UnionDashboard() {
           </Text>
 
           <View style={styles.stagesGrid}>
-            {/* Stage 1: Booths */}
-            <View style={[styles.stageNode, { backgroundColor: colors.primaryLight }]}>
-              <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                STAGE 1: BOOTHS
+            {/* Stage 1: Societies */}
+            <View style={[styles.stageNode, { backgroundColor: '#ffffffff' }]}>
+              <Text style={[Typography.caption2, { color: colors.primaryDark, fontWeight: '800' }]}>
+                SOCIETIES
               </Text>
-              <Text style={[styles.stageVolume, { color: colors.primary }]}>
+              <Text style={[styles.stageVolume, { color: colors.primaryDark }]}>
                 {stats.totalBoothDispatched.toFixed(1)} L
               </Text>
-              <Text style={[Typography.caption2, { color: colors.primary }]}>
+              <Text style={[Typography.caption2, { color: colors.primaryDark }]}>
                 Total Declared Dispatched
               </Text>
             </View>
 
             {/* Stage 2: BMCs */}
-            <View style={[styles.stageNode, { backgroundColor: '#F0FDF4' }]}>
-              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '800' }]}>
-                STAGE 2: BMCS
+            <View style={[styles.stageNode, { backgroundColor: '#ffffffff' }]}>
+              <Text style={[Typography.caption2, { color: colors.primaryDark, fontWeight: '800' }]}>
+                BMCS
               </Text>
-              <Text style={[styles.stageVolume, { color: '#166534' }]}>
+              <Text style={[styles.stageVolume, { color: colors.primaryDark }]}>
                 {stats.totalBmcReceived.toFixed(1)} L
               </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A' }]}>
+              <Text style={[Typography.caption2, { color: colors.primaryDark }]}>
                 Actual Measured Received
               </Text>
             </View>
 
             {/* Stage 3: BMC Receipts */}
-            <View style={[styles.stageNode, { backgroundColor: '#FAF5FF' }]}>
-              <Text style={[Typography.caption2, { color: '#9333EA', fontWeight: '800' }]}>
-                STAGE 3: RECEIPTS
+            <View style={[styles.stageNode, { backgroundColor: '#ffffffff' }]}>
+              <Text style={[Typography.caption2, { color: colors.primaryDark, fontWeight: '800' }]}>
+                RECEIPTS
               </Text>
-              <Text style={[styles.stageVolume, { color: '#6B21A8' }]}>
+              <Text style={[styles.stageVolume, { color: colors.primaryDark }]}>
                 {stats.totalReportedByBmcReceipts.toFixed(1)} L
               </Text>
-              <Text style={[Typography.caption2, { color: '#9333EA' }]}>
+              <Text style={[Typography.caption2, { color: colors.primaryDark }]}>
                 Reported by BMC Slips
               </Text>
             </View>
@@ -186,7 +143,7 @@ export default function UnionDashboard() {
 
           <View style={[styles.stageNoteBox, { backgroundColor: colors.background }]}>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              ℹ️ Measurement Integrity Rule: Booth declared dispatches and BMC intake measurements represent separate stages of the same physical milk and are audited for transit loss.
+              ℹ️ Measurement Integrity Rule: Society declared dispatches and BMC intake measurements represent separate stages of the same physical milk and are audited for transit loss.
             </Text>
           </View>
         </Card>
@@ -248,15 +205,15 @@ export default function UnionDashboard() {
                   <Ionicons name="snow" size={22} color={colors.primary} />
                 </View>
 
-                <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={{ flex: 1, marginLeft: 12, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                    {b.name}
+                    {b.name?.replace(/cooling booth/gi, 'Bulk Milk Cooling Centre').replace(/booth/gi, 'Society')}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                     Location: {b.location} • In-Charge: {b.managerName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                    Feeders: {bmcBooths.map(bt => bt.name.split(' ')[0]).join(', ')} ({bmcBooths.length} Booths)
+                    Feeders: {bmcBooths.map(bt => bt.name?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society').split(' ')[0]).join(', ')} ({bmcBooths.length} Societies)
                   </Text>
 
                   <View style={styles.bmcBadgesRow}>
@@ -388,6 +345,7 @@ const styles = StyleSheet.create({
   },
   bmcBadgesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 6,
   },

@@ -57,7 +57,7 @@ export default function FarmerDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
         title={`Vanakkam, ${user?.fullName || 'Farmer'}`}
-        subtitle={`${assignedBooth?.name || 'Melur Co-op Booth'} • ${farmerCows.length} Cows Registered`}
+        subtitle={`${assignedBooth?.name || 'Melur Co-op Society'} • ${farmerCows.length} Cows Registered`}
       />
 
       <ScrollView
@@ -141,7 +141,7 @@ export default function FarmerDashboard() {
               {stats.todaySupply > 0 ? `${stats.todaySupply.toFixed(1)} L` : 'Pending'}
             </Text>
             <Text style={[Typography.caption2, { color: stats.todaySupply > 0 ? '#16A34A' : colors.textMuted }]}>
-              {stats.todaySupply > 0 ? '✓ Recorded at Booth' : 'No delivery recorded yet'}
+              {stats.todaySupply > 0 ? '✓ Recorded at Society' : 'No delivery recorded yet'}
             </Text>
           </Card>
 

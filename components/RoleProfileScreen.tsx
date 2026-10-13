@@ -174,7 +174,7 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
           <View style={styles.roleChips}>
             {[
               { role: 'farmer' as UserRole, label: 'Farmer', icon: '👨‍🌾' },
-              { role: 'booth' as UserRole, label: 'Booth Staff', icon: '🏪' },
+              { role: 'booth' as UserRole, label: 'Society Staff', icon: '🏪' },
               { role: 'bmc' as UserRole, label: 'BMC Center', icon: '🏭' },
               { role: 'union' as UserRole, label: 'Union Exec', icon: '🏛️' },
               { role: 'veterinary' as UserRole, label: 'Veterinarian', icon: '🩺' },

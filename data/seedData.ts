@@ -37,12 +37,12 @@ export const SEED_DEMO_USERS: DemoUser[] = [
   {
     id: 'BOOTH001',
     username: 'booth_kannan',
-    fullName: 'P. Kannan (Booth Officer)',
+    fullName: 'P. Kannan (Society Officer)',
     role: 'booth',
     phone: '9842000009',
     email: 'melur.booth@aavin.tn.gov.in',
     associatedId: 'BOOTH001',
-    description: 'Booth Staff • Melur Co-op Society (Dispatches to Madurai East BMC)',
+    description: 'Society Staff • Melur Co-op Society (Dispatches to Madurai East BMC)',
   },
   {
     id: 'BMC001',
@@ -294,7 +294,7 @@ export const SEED_COWS: Cow[] = [
         notes: 'MANDATORY MILK WITHHOLDING: Milk contains antibiotic residues. Discard milk completely.',
       },
     ],
-    notes: 'ACTIVE ANTIBIOTIC WITHDRAWAL: Do not pool milk into collection booth.',
+    notes: 'ACTIVE ANTIBIOTIC WITHDRAWAL: Do not pool milk into collection society.',
     createdAt: '2025-01-10T08:20:00Z',
   },
   {
@@ -442,7 +442,7 @@ export const SEED_BOOTHS: Booth[] = [
   {
     id: 'BOOTH003',
     code: 'AAVIN-CC-MDU-03',
-    name: 'Vadipatti Milk Collection Booth',
+    name: 'Vadipatti Milk Collection Society',
     taluk: 'Vadipatti',
     village: 'Vadipatti Town',
     district: 'Madurai',
@@ -524,7 +524,7 @@ export const SEED_MILK_RECORDS: MilkRecord[] = [
     individualAllocation: 'measured',
     status: 'recorded',
     createdBy: 'P. Kannan (BOOTH001)',
-    notes: 'Delivered Kamadhenu morning yield directly to Melur booth',
+    notes: 'Delivered Kamadhenu morning yield directly to Melur society',
     createdAt: `${todayStr}T06:15:00Z`,
   },
   {
@@ -696,7 +696,7 @@ export const SEED_MILK_RECORDS: MilkRecord[] = [
 ];
 
 export const SEED_BOOTH_RECEIPTS: BoothReceipt[] = [
-  // Receipt 1: Matched delivery yesterday (Booth 1 -> BMC 1)
+  // Receipt 1: Matched delivery yesterday (Society 1 -> BMC 1)
   {
     id: 'BR-2026-1011-01',
     boothId: 'BOOTH001',
@@ -716,7 +716,7 @@ export const SEED_BOOTH_RECEIPTS: BoothReceipt[] = [
     verificationCode: 'BR-MDU01-928174',
     notes: 'Evening dispatch tanker batch #TN59BZ4819',
   },
-  // Receipt 2: Mismatch delivery yesterday (Booth 2 -> BMC 1) - Declared 1000L, BMC received 970L (30L mismatch!)
+  // Receipt 2: Mismatch delivery yesterday (Society 2 -> BMC 1) - Declared 1000L, BMC received 970L (30L mismatch!)
   {
     id: 'BR-2026-1011-02',
     boothId: 'BOOTH002',
@@ -736,7 +736,7 @@ export const SEED_BOOTH_RECEIPTS: BoothReceipt[] = [
     verificationCode: 'BR-MDU02-482019',
     notes: 'Morning batch dispatched in Tanker TN-59-CX-3312',
   },
-  // Receipt 3: Today's pending arrival (Booth 1 -> BMC 1)
+  // Receipt 3: Today's pending arrival (Society 1 -> BMC 1)
   {
     id: 'BR-2026-1012-01',
     boothId: 'BOOTH001',
@@ -827,14 +827,14 @@ export const SEED_DISCREPANCY_CASES: DiscrepancyCase[] = [
         id: 'NOTE-001',
         timestamp: `${yesterdayStr} 10:25 AM`,
         author: 'R. Sundar (BMC Staff)',
-        note: 'Upon tanker arrival, dipstick measurement indicated 970L against booth dispatch receipt of 1000L. Tanker seals were checked; rear discharge valve seal appeared intact but slightly slack.',
+        note: 'Upon tanker arrival, dipstick measurement indicated 970L against society dispatch receipt of 1000L. Tanker seals were checked; rear discharge valve seal appeared intact but slightly slack.',
         evidenceReference: 'Seal Tag #TN-AAVIN-88912',
       },
       {
         id: 'NOTE-002',
         timestamp: `${yesterdayStr} 11:40 AM`,
-        author: 'M. Ramanathan (Booth Staff)',
-        note: 'Booth weigh-scale calibration rechecked and confirmed accurate. Suspect minor spillage or measurement calibration variance at transit.',
+        author: 'M. Ramanathan (Society Staff)',
+        note: 'Society weigh-scale calibration rechecked and confirmed accurate. Suspect minor spillage or measurement calibration variance at transit.',
         evidenceReference: 'Weigh Slip #ALN-9982',
       },
     ],
@@ -863,7 +863,7 @@ export const SEED_DISCREPANCY_CASES: DiscrepancyCase[] = [
         note: 'Discrepancy of 15L verified. Flow meter in inlet pipe #2 had slight air cavitation.',
       },
     ],
-    resolutionReason: 'Technical calibration issue identified in BMC inlet flow meter sensor; booth records verified accurate. Recalibration completed.',
+    resolutionReason: 'Technical calibration issue identified in BMC inlet flow meter sensor; society records verified accurate. Recalibration completed.',
     resolvedAt: `${twoDaysAgoStr}T16:00:00Z`,
     resolvedBy: 'Dr. S. Sundaram (Union GM)',
   },
@@ -897,7 +897,7 @@ export const SEED_NOTIFICATIONS: InAppNotification[] = [
     recipientRole: 'farmer',
     recipientId: 'FARMER001',
     title: 'Milk Collection Recorded',
-    message: 'Your morning supply of 8.50 Litres was successfully recorded at Melur Booth.',
+    message: 'Your morning supply of 8.50 Litres was successfully recorded at Melur Society.',
     type: 'milk_recorded',
     timestamp: `${todayStr} 06:15 AM`,
     isRead: false,
@@ -930,7 +930,7 @@ export const SEED_NOTIFICATIONS: InAppNotification[] = [
     recipientRole: 'bmc',
     recipientId: 'BMC001',
     title: 'New Dispatch Awaiting Measurement',
-    message: 'Melur Booth dispatched 420.0 Litres (Receipt #BR-2026-1012-01). Please confirm actual received milk.',
+    message: 'Melur Society dispatched 420.0 Litres (Receipt #BR-2026-1012-01). Please confirm actual received milk.',
     type: 'delivery_pending',
     timestamp: `${todayStr} 07:46 AM`,
     isRead: false,
@@ -941,7 +941,7 @@ export const SEED_NOTIFICATIONS: InAppNotification[] = [
     recipientRole: 'bmc',
     recipientId: 'BMC001',
     title: '⚠️ Quantity Mismatch Detected',
-    message: 'Alanganallur Booth delivery shows a 30.00 L shortfall (Declared: 1000 L, Measured: 970 L). Investigation opened.',
+    message: 'Alanganallur Society delivery shows a 30.00 L shortfall (Declared: 1000 L, Measured: 970 L). Investigation opened.',
     type: 'discrepancy_alert',
     timestamp: `${yesterdayStr} 10:18 AM`,
     isRead: true,
@@ -963,7 +963,7 @@ export const SEED_NOTIFICATIONS: InAppNotification[] = [
     recipientRole: 'union',
     recipientId: 'UNION001',
     title: '⚠️ Transit Mismatch Escalation',
-    message: 'Case DISC-101 (30L variance between Booth AAVIN-CC-MDU-02 and BMC Madurai East) requires Union review.',
+    message: 'Case DISC-101 (30L variance between Society AAVIN-CC-MDU-02 and BMC Madurai East) requires Union review.',
     type: 'union_escalation',
     timestamp: `${yesterdayStr} 11:45 AM`,
     isRead: false,

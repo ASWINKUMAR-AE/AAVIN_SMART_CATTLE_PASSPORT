@@ -202,21 +202,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   /**
-   * Real production logout: cleans tokens, revokes session, clears state
+   * Temporarily logs out locally without waiting for backend session revocation.
    */
   const logout = async () => {
-    try {
-      await api.post('/auth/logout').catch(() => {});
-    } catch {
-      // Ignore network errors on logout
-    } finally {
-      setUser(null);
-      setActiveRole(null);
-      setToken(null);
-      await deleteSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN);
-      await deleteSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
-      await AsyncStorage.removeItem(AUTH_USER_KEY);
-    }
+    setUser(null);
+    setActiveRole(null);
+    setToken(null);
+    await deleteSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN);
+    await deleteSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
+    await AsyncStorage.removeItem(AUTH_USER_KEY);
   };
 
   return (

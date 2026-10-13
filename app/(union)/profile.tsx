@@ -20,7 +20,7 @@ export default function UnionProfileScreen() {
       roleIcon="🏛️"
       stats={[
         { label: "Active BMCs", value: `${bmcs.length} Units` },
-        { label: "Active Booths", value: `${booths.length} Booths` },
+        { label: "Active Societies", value: `${booths.length} Societies` },
         { label: "Audit Pipeline", value: `${(discrepancyCases || []).length} Alerts` },
       ]}
     />

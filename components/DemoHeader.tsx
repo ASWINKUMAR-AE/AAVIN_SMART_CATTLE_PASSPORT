@@ -35,7 +35,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   const roleMeta: Record<UserRole, { label: string; icon: string; color: string; desc: string }> = {
     farmer: { label: 'Farmer', icon: '👨‍🌾', color: '#16A34A', desc: 'Own cows, view supply & receipts' },
-    booth: { label: 'Booth Staff', icon: '🏢', color: '#0072BC', desc: 'Record milk, generate digital dispatch receipts' },
+    booth: { label: 'Society Staff', icon: '🏢', color: '#0072BC', desc: 'Record milk, generate digital dispatch receipts' },
     bmc: { label: 'BMC Staff', icon: '❄️', color: '#0284C7', desc: 'Receive deliveries, record measurements, flag mismatches' },
     union: { label: 'Union Admin', icon: '🏛️', color: '#7C3AED', desc: 'District overview, audit discrepancies & receipts' },
     veterinary: { label: 'Veterinarian', icon: '🩺', color: '#EA580C', desc: 'Clinical records & medicine withdrawal alerts' },

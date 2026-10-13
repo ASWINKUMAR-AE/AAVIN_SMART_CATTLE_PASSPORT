@@ -35,7 +35,7 @@ import {
 } from '../data/seedData';
 import { WorkflowApi } from '../services/workflowApi';
 
-const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v2';
+const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v3';
 
 interface AavinState {
   farmers: Farmer[];
@@ -161,6 +161,77 @@ const initialSeedState: AavinState = {
 
 const AavinStoreContext = createContext<AavinStoreContextType | null>(null);
 
+function sanitizeLoadedState(loadedState: AavinState): AavinState {
+  if (!loadedState) return loadedState;
+
+  const replaceText = (text?: string): string => {
+    if (!text || typeof text !== 'string') return text || '';
+    return text
+      .replace(/Vadipatti Milk Collection Booth/gi, 'Vadipatti Milk Collection Society')
+      .replace(/Vadipatti Milk Cooling Booth/gi, 'Vadipatti Milk Collection Society')
+      .replace(/Melur Primary Milk Producers Co-op Booth/gi, 'Melur Primary Milk Producers Co-op Society')
+      .replace(/Melur Town Primary Milk Producers Co-op Booth/gi, 'Melur Town Primary Milk Producers Co-op Society')
+      .replace(/Melur Co-op Booth/gi, 'Melur Co-op Society')
+      .replace(/Melur Booth/gi, 'Melur Society')
+      .replace(/Alanganallur Booth/gi, 'Alanganallur Society')
+      .replace(/Alanganallur Village Collection Booth/gi, 'Alanganallur Village Collection Society')
+      .replace(/Navinipatti Village Milk Collection Booth/gi, 'Navinipatti Village Milk Collection Society')
+      .replace(/cooling booth/gi, 'cooling center')
+      .replace(/Cooling Booth/gi, 'Cooling Center')
+      .replace(/booth weigh-scale/gi, 'society weigh-scale')
+      .replace(/booth weigh scale/gi, 'society weigh-scale')
+      .replace(/Booth weigh-scale/gi, 'Society weigh-scale')
+      .replace(/Booth weigh scale/gi, 'Society weigh-scale')
+      .replace(/booth staff/gi, 'society staff')
+      .replace(/Booth Staff/gi, 'Society Staff')
+      .replace(/booth records/gi, 'society records')
+      .replace(/booth database/gi, 'society database')
+      .replace(/booth dispatch receipt/gi, 'society dispatch receipt')
+      .replace(/collection booth/gi, 'collection society')
+      .replace(/Collection Booth/gi, 'Collection Society')
+      .replace(/(\b)booth(\b)/gi, '$1society$2')
+      .replace(/(\b)booths(\b)/gi, '$1societies$2')
+      .replace(/(\b)Booth(\b)/g, '$1Society$2')
+      .replace(/(\b)Booths(\b)/g, '$1Societies$2');
+  };
+
+  return {
+    ...loadedState,
+    booths: (loadedState.booths || []).map(b => ({
+      ...b,
+      name: replaceText(b.name),
+    })),
+    bmcs: (loadedState.bmcs || []).map(bmc => ({
+      ...bmc,
+      name: replaceText(bmc.name),
+    })),
+    discrepancyCases: (loadedState.discrepancyCases || []).map(dc => ({
+      ...dc,
+      boothName: replaceText(dc.boothName),
+      resolutionReason: dc.resolutionReason ? replaceText(dc.resolutionReason) : undefined,
+      investigationNotes: (dc.investigationNotes || []).map(n => ({
+        ...n,
+        author: replaceText(n.author),
+        note: replaceText(n.note),
+      })),
+    })),
+    notifications: (loadedState.notifications || []).map(n => ({
+      ...n,
+      title: replaceText(n.title),
+      message: replaceText(n.message),
+    })),
+    boothReceipts: (loadedState.boothReceipts || []).map(r => ({
+      ...r,
+      boothName: replaceText(r.boothName),
+      notes: r.notes ? replaceText(r.notes) : r.notes,
+    })),
+    bmcDeliveries: (loadedState.bmcDeliveries || []).map(d => ({
+      ...d,
+      boothName: replaceText(d.boothName),
+    })),
+  };
+}
+
 export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AavinState>(initialSeedState);
   const [isLoading, setIsLoading] = useState(true);
@@ -169,10 +240,17 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     const loadPersistedState = async () => {
       try {
-        const saved = await AsyncStorage.getItem(STORAGE_KEY);
+        let saved = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!saved) {
+          saved = await AsyncStorage.getItem('@aavin_smart_cattle_passport_state_v2');
+        }
         if (saved) {
           const parsed = JSON.parse(saved);
-          setState(parsed);
+          const sanitized = sanitizeLoadedState(parsed);
+          setState(sanitized);
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+        } else {
+          setState(initialSeedState);
         }
       } catch (err) {
         console.warn('Failed to load demo store state:', err);
@@ -465,7 +543,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       treatmentRecords: [newTreatment, ...targetCow.treatmentRecords],
     };
 
-    // Create notifications for farmer & booth staff
+    // Create notifications for farmer & society staff
     const notificationsToAdd: InAppNotification[] = [];
     if (hasWithdrawal) {
       notificationsToAdd.push({
@@ -530,7 +608,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         recipientRole: 'farmer',
         recipientId: newRecord.farmerId,
         title: 'Milk Supply Recorded',
-        message: `Your ${newRecord.session} supply of ${newRecord.quantityLitres.toFixed(2)} Litres was recorded at the booth.`,
+        message: `Your ${newRecord.session} supply of ${newRecord.quantityLitres.toFixed(2)} Litres was recorded at the society.`,
         type: 'milk_recorded',
         timestamp: 'Just now',
         isRead: false,
@@ -588,7 +666,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     persistState(updated);
   }, [state, persistState]);
 
-  // 4. Booth Actions
+  // 4. Society Actions
   const createBoothReceipt = useCallback((
     boothId: string, 
     bmcId: string, 
@@ -619,7 +697,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const newReceipt: BoothReceipt = {
       id: receiptId,
       boothId,
-      boothName: booth?.name || 'Aavin Booth',
+      boothName: booth?.name || 'Aavin Society',
       bmcId,
       bmcName: bmc?.name || 'Aavin BMC',
       collectionDate,
@@ -697,7 +775,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       session: receipt.session,
       notes: receipt.notes,
     }).catch(err => {
-      console.log('[WorkflowApi] Booth receipt dispatched locally. Offline/mock mode:', err?.message || err);
+      console.log('[WorkflowApi] Society receipt dispatched locally. Offline/mock mode:', err?.message || err);
     });
   }, [state, persistState]);
 
@@ -773,7 +851,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         linkRoute: '/(union)/discrepancies',
       });
     } else {
-      // Notification to Booth that delivery matched and confirmed
+      // Notification to Society that delivery matched and confirmed
       newNotifications.unshift({
         id: `NOTIF-MATCH-BOOTH-${Date.now()}`,
         recipientRole: 'booth',
@@ -1037,7 +1115,11 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // 8. Demo Data Reset
   const resetDemoData = useCallback(async () => {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.multiRemove([
+        STORAGE_KEY,
+        '@aavin_smart_cattle_passport_state_v2',
+        '@aavin_smart_cattle_passport_state_v1',
+      ]);
       setState(initialSeedState);
     } catch (err) {
       console.warn('Failed to reset demo state:', err);

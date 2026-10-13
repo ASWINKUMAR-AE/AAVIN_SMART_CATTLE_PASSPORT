@@ -51,14 +51,14 @@ export default function BoothDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={booth.name}
-        subtitle={`Booth #${booth.code} • Linked to BMC: ${assignedBmc.name}`}
+        subtitle={`Society #${booth.code} • Linked to BMC: ${assignedBmc.name}`}
       />
 
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Discrepancy Alert for Booth Staff */}
+        {/* Discrepancy Alert for Society Staff */}
         {boothDiscrepancies.length > 0 && (
           <View style={[styles.discrepancyBanner, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
             <Ionicons name="alert-circle" size={24} color="#DC2626" />
@@ -84,7 +84,7 @@ export default function BoothDashboard() {
           <View style={styles.darkOverlayLayer}>
             <View style={styles.heroCardHeaderRow}>
               <View style={styles.heroHeaderPill}>
-                <Text style={styles.heroHeaderPillText}>Booth #{booth.code} ›</Text>
+                <Text style={styles.heroHeaderPillText}>Society #{booth.code} ›</Text>
               </View>
               <View style={[styles.heroStatusBadge, { backgroundColor: todayReceipt ? '#16A34A' : '#D97706' }]}>
                 <Text style={styles.heroStatusBadgeText}>

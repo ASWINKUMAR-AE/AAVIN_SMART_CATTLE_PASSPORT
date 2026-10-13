@@ -22,7 +22,7 @@ export default function BmcProfileScreen() {
       jurisdictionValue="10,000 Litres (4°C Chilled)"
       roleIcon="🏭"
       stats={[
-        { label: "Connected Booths", value: "8 Centers" },
+        { label: "Connected Societies", value: "8 Centers" },
         { label: "Active Chiller", value: "3.8°C OK" },
         { label: "Discrepancies", value: `${pendingCases} Cases` },
       ]}
