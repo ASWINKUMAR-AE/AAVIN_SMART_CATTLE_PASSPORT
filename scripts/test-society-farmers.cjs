@@ -21,12 +21,15 @@ const original = {id:'farmer-uuid',phone:'9842000004',fullName:'Farmer One',role
 function harness(initial = original) {
   let current = JSON.parse(JSON.stringify(initial));
   const states = [], calls = [], alerts = [];
-  let slot = 0, tree, focus, fail = false;
+  let slot = 0, tree, focus, fail = false, listResponse;
   const store = {farmers:[],cows:[],booths:[{id:'society-uuid',name:'Own Society'}],
     replaceSocietyFarmers:(_id,farmers,cows)=>{store.farmers=farmers;store.cows=cows;},
     cacheFarmer:(farmer,cows)=>{store.farmers=[farmer];store.cows=cows;}};
   const api = {
-    listFarmers:async()=>[current],
+    listFarmers:async()=>{
+      if (listResponse instanceof Error) throw listResponse;
+      return listResponse ?? [current];
+    },
     updateFarmer:async(id,payload)=>{
       calls.push({id,payload});
       if(fail)throw {response:{data:{message:'Rejected by server'}}};
@@ -49,16 +52,17 @@ function harness(initial = original) {
   },useCallback:fn=>fn,createElement:(type,props,...children)=>({type,props:{...props,children}})};
   const native = Object.fromEntries(['View','Text','FlatList','Pressable','TextInput','Modal','ScrollView',
     'KeyboardAvoidingView'].map(name=>[name,name]));
+  native.useWindowDimensions=()=>({width:390,height:844,fontScale:1,scale:1});
   native.StyleSheet={create:x=>x,hairlineWidth:1};native.Platform={OS:'android'};
   native.Alert={alert:(...args)=>alerts.push(args)};
   const screen=load('app/(booth)/farmers.tsx',{
-    react,'react-native':native,'expo-router':{useRouter:()=>({push:()=>{}}),useFocusEffect:effect=>{focus=effect;}},
+    '../../components/booth/BoothScreen':{BoothScreen:'View'},'react-native-safe-area-context':{useSafeAreaInsets:()=>({top:0,bottom:0,left:0,right:0})},'../../components/booth/BoothText':{BoothText:'Text'},react,'react-native':native,'expo-router':{useRouter:()=>({push:()=>{}}),useFocusEffect:effect=>{focus=effect;}},
     '../../services/accountsApi':{AccountsApi:api},'../../services/accountMapping':mapping,
     '../../store/AavinStoreContext':{useAavinStore:()=>store},
     '../../context/AuthContext':{useAuth:()=>({user:{role:'booth',associatedId:'society-uuid'}})},
     '../../context/ThemeContext':{useTheme:()=>({colors:{},isDark:false})},
-    '../../constants/Typography':{Typography:{}},'../../components/DemoHeader':{DemoHeader:'DemoHeader'},
-    '../../components/ui/Card':{Card:'Card'},'../../components/ui/Button':{Button:'Button'},
+    '../../constants/Typography':{Typography:{}},'../../components/booth/BoothHeader':{BoothHeader:'DemoHeader'},
+    '../../components/ui/Card':{Card:'Card'},'../../components/booth/BoothButton':{BoothButton:'Button'},
     '../../components/ui/TextField':{TextField:'TextField'},'@expo/vector-icons':{Ionicons:'Ionicons'},
     '../../components/ui/EmptyState':{EmptyState:'EmptyState'},
   }).default;
@@ -68,7 +72,7 @@ function harness(initial = original) {
     if(!node || typeof node!=='object')return;
     if(node.type==='Modal' && !node.props.visible)return;
     yield node;
-    if(node.type==='FlatList')for(const item of node.props.data)yield* walk(node.props.renderItem({item}));
+    if(node.type==='FlatList'){yield* walk(node.props.ListHeaderComponent);for(const item of node.props.data)yield* walk(node.props.renderItem({item}));}
     yield* walk(node.props.children);
   }
   function text(node){if(Array.isArray(node))return node.map(text).join('');
@@ -76,10 +80,22 @@ function harness(initial = original) {
   function find(type,predicate){const node=[...walk(render())].find(node=>node.type===type && predicate(node.props,node));
     assert.ok(node, 'Missing '+type);return node.props;}
   render();
-  return {store,calls,alerts,find,text,render,setFail:value=>{fail=value;},
+  return {store,calls,alerts,find,text,render,setFail:value=>{fail=value;},setListResponse:value=>{listResponse=value;},
     focus:async()=>{focus();for(let i=0;i<10;i++)await Promise.resolve();render();}};
 }
 (async()=>{
+  const loading = harness();
+  assert.match(loading.text(loading.find('FlatList',()=>true).ListEmptyComponent), /Loading farmers/);
+  loading.setListResponse(new Error('Offline'));
+  await loading.focus();
+  assert.equal(loading.find('FlatList',()=>true).ListEmptyComponent.props.children[0].props.title, 'Unable to load farmers');
+  const retry = loading.find('FlatList',()=>true).ListEmptyComponent.props.children[1];
+  assert.equal(retry.props.title, 'Try Again');
+  retry.props.onPress();
+  assert.match(loading.text(loading.find('FlatList',()=>true).ListEmptyComponent), /Loading farmers/);
+  loading.setListResponse([]);
+  await loading.focus();
+  assert.equal(loading.find('FlatList',()=>true).ListEmptyComponent.props.title, 'No Farmers Found');
   const h=harness();await h.focus();
   assert.equal(h.find('FlatList',()=>true).data[0].id,'farmer-uuid');
   h.find('Pressable',(_props,node)=>h.text(node)==='Edit Details').onPress();

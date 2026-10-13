@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { ScrollProvider } from '../context/ScrollContext';
 import { AuthProvider } from '../context/AuthContext';
+import { MilkCollectionsProvider } from '../context/MilkCollectionsContext';
 import { NetworkProvider } from '../context/NetworkContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import { AavinStoreProvider } from '../store/AavinStoreContext';
@@ -64,7 +65,7 @@ export default function RootLayout() {
             <NetworkProvider>
               <AavinStoreProvider>
                 <AuthProvider>
-                  <RootLayoutNav />
+                  <MilkCollectionsProvider><RootLayoutNav /></MilkCollectionsProvider>
                 </AuthProvider>
               </AavinStoreProvider>
             </NetworkProvider>

@@ -175,12 +175,16 @@ export interface FloatingAavinTabBarProps {
   descriptors: any;
   navigation: any;
   insets?: any;
+  hideOnScroll?: boolean;
+  barHeight?: number;
 }
 
 export function FloatingAavinTabBar({
   state,
   descriptors,
   navigation,
+  hideOnScroll = true,
+  barHeight = TAB_BAR_HEIGHT,
 }: FloatingAavinTabBarProps) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
@@ -220,7 +224,7 @@ export function FloatingAavinTabBar({
     };
   }, []);
 
-  if (isKeyboardVisible || !barsVisible) {
+  if (isKeyboardVisible || (hideOnScroll && !barsVisible)) {
     return null;
   }
 
@@ -240,8 +244,8 @@ export function FloatingAavinTabBar({
       <View
         style={[
           styles.barWrapper,
-          { height: TAB_BAR_HEIGHT },
-          isScrolled && styles.barWrapperScrolled,
+          { height: barHeight },
+          hideOnScroll && isScrolled && styles.barWrapperScrolled,
         ]}
       >
         {/* Tab Touch Targets & Content */}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
-import { FloatingAavinTabBar } from '../../components/navigation/FloatingAavinTabBar';
+import { BoothTabBar as FloatingAavinTabBar } from '../../components/booth/BoothTabBar';
 
 export default function BoothLayout() {
   const { colors } = useTheme();

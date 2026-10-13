@@ -1,19 +1,27 @@
+import { BoothScreen } from '../../components/booth/BoothScreen';
+import { BoothText as Text } from '../../components/booth/BoothText';
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert, Pressable } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, Pressable, useWindowDimensions } from 'react-native';
 import Svg, { Rect, Text as SvgText, Line } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
+import { useCollectionRefresh, useMilkCollections } from '../../context/MilkCollectionsContext';
+import { indiaDate } from '../../services/milkCollectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
-import { DemoHeader } from '../../components/DemoHeader';
+import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function BoothProfileScreen() {
-  const { booths, bmcs, farmers, milkRecords, boothReceipts, cows } = useAavinStore();
+  const { width, fontScale } = useWindowDimensions();
+  const styles = createStyles(width, fontScale);
+  const { booths, bmcs, farmers, boothReceipts, cows } = useAavinStore();
   const { user, logout } = useAuth();
+  const { records: milkRecords, summary, loading, error } = useMilkCollections();
+  useCollectionRefresh();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
@@ -31,7 +39,7 @@ export default function BoothProfileScreen() {
   const myReceipts = boothReceipts.filter(r => r.boothId === booth.id);
 
   // Today collection metrics
-  const todayStr = '2026-10-12';
+  const todayStr = indiaDate();
   const todayRecords = boothRecords.filter(r => r.collectionDate === todayStr);
   const todayLitres = todayRecords.reduce((sum, r) => sum + r.quantityLitres, 0);
   const farmerWiseLitres = todayRecords.filter(r => r.measurementMethod === 'farmer_wise').reduce((sum, r) => sum + r.quantityLitres, 0);
@@ -44,17 +52,14 @@ export default function BoothProfileScreen() {
     : 0;
 
   // 7-Day Production Chart Data
-  const weeklyChartData = [
-    { day: '06 Oct', morning: 390.0, evening: 330.0, total: 720.0 },
-    { day: '07 Oct', morning: 410.0, evening: 350.0, total: 760.0 },
-    { day: '08 Oct', morning: 395.0, evening: 360.0, total: 755.0 },
-    { day: '09 Oct', morning: 420.0, evening: 370.0, total: 790.0 },
-    { day: '10 Oct', morning: 405.0, evening: 365.0, total: 770.0 },
-    { day: '11 Oct', morning: 430.0, evening: 380.0, total: 810.0 },
-    { day: '12 Oct', morning: 460.5, evening: 320.0, total: todayLitres > 0 ? todayLitres : 780.5 },
-  ];
-
-  const maxChartVal = Math.max(...weeklyChartData.map(d => d.total), 900);
+  const weeklyChartData = (summary?.dailyTrend || []).map(point => ({
+    day: new Date(point.date + 'T00:00:00Z').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'UTC' }),
+    total: Number(point.quantityLitres),
+    morning: boothRecords.filter(r => r.collectionDate === point.date && r.session === 'morning').reduce((sum, r) => sum + r.quantityLitres, 0),
+    evening: boothRecords.filter(r => r.collectionDate === point.date && r.session === 'evening').reduce((sum, r) => sum + r.quantityLitres, 0),
+  }));
+  const maxChartVal = Math.max(...weeklyChartData.map(d => d.total), 1);
+  const peakDay = weeklyChartData.reduce((peak, day) => day.total > peak.total ? day : peak, { day: '', total: 0 });
   const chartHeight = 160;
   const chartWidth = 320;
   const barWidth = 24;
@@ -82,12 +87,14 @@ export default function BoothProfileScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title="Booth Operator Profile"
         subtitle={`Staff Identity & Analytics • ${booth.name}`}
       />
 
+      {!summary && <Text style={{ color: colors.textSecondary, padding: 12 }}>{loading ? 'Loading collections…' : 'Collections unavailable. Reopen to retry.'}</Text>}
+      {error && <Text style={{ color: colors.hold, padding: 12 }}>{error}</Text>}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* 1. Official Staff Credential Card */}
         <Card style={styles.credentialCard}>
@@ -112,7 +119,7 @@ export default function BoothProfileScreen() {
               </Text>
 
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
-                Intake Station Lead • Operator ID: {user?.associatedId || "BOOTH_OPERATOR"}
+                Society intake operator
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
                 Aavin Madurai District Co-operative Milk Producers' Union
@@ -129,7 +136,6 @@ export default function BoothProfileScreen() {
                 <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
                   {booth.name}
                 </Text>
-                <Text style={[Typography.caption2, { color: colors.textMuted }]}>Code: {booth.code || 'BOOTH-401'}</Text>
               </View>
             </View>
 
@@ -142,7 +148,6 @@ export default function BoothProfileScreen() {
                 <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]} numberOfLines={1}>
                   {assignedBmc.name}
                 </Text>
-                <Text style={[Typography.caption2, { color: colors.textMuted }]}>Hub ID: {assignedBmc.id}</Text>
               </View>
             </View>
           </View>
@@ -192,7 +197,7 @@ export default function BoothProfileScreen() {
                   <Text style={styles.miniTagNavyText}>Today</Text>
                 </View>
               </View>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>{todayLitres.toFixed(1)} L</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{summary ? `${Number(summary.todaySupply).toFixed(2)} L` : '—'}</Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>Today's Collection</Text>
               <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>{todayRecords.length} Batch Entries</Text>
             </View>
@@ -300,21 +305,21 @@ export default function BoothProfileScreen() {
             <View style={styles.summaryBannerItem}>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Peak Day Volume</Text>
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
-                810.0 L (11 Oct)
+                {summary ? `${peakDay.total.toFixed(2)} L${peakDay.day ? ` (${peakDay.day})` : ''}` : '—'}
               </Text>
             </View>
             <View style={styles.summaryBannerDivider} />
             <View style={styles.summaryBannerItem}>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>7-Day Intake Total</Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                5,445.5 Litres
+                {summary ? `${Number(summary.last7DaysSupply).toFixed(2)} Litres` : '—'}
               </Text>
             </View>
             <View style={styles.summaryBannerDivider} />
             <View style={styles.summaryBannerItem}>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Daily Average</Text>
               <Text style={[Typography.subhead, { color: '#16A34A', fontWeight: '800' }]}>
-                777.9 L/day
+                {summary ? `${(Number(summary.last7DaysSupply) / 7).toFixed(2)} L/day` : '—'}
               </Text>
             </View>
           </View>
@@ -331,7 +336,7 @@ export default function BoothProfileScreen() {
 
           {/* Producer Attendance Gauge */}
           <View style={styles.attendanceRow}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                 <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
                   Producer Attendance Today
@@ -349,7 +354,7 @@ export default function BoothProfileScreen() {
 
           {/* Milk Channel Split Progress */}
           <View style={[styles.attendanceRow, { marginTop: 14 }]}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                 <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
                   Intake Channel Split
@@ -364,7 +369,7 @@ export default function BoothProfileScreen() {
                   style={[
                     styles.progressBarFill, 
                     { 
-                      width: `${todayLitres > 0 ? (farmerWiseLitres / todayLitres) * 100 : 67}%`, 
+                      width: `${todayLitres > 0 ? (farmerWiseLitres / todayLitres) * 100 : 0}%`,
                       backgroundColor: '#0072BC' 
                     }
                   ]} 
@@ -374,13 +379,13 @@ export default function BoothProfileScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={[styles.legendDot, { backgroundColor: '#0072BC' }]} />
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Farmer-Wise Direct ({todayLitres > 0 ? Math.round((farmerWiseLitres / todayLitres) * 100) : 67}%)
+                    Farmer-Wise Direct ({todayLitres > 0 ? Math.round((farmerWiseLitres / todayLitres) * 100) : 0}%)
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={[styles.legendDot, { backgroundColor: '#6366F1' }]} />
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Route Vendor Bulk ({todayLitres > 0 ? Math.round((vendorLitres / todayLitres) * 100) : 33}%)
+                    Route Vendor Bulk ({todayLitres > 0 ? Math.round((vendorLitres / todayLitres) * 100) : 0}%)
                   </Text>
                 </View>
               </View>
@@ -509,260 +514,276 @@ export default function BoothProfileScreen() {
           style={{ marginTop: 6, marginBottom: 36 }}
         />
       </ScrollView>
-    </View>
+    </BoothScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 14,
-    paddingBottom: 48,
-  },
-  credentialCard: {
-    padding: 16,
-    borderRadius: 18,
-  },
-  credentialHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  verifiedGreenCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 3,
-    borderColor: '#16A34A',
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  staffAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#0072BC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  verifiedCheckBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#16A34A',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  facilityStrip: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 10,
-  },
-  facilityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  facilityDivider: {
-    height: 1,
-    backgroundColor: '#E2E8F0',
-    marginVertical: 2,
-  },
-  twoRowsContainer: {
-    gap: 10,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statTile: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  statTileTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  statIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  miniTagGreen: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  miniTagGreenText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  miniTagBlue: {
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  miniTagBlueText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#0284C7',
-  },
-  miniTagNavy: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  miniTagNavyText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#1D4ED8',
-  },
-  miniTagAmber: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  miniTagAmberText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.3,
-  },
-  chartCard: {
-    padding: 16,
-    borderRadius: 16,
-  },
-  chartHeader: {
-    marginBottom: 8,
-  },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 4,
-  },
-  svgWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 6,
-  },
-  chartSummaryBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 10,
-    borderRadius: 10,
-    marginTop: 8,
-  },
-  summaryBannerItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  summaryBannerDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#CBD5E1',
-  },
-  attendanceRow: {
-    marginTop: 2,
-  },
-  progressBarTrack: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: 8,
-    borderRadius: 4,
-  },
-  channelLegendRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  qualityMetricsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  qualityTile: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  hardwareCard: {
-    padding: 14,
-    borderRadius: 14,
-  },
-  hardwareRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 5,
-  },
-  shortcutsCard: {
-    padding: 14,
-    borderRadius: 14,
-  },
-  shortcutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  shortcutIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const createStyles = (width: number, fontScale: number) => {
+  const compact = width < 600 || fontScale > 1.2;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      minWidth: 0,
+    },
+    scrollContent: {
+      width: '100%',
+      maxWidth: 960,
+      alignSelf: 'center',
+      padding: 16,
+      gap: 14,
+      paddingBottom: 128,
+    },
+    credentialCard: {
+      padding: 16,
+      borderRadius: 18,
+    },
+    credentialHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 14,
+    },
+    avatarContainer: {
+      position: 'relative',
+    },
+    verifiedGreenCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      borderWidth: 3,
+      borderColor: '#16A34A',
+      backgroundColor: '#DCFCE7',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 2,
+      shadowColor: '#16A34A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    staffAvatar: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: '#0072BC',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarInitials: {
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: '900',
+    },
+    verifiedCheckBadge: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: '#16A34A',
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.25,
+      shadowRadius: 2,
+      elevation: 3,
+    },
+    facilityStrip: {
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 10,
+    },
+    facilityItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    facilityDivider: {
+      height: 1,
+      backgroundColor: '#E2E8F0',
+      marginVertical: 2,
+    },
+    twoRowsContainer: {
+      gap: 10,
+    },
+    statsRow: {
+      flexDirection: compact ? 'column' : 'row',
+      gap: 10,
+    },
+    statTile: {
+      flex: 1,
+      minWidth: 0,
+      padding: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    statTileTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    statIconBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    miniTagGreen: {
+      backgroundColor: '#DCFCE7',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    miniTagGreenText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#15803D',
+    },
+    miniTagBlue: {
+      backgroundColor: '#E0F2FE',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    miniTagBlueText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#0284C7',
+    },
+    miniTagNavy: {
+      backgroundColor: '#DBEAFE',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    miniTagNavyText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#1D4ED8',
+    },
+    miniTagAmber: {
+      backgroundColor: '#FEF3C7',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    miniTagAmberText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#B45309',
+    },
+    statNumber: {
+      fontSize: 20,
+      fontWeight: '900',
+      letterSpacing: -0.3,
+    },
+    chartCard: {
+      padding: 16,
+      borderRadius: 16,
+    },
+    chartHeader: {
+      marginBottom: 8,
+    },
+    legendRow: {
+      gap: 6,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 6,
+    },
+    legendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginRight: 4,
+    },
+    svgWrapper: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginVertical: 6,
+    },
+    chartSummaryBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 10,
+      borderRadius: 10,
+      marginTop: 8,
+    },
+    summaryBannerItem: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+    },
+    summaryBannerDivider: {
+      width: 1,
+      height: 24,
+      backgroundColor: '#CBD5E1',
+    },
+    attendanceRow: {
+      marginTop: 2,
+    },
+    progressBarTrack: {
+      height: 8,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: 8,
+      borderRadius: 4,
+    },
+    channelLegendRow: {
+      gap: 8,
+      flexDirection: compact ? 'column' : 'row',
+      justifyContent: 'space-between',
+      marginTop: 6,
+    },
+    qualityMetricsRow: {
+      gap: 12,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 14,
+      paddingTop: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    qualityTile: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+    },
+    hardwareCard: {
+      padding: 14,
+      borderRadius: 14,
+    },
+    hardwareRow: {
+      gap: 4,
+      flexDirection: compact ? 'column' : 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 5,
+    },
+    shortcutsCard: {
+      padding: 14,
+      borderRadius: 14,
+    },
+    shortcutRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    shortcutIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
+};

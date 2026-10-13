@@ -48,9 +48,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const { isLoading: storeLoading, cacheFarmer, cacheSociety } = useAavinStore();
+  const { isLoading: storeLoading, cacheFarmer, cacheSociety, setCollectionData } = useAavinStore();
 
   const clearSession = useCallback(async () => {
+    setCollectionData([], []);
     setUser(null);
     setActiveRole(null);
     setToken(null);
@@ -59,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN),
       AsyncStorage.removeItem(AUTH_USER_KEY),
     ]);
-  }, []);
+  }, [setCollectionData]);
 
   const applyAccount = useCallback(async (account: BackendUser) => {
     const appUser = mapAccount(account);

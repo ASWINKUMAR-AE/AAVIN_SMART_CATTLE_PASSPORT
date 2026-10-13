@@ -170,6 +170,8 @@ export interface AuditEntry {
 }
 
 export interface MilkRecord {
+  backendSynced?: boolean;
+  boothName?: string;
   id: string;
   farmerId?: string; // empty if combined vendor
   farmerName?: string;

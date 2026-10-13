@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useMilkCollections } from '../context/MilkCollectionsContext';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, Text, FlatList, Pressable, Alert, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAavinStore } from '../store/AavinStoreContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,8 +11,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../components/ui/EmptyState';
 
 export default function NotificationsScreen() {
-  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAavinStore();
-  const { activeRole } = useAuth();
+  const { notifications, markRead, refreshNotifications, notificationError, notificationsLoaded } = useMilkCollections();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => { setRefreshing(true); try { await refreshNotifications(); } finally { setRefreshing(false); } };
+  useFocusEffect(useCallback(() => { void refreshNotifications(); }, [refreshNotifications]));
+  const { activeRole, user } = useAuth();
   const { colors } = useTheme();
   const router = useRouter();
 
@@ -19,7 +23,7 @@ export default function NotificationsScreen() {
 
   // Filter notifications for active role or system wide
   const roleNotifications = notifications.filter(
-    n => !n.recipientRole || n.recipientRole === activeRole
+    n => n.recipientId === user?.id
   );
 
   const displayedNotifications = filterMode === 'unread'
@@ -47,11 +51,9 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleNotificationPress = (item: InAppNotification) => {
-    markNotificationAsRead(item.id);
-    if (item.linkRoute) {
-      router.push(item.linkRoute as any);
-    }
+  const handleNotificationPress = async (item: InAppNotification) => {
+    try { await markRead(item.id); if (item.linkRoute) router.push(item.linkRoute as any); }
+    catch { Alert.alert('Could not mark notification read', 'Reconnect and try again.'); }
   };
 
   return (
@@ -95,7 +97,7 @@ export default function NotificationsScreen() {
         </View>
 
         <Pressable
-          onPress={() => markAllNotificationsAsRead(activeRole || undefined)}
+          onPress={() => { void markRead().catch(() => Alert.alert('Could not mark notifications read', 'Reconnect and try again.')); }}
           style={styles.markAllBtn}
         >
           <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700' }]}>
@@ -104,14 +106,16 @@ export default function NotificationsScreen() {
         </Pressable>
       </View>
 
+      {notificationError && <Text style={{ color: colors.hold, padding: 12 }}>{notificationError}</Text>}
       {/* Notification List */}
       <FlatList
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         data={displayedNotifications}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Notifications"
+            title={!notificationsLoaded ? notificationError ? 'Notifications unavailable' : 'Loading notifications…' : 'No Notifications'}
             message={`You have no ${filterMode === 'unread' ? 'unread ' : ''}notifications for the ${activeRole} role.`}
             icon="notifications-off-outline"
           />
@@ -157,7 +161,7 @@ export default function NotificationsScreen() {
                 <View style={styles.timeRow}>
                   <Ionicons name="time-outline" size={13} color={colors.textMuted} />
                   <Text style={[Typography.caption2, { color: colors.textMuted, marginLeft: 4 }]}>
-                    {item.timestamp}
+                    {new Date(item.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                   </Text>
 
                   {item.linkRoute && (

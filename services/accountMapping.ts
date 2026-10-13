@@ -35,6 +35,7 @@ export interface BackendParent {
   parentId: string | null;
 }
 export interface BackendUser {
+  isActive?: boolean;
   id: string;
   phone: string;
   fullName: string;

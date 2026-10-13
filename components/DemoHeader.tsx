@@ -1,3 +1,4 @@
+import { useMilkCollections } from '../context/MilkCollectionsContext';
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, Pressable, Modal, ScrollView, Platform, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -22,7 +23,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
   const { user, activeRole, switchRole, demoUsers, logout } = useAuth();
   const { colors } = useTheme();
   const { language, toggleLanguage } = useTranslation();
-  const { notifications } = useAavinStore();
+  const { notifications } = useMilkCollections();
   const { isScrolled } = useScroll();
   const router = useRouter();
 
@@ -30,7 +31,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   // Unread notifications count for current active role
   const unreadCount = notifications.filter(
-    n => !n.isRead && (n.recipientRole === activeRole || !n.recipientRole)
+    n => !n.isRead && n.recipientId === user?.id
   ).length;
 
   const roleMeta: Record<UserRole, { label: string; icon: string; color: string; desc: string }> = {

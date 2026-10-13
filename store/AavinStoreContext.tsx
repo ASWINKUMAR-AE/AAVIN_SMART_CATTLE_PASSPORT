@@ -33,6 +33,7 @@ import {
   SEED_BMC_RECEIPTS, 
   SEED_NOTIFICATIONS 
 } from '../data/seedData';
+import { indiaDate, daysBefore } from '../services/milkCollectionsApi';
 import { WorkflowApi } from '../services/workflowApi';
 
 const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v2';
@@ -72,6 +73,7 @@ function mergeRegisteredCows(existing: Cow[], incoming: Cow[], farmerIds: Set<st
 
 interface AavinStoreContextType extends AavinState {
   isLoading: boolean;
+  setCollectionData: (records: MilkRecord[], notifications: InAppNotification[]) => void;
   cacheFarmer: (farmer: Farmer, cows?: Cow[]) => void;
   cacheSociety: (society: Booth) => void;
   replaceSocietyFarmers: (societyId: string, farmers: Farmer[], cows?: Cow[]) => void;
@@ -172,12 +174,12 @@ const initialSeedState: AavinState = {
   bmcs: SEED_BMCS,
   union: SEED_UNION,
   vendors: SEED_VENDORS,
-  milkRecords: SEED_MILK_RECORDS,
+  milkRecords: [],
   boothReceipts: SEED_BOOTH_RECEIPTS,
   bmcDeliveries: SEED_BMC_DELIVERIES,
   discrepancyCases: SEED_DISCREPANCY_CASES,
   bmcReceipts: SEED_BMC_RECEIPTS,
-  notifications: SEED_NOTIFICATIONS,
+  notifications: [],
 };
 
 const AavinStoreContext = createContext<AavinStoreContextType | null>(null);
@@ -193,7 +195,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
-          setState(parsed);
+          setState({ ...parsed, milkRecords: [], notifications: [] });
         }
       } catch (err) {
         console.warn('Failed to load demo store state:', err);
@@ -208,7 +210,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const persistState = useCallback(async (newState: AavinState) => {
     setState(newState);
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...newState, milkRecords: [], notifications: [] }));
     } catch (err) {
       console.warn('Failed to persist demo store state:', err);
     }
@@ -218,9 +220,13 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const updateBackendCache = useCallback((update: (previous: AavinState) => AavinState) => {
     setState(previous => {
       const next = update(previous);
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(err => console.warn('Backend cache save failed:', err));
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, milkRecords: [], notifications: [] })).catch(err => console.warn('Backend cache save failed:', err));
       return next;
     });
+  }, []);
+  // Private server data is session-scoped and reloaded after authentication, never restored from demo storage.
+  const setCollectionData = useCallback((records: MilkRecord[], notifications: InAppNotification[]) => {
+    setState(previous => ({ ...previous, milkRecords: records, notifications }));
   }, []);
   const cacheFarmer = useCallback((farmer: Farmer, cows?: Cow[]) => updateBackendCache(previous => ({
     ...previous,
@@ -548,75 +554,15 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state, persistState]);
 
   // 3. Milk Recording Actions
-  const recordMilk = useCallback((recordData: Omit<MilkRecord, 'id' | 'createdAt' | 'status'>): MilkRecord => {
-    if (recordData.quantityLitres <= 0 || isNaN(recordData.quantityLitres)) {
-      throw new Error('Recorded milk quantity must be greater than zero.');
-    }
-
-    // Check duplicate submission
-    if (recordData.measurementMethod === 'farmer_wise' && recordData.farmerId) {
-      const isDuplicate = state.milkRecords.some(
-        r => r.farmerId === recordData.farmerId &&
-             r.collectionDate === recordData.collectionDate &&
-             r.session === recordData.session
-      );
-      if (isDuplicate) {
-        throw new Error(`A milk entry for this farmer on ${recordData.collectionDate} (${recordData.session}) already exists.`);
-      }
-    }
-
-    const newRecord: MilkRecord = {
-      ...recordData,
-      id: `MR-${Date.now()}`,
-      status: 'recorded',
-      createdAt: new Date().toISOString(),
-    };
-
-    const notifs: InAppNotification[] = [];
-    if (newRecord.farmerId) {
-      notifs.push({
-        id: `NOTIF-MILK-${Date.now()}`,
-        recipientRole: 'farmer',
-        recipientId: newRecord.farmerId,
-        title: 'Milk Supply Recorded',
-        message: `Your ${newRecord.session} supply of ${newRecord.quantityLitres.toFixed(2)} Litres was recorded at the booth.`,
-        type: 'milk_recorded',
-        timestamp: 'Just now',
-        isRead: false,
-        linkRoute: '/(farmer)/milk-history',
-      });
-    }
-
-    const updated = {
-      ...state,
-      milkRecords: [newRecord, ...state.milkRecords],
-      notifications: [...notifs, ...state.notifications],
-    };
-    persistState(updated);
-
-    // Background sync to backend MySQL
-    WorkflowApi.recordMilkTransaction({
-      farmerUserId: newRecord.farmerId,
-      farmerName: newRecord.farmerName,
-      boothId: newRecord.boothId,
-      collectionDate: newRecord.collectionDate,
-      session: newRecord.session,
-      quantityLitres: newRecord.quantityLitres,
-      route: newRecord.route,
-      vendorId: newRecord.vendorId,
-      vendorName: newRecord.vendorName,
-      measurementMethod: newRecord.measurementMethod,
-      notes: newRecord.notes,
-    }).catch(err => {
-      console.log('[WorkflowApi] Milk transaction persisted locally. Offline/mock mode:', err?.message || err);
-    });
-
-    return newRecord;
-  }, [state, persistState]);
+  // Production collections must be confirmed by MilkCollectionsApi. Never create local-only entries.
+  const recordMilk = useCallback((_recordData: Omit<MilkRecord, 'id' | 'createdAt' | 'status'>): MilkRecord => {
+    throw new Error('Milk collection must be recorded by your Booth staff through the server-backed collection form.');
+  }, []);
 
   const updateMilkRecord = useCallback((recordId: string, newQty: number, reason: string, user: string) => {
     const existing = state.milkRecords.find(r => r.id === recordId);
     if (!existing) return;
+    if (existing.backendSynced) throw new Error('Saved collections are immutable.');
 
     const auditEntry = {
       timestamp: new Date().toISOString(),
@@ -1096,21 +1042,21 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // 9. Selectors
   const getFarmerStats = useCallback((farmerId: string) => {
     const farmerRecords = state.milkRecords.filter(r => r.farmerId === farmerId);
-    const today = '2026-10-12';
+    const today = indiaDate();
     
     // Today's
     const todaySupply = farmerRecords
       .filter(r => r.collectionDate === today)
       .reduce((sum, r) => sum + r.quantityLitres, 0);
 
-    // Month (2026-10)
+    // Current India month
     const monthSupply = farmerRecords
-      .filter(r => r.collectionDate.startsWith('2026-10'))
+      .filter(r => r.collectionDate.startsWith(today.slice(0, 7)))
       .reduce((sum, r) => sum + r.quantityLitres, 0);
 
     // Last 7 days
     const last7DaysSupply = farmerRecords
-      .slice(0, 14) // sample
+      .filter(r => r.collectionDate >= daysBefore(today, 6) && r.collectionDate <= today)
       .reduce((sum, r) => sum + r.quantityLitres, 0);
 
     const farmerCows = state.cows.filter(c => c.farmerId === farmerId);
@@ -1126,7 +1072,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state]);
 
   const getBoothStats = useCallback((boothId: string) => {
-    const today = '2026-10-12';
+    const today = indiaDate();
     const records = state.milkRecords.filter(r => r.boothId === boothId && r.collectionDate === today);
 
     const farmerWiseRecords = records.filter(r => r.measurementMethod === 'farmer_wise');
@@ -1200,6 +1146,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       value={{
         ...state,
         isLoading,
+        setCollectionData,
         cacheFarmer,
         cacheSociety,
         replaceSocietyFarmers,
