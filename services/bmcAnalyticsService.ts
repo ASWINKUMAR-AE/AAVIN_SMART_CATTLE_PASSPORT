@@ -262,103 +262,10 @@ export function getFarmersAnalyticsBySocietyId(
   const booth = booths.find((b) => b.id === societyId) || booths[0];
   const bmc = bmcs.find((m) => m.id === booth?.assignedBmcId) || bmcs[0];
 
-  // 1. Direct affiliated farmers
+  // Only use available registered farmers directly assigned to this society
   const directFarmers = farmers.filter((f) => f.assignedBoothId === societyId);
 
-  // 2. Fallback supplemental member profiles if society has fewer than 4 members
-  const fallbackMembers: Array<Partial<Farmer>> = [
-    {
-      id: `${societyId}-F01`,
-      name: 'K. Murugesan',
-      farmerIdCode: `FARM-${booth?.code?.slice(-3) || 'MDU'}-101`,
-      village: booth?.village || 'Melur Rural',
-      mobileNumber: '9842000101',
-      numberOfCows: 3,
-      assignedBoothId: societyId,
-      verificationStatus: 'verified',
-      bankName: 'Canara Bank - Melur',
-      bankAccountNumber: '109283746501',
-      bankIfsc: 'CNRB0001092',
-    },
-    {
-      id: `${societyId}-F02`,
-      name: 'M. Selvi',
-      farmerIdCode: `FARM-${booth?.code?.slice(-3) || 'MDU'}-102`,
-      village: booth?.village || 'Navinipatti',
-      mobileNumber: '9842000102',
-      numberOfCows: 2,
-      assignedBoothId: societyId,
-      verificationStatus: 'verified',
-      bankName: 'State Bank of India',
-      bankAccountNumber: '38492019482',
-      bankIfsc: 'SBIN0000874',
-    },
-    {
-      id: `${societyId}-F03`,
-      name: 'P. Alagarsamy',
-      farmerIdCode: `FARM-${booth?.code?.slice(-3) || 'MDU'}-103`,
-      village: booth?.village || 'Alanganallur',
-      mobileNumber: '9842000103',
-      numberOfCows: 4,
-      assignedBoothId: societyId,
-      verificationStatus: 'verified',
-      bankName: 'Indian Overseas Bank',
-      bankAccountNumber: '028401928491',
-      bankIfsc: 'IOBA0000284',
-    },
-    {
-      id: `${societyId}-F04`,
-      name: 'S. Meenakshi',
-      farmerIdCode: `FARM-${booth?.code?.slice(-3) || 'MDU'}-104`,
-      village: booth?.village || 'Vadipatti',
-      mobileNumber: '9842000104',
-      numberOfCows: 2,
-      assignedBoothId: societyId,
-      verificationStatus: 'verified',
-      bankName: 'Canara Bank',
-      bankAccountNumber: '109283749988',
-      bankIfsc: 'CNRB0001092',
-    },
-    {
-      id: `${societyId}-F05`,
-      name: 'R. Subramanian',
-      farmerIdCode: `FARM-${booth?.code?.slice(-3) || 'MDU'}-105`,
-      village: booth?.village || 'Samayanallur',
-      mobileNumber: '9842000105',
-      numberOfCows: 3,
-      assignedBoothId: societyId,
-      verificationStatus: 'verified',
-      bankName: 'Indian Bank',
-      bankAccountNumber: '68291038471',
-      bankIfsc: 'IDIB000S021',
-    },
-    {
-      id: `${societyId}-F06`,
-      name: 'T. Thangavel',
-      farmerIdCode: `FARM-${booth?.code?.slice(-3) || 'MDU'}-106`,
-      village: booth?.village || 'Kalligudi',
-      mobileNumber: '9842000106',
-      numberOfCows: 2,
-      assignedBoothId: societyId,
-      verificationStatus: 'pending',
-      bankName: 'Bank of Baroda',
-      bankAccountNumber: '94820194820',
-      bankIfsc: 'BARB0KALLIG',
-    },
-  ];
-
-  // Combine direct and fallback ensuring at least 5 members
-  const combinedFarmers: Farmer[] = [...directFarmers];
-  if (combinedFarmers.length < 4) {
-    for (const fb of fallbackMembers) {
-      if (!combinedFarmers.some((f) => f.name.toLowerCase() === fb.name?.toLowerCase())) {
-        combinedFarmers.push(fb as Farmer);
-      }
-      if (combinedFarmers.length >= 6) break;
-    }
-  }
-
-  return combinedFarmers.map((farmer, fIdx) => {
+  return directFarmers.map((farmer, fIdx) => {
     const farmerCows = cows.filter((c) => c.farmerId === farmer.id);
     const farmerRecords = milkRecords.filter((m) => m.farmerId === farmer.id);
 
@@ -453,9 +360,15 @@ export function getFarmerAnalyticsById(
 } | null {
   const directFarmer =
     farmers.find((f) => f.id === farmerId) || farmers.find((f) => f.farmerIdCode === farmerId);
-  const societyId = directFarmer?.assignedBoothId || booths[0]?.id;
+  if (!directFarmer) return null;
+
+  const rawBooth = booths.find((b) => b.id === directFarmer.assignedBoothId);
+  const rawBmc = bmcs.find((b) => b.id === rawBooth?.assignedBmcId);
+  const farmerCows = cows.filter((c) => c.farmerId === directFarmer.id);
+  const farmerRecords = milkRecords.filter((m) => m.farmerId === directFarmer.id);
+
   const societyFarmers = getFarmersAnalyticsBySocietyId(
-    societyId,
+    directFarmer.assignedBoothId,
     farmers,
     cows,
     milkRecords,
@@ -463,17 +376,8 @@ export function getFarmerAnalyticsById(
     bmcs
   );
 
-  let target = societyFarmers.find((f) => f.farmerId === farmerId || f.farmerIdCode === farmerId);
-  if (!target && societyFarmers.length > 0) {
-    target = societyFarmers[0];
-  }
-
+  const target = societyFarmers.find((f) => f.farmerId === directFarmer.id);
   if (!target) return null;
-
-  const rawBooth = booths.find((b) => b.id === target?.assignedBoothId);
-  const rawBmc = bmcs.find((b) => b.id === rawBooth?.assignedBmcId);
-  const farmerCows = cows.filter((c) => c.farmerId === target?.farmerId);
-  const farmerRecords = milkRecords.filter((m) => m.farmerId === target?.farmerId);
 
   return {
     farmer: target,

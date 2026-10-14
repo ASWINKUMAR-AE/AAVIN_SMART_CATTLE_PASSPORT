@@ -336,69 +336,78 @@ export default function SocietyAnalyticsScreen() {
           Ranked volume comparison for registered dairy farmers. Tap to inspect; double-tap for full member analytics.
         </Text>
 
-        {/* Period Selector Tabs for Farmer Analytics */}
-        <View style={[styles.periodTabsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {periods.map((periodKey) => {
-            const isActive = farmerPeriod === periodKey;
-            return (
-              <Pressable
-                key={periodKey}
-                onPress={() => setFarmerPeriod(periodKey)}
-                style={[
-                  styles.periodTabBtn,
-                  isActive && { backgroundColor: colors.primary },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.periodTabBtnText,
-                    { color: isActive ? '#FFFFFF' : colors.textSecondary },
-                  ]}
-                >
-                  {PERIOD_LABELS[periodKey].title}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {sortedFarmers.length > 0 ? (
+          <>
+            {/* Period Selector Tabs for Farmer Analytics */}
+            <View style={[styles.periodTabsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {periods.map((periodKey) => {
+                const isActive = farmerPeriod === periodKey;
+                return (
+                  <Pressable
+                    key={periodKey}
+                    onPress={() => setFarmerPeriod(periodKey)}
+                    style={[
+                      styles.periodTabBtn,
+                      isActive && { backgroundColor: colors.primary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.periodTabBtnText,
+                        { color: isActive ? '#FFFFFF' : colors.textSecondary },
+                      ]}
+                    >
+                      {PERIOD_LABELS[periodKey].title}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-        {/* Vertical Comparison Bar Chart for Farmers */}
-        <VerticalComparisonBarChart
-          items={sortedFarmers.map((f, idx) => ({
-            id: f.farmerId,
-            rank: idx + 1,
-            title: f.farmerName,
-            code: f.farmerIdCode,
-            subtitle: `${f.village} • ${f.numberOfCows} Cow(s) • ${f.verificationStatus === 'verified' ? 'Verified Member' : 'KYC Pending'}`,
-            comparison: f.metrics[farmerPeriod],
-            onPress: () =>
-              router.push({
-                pathname: '/(union)/farmer-analytics' as any,
-                params: {
-                  farmerId: f.farmerId,
-                  societyId: activeSocietyId,
-                  bmcId: fallbackBmcId,
-                },
-              }),
-          }))}
-          maxVolume={maxFarmerVolume}
-        />
+            {/* Vertical Comparison Bar Chart for Farmers */}
+            <VerticalComparisonBarChart
+              items={sortedFarmers.map((f, idx) => ({
+                id: f.farmerId,
+                rank: idx + 1,
+                title: f.farmerName,
+                code: f.farmerIdCode,
+                subtitle: `${f.village} • ${f.numberOfCows} Cow(s) • ${f.verificationStatus === 'verified' ? 'Verified Member' : 'KYC Pending'}`,
+                comparison: f.metrics[farmerPeriod],
+                onPress: () =>
+                  router.push({
+                    pathname: '/(union)/farmer-analytics' as any,
+                    params: {
+                      farmerId: f.farmerId,
+                      societyId: activeSocietyId,
+                      bmcId: fallbackBmcId,
+                    },
+                  }),
+              }))}
+              maxVolume={maxFarmerVolume}
+            />
+          </>
+        ) : null}
 
         {/* Member Directory List (Clickable Rows) */}
-        <Card style={[styles.farmersCard, { marginTop: 12 }]}>
+        <Card style={[styles.farmersCard, { marginTop: sortedFarmers.length > 0 ? 12 : 4 }]}>
           <View style={[styles.directoryHeaderRow, { borderBottomColor: colors.border }]}>
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
               Society Member Register
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Tap row to view full analytics
-            </Text>
+            {sortedFarmers.length > 0 && (
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                Tap row to view full analytics
+              </Text>
+            )}
           </View>
           {sortedFarmers.length === 0 ? (
             <View style={styles.emptyInlineBox}>
-              <Ionicons name="people-circle-outline" size={32} color={colors.textSecondary} />
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
-                No primary farmers directly registered under this society node
+              <Ionicons name="people-circle-outline" size={34} color={colors.textSecondary} />
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginTop: 6 }]}>
+                No Members Registered
+              </Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2, textAlign: 'center' }]}>
+                No dairy farmers are currently assigned to this society in the system.
               </Text>
             </View>
           ) : (
