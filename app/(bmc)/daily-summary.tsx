@@ -12,13 +12,13 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function BMCDailySummaryScreen() {
   const { user } = useAuth();
-  const { 
-    bmcs, 
-    bmcDeliveries, 
-    bmcReceipts, 
-    createBmcReceipt, 
+  const {
+    bmcs,
+    bmcDeliveries,
+    bmcReceipts,
+    createBmcReceipt,
     sendBmcReceiptToUnion,
-    discrepancyCases 
+    discrepancyCases
   } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
@@ -87,7 +87,7 @@ export default function BMCDailySummaryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="BMC Daily Summary & Closure"
         subtitle={`Audit Reconciliation • Recipient: Aavin Madurai Union`}
         showBack

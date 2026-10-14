@@ -12,13 +12,17 @@ import {
   AnalyticsPeriod,
   PERIOD_LABELS,
   formatLitres,
-  getSocietyAnalyticsById
+  getSocietyAnalyticsById,
+  getFarmersAnalyticsBySocietyId,
 } from '../../services/bmcAnalyticsService';
+import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function SocietyAnalyticsScreen() {
+  const isDesktop = useIsDesktop();
   const { societyId, bmcId } = useLocalSearchParams<{ societyId: string; bmcId?: string }>();
-  const { bmcs, booths, bmcDeliveries, farmers, milkRecords, discrepancyCases } = useAavinStore();
-  const { colors } = useTheme();
+  const { bmcs, booths, bmcDeliveries, farmers, milkRecords, cows, discrepancyCases } = useAavinStore();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
 
   // Active society fallback
@@ -49,6 +53,7 @@ export default function SocietyAnalyticsScreen() {
   }, [fallbackBmcId]);
 
   const [selectedPeriod, setSelectedPeriod] = useState<AnalyticsPeriod>('daily');
+  const [farmerPeriod, setFarmerPeriod] = useState<AnalyticsPeriod>('daily');
 
   if (!societyData) {
     return (
@@ -78,8 +83,21 @@ export default function SocietyAnalyticsScreen() {
   const capacityLitres = society.capacityLitres || 3000;
   const utilization = Math.min((todayReceived / capacityLitres) * 100, 100);
 
-  // Affiliated registered farmers for this society
-  const affiliatedFarmers = farmers.filter((f) => f.assignedBoothId === activeSocietyId);
+  // Affiliated registered farmers with complete metrics
+  const farmerAnalyticsList = getFarmersAnalyticsBySocietyId(
+    activeSocietyId,
+    farmers,
+    cows,
+    milkRecords,
+    booths,
+    bmcs
+  );
+
+  const sortedFarmers = [...farmerAnalyticsList].sort(
+    (a, b) => b.metrics[farmerPeriod].current - a.metrics[farmerPeriod].current
+  );
+
+  const maxFarmerVolume = sortedFarmers.length > 0 ? sortedFarmers[0].metrics[farmerPeriod].current : 1;
 
   // Society deliveries to BMC
   const societyDeliveries = bmcDeliveries.filter((d) => d.boothId === activeSocietyId);
@@ -118,7 +136,7 @@ export default function SocietyAnalyticsScreen() {
         onBack={handleBack}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.desktopScrollContent]} showsVerticalScrollIndicator={false}>
         {/* 1. Facility Header & Intake Load Card */}
         <Card style={styles.facilityCard}>
           <View style={styles.facilityHeaderRow}>
@@ -309,51 +327,139 @@ export default function SocietyAnalyticsScreen() {
           </View>
         </Card>
 
-        {/* 4. Affiliated Farmers / Supplying Members Section */}
+        {/* 4. Registered Member Producers Comparison & Directory Section */}
         <View style={[styles.sectionHeader, { marginTop: 14 }]}>
           <Ionicons name="people-outline" size={18} color={colors.primary} />
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-            Registered Member Producers ({affiliatedFarmers.length})
+            Registered Member Producers ({farmerAnalyticsList.length})
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Dairy farmers registered and delivering milk to this primary cooperative society
+          Ranked volume comparison for registered dairy farmers. Tap to inspect; double-tap for full member analytics.
         </Text>
 
-        <Card style={styles.farmersCard}>
-          {affiliatedFarmers.length === 0 ? (
+        {sortedFarmers.length > 0 ? (
+          <>
+            {/* Period Selector Tabs for Farmer Analytics */}
+            <View style={[styles.periodTabsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {periods.map((periodKey) => {
+                const isActive = farmerPeriod === periodKey;
+                return (
+                  <Pressable
+                    key={periodKey}
+                    onPress={() => setFarmerPeriod(periodKey)}
+                    style={[
+                      styles.periodTabBtn,
+                      isActive && { backgroundColor: colors.primary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.periodTabBtnText,
+                        { color: isActive ? '#FFFFFF' : colors.textSecondary },
+                      ]}
+                    >
+                      {PERIOD_LABELS[periodKey].title}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Vertical Comparison Bar Chart for Farmers */}
+            <VerticalComparisonBarChart
+              items={sortedFarmers.map((f, idx) => ({
+                id: f.farmerId,
+                rank: idx + 1,
+                title: f.farmerName,
+                code: f.farmerIdCode,
+                subtitle: `${f.village} • ${f.numberOfCows} Cow(s) • ${f.verificationStatus === 'verified' ? 'Verified Member' : 'KYC Pending'}`,
+                comparison: f.metrics[farmerPeriod],
+                onPress: () =>
+                  router.push({
+                    pathname: '/(union)/farmer-analytics' as any,
+                    params: {
+                      farmerId: f.farmerId,
+                      societyId: activeSocietyId,
+                      bmcId: fallbackBmcId,
+                    },
+                  }),
+              }))}
+              maxVolume={maxFarmerVolume}
+            />
+          </>
+        ) : null}
+
+        {/* Member Directory List (Clickable Rows) */}
+        <Card style={[styles.farmersCard, { marginTop: sortedFarmers.length > 0 ? 12 : 4 }]}>
+          <View style={[styles.directoryHeaderRow, { borderBottomColor: colors.border }]}>
+            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+              Society Member Register
+            </Text>
+            {sortedFarmers.length > 0 && (
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                Tap row to view full analytics
+              </Text>
+            )}
+          </View>
+          {sortedFarmers.length === 0 ? (
             <View style={styles.emptyInlineBox}>
-              <Ionicons name="people-circle-outline" size={32} color={colors.textSecondary} />
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
-                No primary farmers directly registered under this society node
+              <Ionicons name="people-circle-outline" size={34} color={colors.textSecondary} />
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginTop: 6 }]}>
+                No Members Registered
+              </Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2, textAlign: 'center' }]}>
+                No dairy farmers are currently assigned to this society in the system.
               </Text>
             </View>
           ) : (
-            affiliatedFarmers.map((f, fIdx) => (
-              <View
-                key={f.id}
+            sortedFarmers.map((f, fIdx) => (
+              <Pressable
+                key={f.farmerId}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(union)/farmer-analytics' as any,
+                    params: {
+                      farmerId: f.farmerId,
+                      societyId: activeSocietyId,
+                      bmcId: fallbackBmcId,
+                    },
+                  })
+                }
                 style={[
                   styles.farmerRow,
-                  fIdx < affiliatedFarmers.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: 1 },
+                  fIdx < sortedFarmers.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: 1 },
                 ]}
               >
                 <View style={[styles.farmerAvatar, { backgroundColor: colors.primaryLight }]}>
                   <Text style={{ fontSize: 16 }}>👨‍🌾</Text>
                 </View>
                 <View style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                    {f.name}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      {f.farmerName}
+                    </Text>
+                    <View style={[styles.rankMiniPill, { backgroundColor: isDark ? '#15273E' : colors.background }]}>
+                      <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
+                        #{fIdx + 1}
+                      </Text>
+                    </View>
+                  </View>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    {f.farmerIdCode} • {f.village} • {f.numberOfCows} Cow(s)
+                    {f.farmerIdCode} • {f.village} • {f.numberOfCows} Cow(s) • Fat {f.avgFat}%
                   </Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: f.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
-                  <Text style={[styles.statusBadgeText, { color: f.verificationStatus === 'verified' ? '#15803D' : '#D97706' }]}>
-                    {f.verificationStatus === 'verified' ? 'Verified Member' : 'Pending KYC'}
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '900' }]}>
+                    {formatLitres(f.metrics[farmerPeriod].current)}
                   </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: f.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
+                    <Text style={[styles.statusBadgeText, { color: f.verificationStatus === 'verified' ? '#15803D' : '#D97706' }]}>
+                      {f.verificationStatus === 'verified' ? 'Verified' : 'Pending'}
+                    </Text>
+                  </View>
                 </View>
-              </View>
+              </Pressable>
             ))
           )}
         </Card>
@@ -442,6 +548,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+  desktopScrollContent: {
+    width: '100%',
+    maxWidth: 1040,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 80,
   },
   emptyContainer: {
     flex: 1,
@@ -651,5 +765,36 @@ const styles = StyleSheet.create({
   footerActions: {
     marginTop: 10,
     marginBottom: 24,
+  },
+  periodTabsRow: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: 12,
+    gap: 4,
+  },
+  periodTabBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  periodTabBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  directoryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+  },
+  rankMiniPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
   },
 });

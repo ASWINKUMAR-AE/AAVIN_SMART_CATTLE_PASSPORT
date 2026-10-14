@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable, BackHandler } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable, BackHandler, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
@@ -11,6 +11,8 @@ import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { DiscrepancyCase } from '../../types/aavin';
+import { UnionDesktopAlerts } from '../../components/union/desktop/UnionDesktopAlerts';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function UnionDiscrepanciesScreen() {
   const { user } = useAuth();
@@ -60,6 +62,22 @@ export default function UnionDiscrepanciesScreen() {
     setActiveModal(null);
     Alert.alert('Case Resolved', `Discrepancy case #${selectedCase.id} closed by Union GM order.`);
   };
+
+  const isDesktop = useIsDesktop();
+
+  if (isDesktop) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <DemoHeader
+          title="District Discrepancy Ledger"
+          subtitle="Cross-Facility Reconciliation & Integrity Audit"
+          showBack
+          onBack={handleBackToHome}
+        />
+        <UnionDesktopAlerts />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

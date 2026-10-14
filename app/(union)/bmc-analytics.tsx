@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable, BackHandler } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Pressable, BackHandler, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -14,6 +14,7 @@ import {
   getBmcAnalyticsById
 } from '../../services/bmcAnalyticsService';
 import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function BMCAnalyticsScreen() {
   const { bmcId } = useLocalSearchParams<{ bmcId: string }>();
@@ -69,6 +70,7 @@ export default function BMCAnalyticsScreen() {
   );
   const maxSocietyVolume = sortedSocieties.length > 0 ? sortedSocieties[0].metrics[selectedPeriod].current : 1;
 
+  const isDesktop = useIsDesktop();
   const periods: AnalyticsPeriod[] = ['daily', 'weekly', 'monthly', 'yearly'];
 
   return (
@@ -80,7 +82,7 @@ export default function BMCAnalyticsScreen() {
         onBack={handleBackToBmc}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.desktopScrollContent]} showsVerticalScrollIndicator={false}>
         {/* 1. Facility Header & Capacity Utilization Card */}
         <Card style={styles.facilityCard}>
           <View style={styles.facilityHeaderRow}>
@@ -139,7 +141,7 @@ export default function BMCAnalyticsScreen() {
             const trendColor = isPos ? '#15803D' : '#DC2626';
 
             return (
-              <Card key={periodKey} style={styles.trendCard}>
+              <Card key={periodKey} style={[styles.trendCard, isDesktop && styles.desktopTrendCard]}>
                 <View style={styles.trendCardTop}>
                   <Text style={[Typography.caption1, { color: colors.textSecondary, fontWeight: '800', textTransform: 'uppercase' }]}>
                     {PERIOD_LABELS[periodKey].title}
@@ -247,6 +249,18 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+  desktopScrollContent: {
+    maxWidth: 1040,
+    width: '100%',
+    alignSelf: 'center',
+    paddingTop: 20,
+    paddingBottom: 110,
+    paddingHorizontal: 24,
+  },
+  desktopTrendCard: {
+    minWidth: '22%',
+    flex: 1,
   },
   emptyContainer: {
     flex: 1,

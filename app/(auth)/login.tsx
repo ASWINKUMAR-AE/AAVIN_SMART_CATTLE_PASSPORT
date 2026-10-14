@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { UserRole } from '../../types/aavin';
 import { AavinLogo } from '../../components/ui/AavinLogo';
 import { useTranslation } from '../../context/LanguageContext';
+import { IndicTransLanguageSwitch } from '../../components/ui/IndicTransLanguageSwitch';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -96,23 +97,14 @@ export default function LoginScreen() {
           {/* Dark Layer for Contrast and Legibility */}
           <View style={styles.darkOverlayLayer} />
 
-          {/* Top Utilities Row: Language Switcher */}
+          {/* Top Utilities Row: IndicTrans2 Language Switcher */}
           <View style={styles.topUtilitiesRow}>
             <View style={styles.headerPill}>
               <Ionicons name="shield-checkmark" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
               <Text style={styles.headerPillText}>MADURAI MILK UNION</Text>
             </View>
 
-            <Pressable
-              onPress={toggleLanguage}
-              style={styles.langPillButton}
-              accessibilityLabel="Switch Language"
-            >
-              <Ionicons name="globe-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-              <Text style={styles.langPillText}>
-                {language === 'en' ? 'தமிழ்' : 'English'}
-              </Text>
-            </Pressable>
+            <IndicTransLanguageSwitch variant="compact" />
           </View>
 
           {/* Logo & Headline */}
@@ -128,11 +120,14 @@ export default function LoginScreen() {
 
         {/* White Curved Sheet Content (Matching Reference UI Bottom Panel) */}
         <View style={styles.whiteContentSheet}>
+          {/* IndicTrans2 Interactive Bilingual Switch Pill */}
+          <IndicTransLanguageSwitch variant="pill" showModelBadge={true} style={{ marginBottom: 14 }} />
+
           <Text style={styles.sheetTitle}>
             {language === 'ta' ? 'அதிகாரப்பூர்வ உள்நுழைவு' : 'Aavin Official Sign In'}
           </Text>
           <Text style={styles.sheetSubtitle}>
-            {language === 'ta' 
+            {language === 'ta'
               ? 'உங்கள் பயனர் பெயர் / அலைபேசி மற்றும் கடவுச்சொல்லை உள்ளிடவும்:'
               : 'Enter your registered username / phone and password to continue:'}
           </Text>

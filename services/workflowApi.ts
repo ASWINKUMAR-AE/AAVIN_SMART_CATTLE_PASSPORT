@@ -109,6 +109,37 @@ export const WorkflowApi = {
     return res.data?.data;
   },
 
+  // Society Income Ledger
+  recordSocietyIncome: async (payload: any) => {
+    try {
+      const res = await api.post('/workflow/society-income', payload);
+      return res.data?.data;
+    } catch (err) {
+      console.log('[WorkflowApi] Society income logged locally (offline mode)');
+      return null;
+    }
+  },
+
+  listSocietyIncome: async (params?: { bmcId?: string; societyId?: string; financialPeriod?: string }) => {
+    try {
+      const res = await api.get('/workflow/society-income', { params });
+      return res.data?.data;
+    } catch (err) {
+      return null;
+    }
+  },
+
+  // Consolidated BMC Period Submissions
+  submitBmcConsolidatedReport: async (payload: any) => {
+    try {
+      const res = await api.post('/workflow/bmc-consolidated-reports', payload);
+      return res.data?.data;
+    } catch (err) {
+      console.log('[WorkflowApi] Consolidated report submitted locally (offline mode)');
+      return null;
+    }
+  },
+
   // Farmer management & KYC updates
   updateFarmer: async (farmerId: string, data: any) => {
     try {

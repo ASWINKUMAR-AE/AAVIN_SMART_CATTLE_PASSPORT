@@ -267,6 +267,47 @@ export interface DiscrepancyCase {
   unionReviewedAt?: string;
 }
 
+export type SocietyIncomeCategory = 
+  | 'procurement_payment'
+  | 'quality_incentive'
+  | 'transport_subsidy'
+  | 'chilling_incentive'
+  | 'feed_deduction'
+  | 'admin_recovery'
+  | 'other';
+
+export interface SocietyIncomeRecord {
+  id: string; // e.g. INC-2026-001
+  societyId: string; // e.g. BOOTH001
+  societyName: string;
+  bmcId: string;
+  transactionDate: string; // YYYY-MM-DD
+  financialPeriod: string; // e.g. '2026-10' or '2026-W42'
+  category: SocietyIncomeCategory;
+  description: string;
+  referenceNumber?: string;
+  amountInr: number;
+  relatedMilkLitres?: number;
+  notes?: string;
+  enteredBy: string;
+  enteredByUserId?: string;
+  status: 'recorded' | 'verified' | 'submitted_to_union';
+  createdAt: string;
+  auditTrail?: Array<{
+    timestamp: string;
+    user: string;
+    action: string;
+    reason?: string;
+  }>;
+}
+
+export type BMCReportStatus =
+  | 'draft'
+  | 'sent_to_union'
+  | 'under_review'
+  | 'reviewed_by_union'
+  | 'returned_for_correction';
+
 export interface BMCReceipt {
   id: string; // e.g. BMCR-2026-001
   bmcId: string;
@@ -282,11 +323,31 @@ export interface BMCReceipt {
   unresolvedCasesCount: number;
   createdAt: string;
   createdBy: string;
-  status: 'draft' | 'sent_to_union' | 'reviewed_by_union';
+  status: BMCReportStatus;
   verificationCode: string;
   unionReviewNotes?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  // Extended Consolidated Report Fields
+  reportingPeriodType?: 'daily' | 'monthly' | 'custom';
+  periodStartDate?: string;
+  periodEndDate?: string;
+  totalRecordedIncome?: number;
+  totalAmountReceived?: number;
+  totalAmountPending?: number;
+  societySummaries?: Array<{
+    societyId: string;
+    societyName: string;
+    declaredLitres: number;
+    receivedLitres: number;
+    varianceLitres: number;
+    recordedIncome: number;
+    discrepancyCount: number;
+    status: string;
+  }>;
+  supervisorNotes?: string;
+  revisionNumber?: number;
+  previousSubmissionRef?: string;
 }
 
 export type NotificationType =

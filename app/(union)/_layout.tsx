@@ -56,7 +56,7 @@ export default function UnionLayout() {
 
       {/* 5. Profile */}
       <Tabs.Screen
-        name="profile"
+        name="union-profile"
         options={{
           title: 'Profile',
           headerShown: false,
@@ -78,6 +78,15 @@ export default function UnionLayout() {
         options={{
           href: null,
           title: 'Society Production Analytics',
+          headerShown: false,
+        }}
+      />
+
+      <Tabs.Screen
+        name="farmer-analytics"
+        options={{
+          href: null,
+          title: 'Farmer Production Analytics',
           headerShown: false,
         }}
       />

@@ -1,11 +1,38 @@
 import React from 'react';
+import { View, useWindowDimensions } from 'react-native';
+import { useRouter } from 'expo-router';
 import { RoleProfileScreen } from '../../components/RoleProfileScreen';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import { DemoHeader } from '../../components/DemoHeader';
+import { UnionDesktopProfile } from '../../components/union/desktop/UnionDesktopProfile';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
-export default function UnionProfileScreen() {
+export default function UnionExecutiveProfileScreen() {
   const { bmcs, booths, discrepancyCases } = useAavinStore();
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const isDesktop = useIsDesktop();
+
+  const handleBackToHome = () => {
+    router.replace('/(union)' as any);
+  };
+
+  if (isDesktop) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <DemoHeader
+          title="Union Executive Profile"
+          subtitle="District Administrative Authority & Session Controls"
+          showBack
+          onBack={handleBackToHome}
+        />
+        <UnionDesktopProfile />
+      </View>
+    );
+  }
 
   return (
     <RoleProfileScreen

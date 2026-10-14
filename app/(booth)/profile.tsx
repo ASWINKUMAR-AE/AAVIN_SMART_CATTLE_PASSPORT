@@ -47,8 +47,8 @@ export default function BoothProfileScreen() {
 
   // Active participating farmers count today
   const activeFarmersToday = new Set(todayRecords.filter(r => r.farmerId).map(r => r.farmerId)).size;
-  const attendancePercent = assignedFarmers.length > 0 
-    ? Math.round((activeFarmersToday / assignedFarmers.length) * 100) 
+  const attendancePercent = assignedFarmers.length > 0
+    ? Math.round((activeFarmersToday / assignedFarmers.length) * 100)
     : 0;
 
   // 7-Day Production Chart Data
@@ -74,8 +74,8 @@ export default function BoothProfileScreen() {
       'Are you sure you want to sign out? You will need to log back in to record milk entries.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
+        {
+          text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
             await logout();
@@ -88,7 +88,7 @@ export default function BoothProfileScreen() {
 
   return (
     <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="Society Operator Profile"
         subtitle={`Staff Identity & Analytics • ${booth.name}`}
       />
@@ -139,7 +139,7 @@ export default function BoothProfileScreen() {
               </View>
             </View>
 
-            <View style={styles.facilityDivider} />
+            <View style={[styles.facilityDivider, { backgroundColor: colors.border }]} />
 
             <View style={styles.facilityItem}>
               <Ionicons name="snow" size={16} color="#0284C7" />
@@ -365,14 +365,14 @@ export default function BoothProfileScreen() {
               </View>
               {/* Dual Channel Bar */}
               <View style={[styles.progressBarTrack, { backgroundColor: '#6366F1' }]}>
-                <View 
+                <View
                   style={[
-                    styles.progressBarFill, 
-                    { 
+                    styles.progressBarFill,
+                    {
                       width: `${todayLitres > 0 ? (farmerWiseLitres / todayLitres) * 100 : 0}%`,
-                      backgroundColor: '#0072BC' 
+                      backgroundColor: '#0072BC'
                     }
-                  ]} 
+                  ]}
                 />
               </View>
               <View style={styles.channelLegendRow}>
@@ -424,23 +424,23 @@ export default function BoothProfileScreen() {
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Society Reg. No:</Text>
-            <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>TNDD-MDU-SOC-401/2018</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Society Reg. No:</Text>
+            <Text style={[styles.hardwareValue, { color: colors.text }]}>TNDD-MDU-SOC-401/2018</Text>
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Ultrasonic Analyzer:</Text>
-            <Text style={[Typography.caption1, { color: '#15803D', fontWeight: '700' }]}>AAVIN-SCAN-088 (Calibrated)</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Ultrasonic Analyzer:</Text>
+            <Text style={[styles.hardwareValue, { color: '#15803D' }]}>AAVIN-SCAN-088 (Calibrated)</Text>
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Bulk Storage Vat:</Text>
-            <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>1,500 L Insulated Tank</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Bulk Storage Vat:</Text>
+            <Text style={[styles.hardwareValue, { color: colors.text }]}>1,500 L Insulated Tank</Text>
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Firmware Version:</Text>
-            <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>v2.4.12-PROD-MADURAI</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Firmware Version:</Text>
+            <Text style={[styles.hardwareValue, { color: colors.text }]}>v2.4.12-PROD-MADURAI</Text>
           </View>
         </Card>
 
@@ -450,7 +450,7 @@ export default function BoothProfileScreen() {
             Booth Operations Navigation
           </Text>
 
-          <Pressable 
+          <Pressable
             style={[styles.shortcutRow, { borderBottomColor: colors.border }]}
             onPress={() => router.push('/(booth)/record-milk')}
           >
@@ -468,7 +468,7 @@ export default function BoothProfileScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
           </Pressable>
 
-          <Pressable 
+          <Pressable
             style={[styles.shortcutRow, { borderBottomColor: colors.border }]}
             onPress={() => router.push('/(booth)/farmers')}
           >
@@ -486,8 +486,8 @@ export default function BoothProfileScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
           </Pressable>
 
-          <Pressable 
-            style={[styles.shortcutRow, { borderBottomColor: colors.border }]}
+          <Pressable
+            style={[styles.shortcutRow, { borderBottomWidth: 0 }]}
             onPress={() => router.push('/(booth)/sent-receipts')}
           >
             <View style={[styles.shortcutIcon, { backgroundColor: '#EFF6FF' }]}>
@@ -767,6 +767,19 @@ const createStyles = (width: number, fontScale: number) => {
       flexDirection: compact ? 'column' : 'row',
       justifyContent: 'space-between',
       paddingVertical: 5,
+    },
+    hardwareLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      maxWidth: compact ? '100%' : '45%',
+      lineHeight: 18,
+    },
+    hardwareValue: {
+      fontSize: 13,
+      fontWeight: '700',
+      flex: 1,
+      textAlign: compact ? 'left' : 'right',
+      lineHeight: 18,
     },
     shortcutsCard: {
       padding: 14,
