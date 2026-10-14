@@ -21,12 +21,10 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
-import { IndicTransLanguageSwitch } from '../../components/ui/IndicTransLanguageSwitch';
-import { UserRole } from '../../types/aavin';
 
 export default function BmcProfileScreen() {
   const { bmcs, booths, discrepancyCases, bmcDeliveries, societyIncomeRecords } = useAavinStore();
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const { colors } = useTheme();
   const { t, language } = useTranslation();
   const { width } = useWindowDimensions();
@@ -38,7 +36,7 @@ export default function BmcProfileScreen() {
   // Assigned BMC Center details
   const bmc = bmcs[0] || { 
     id: 'BMC001', 
-    name: 'Alanganallur Bulk Milk Chilling Center', 
+    name: 'Madurai East Bulk Milk Cooling Centre', 
     code: 'BMC-102',
     capacityLitres: 10000 
   };
@@ -87,30 +85,6 @@ export default function BmcProfileScreen() {
           },
         },
       ]);
-    }
-  };
-
-  const handleRoleSwitch = async (targetRole: UserRole) => {
-    await switchRole(targetRole);
-    switch (targetRole) {
-      case 'farmer':
-        router.replace('/(farmer)');
-        break;
-      case 'booth':
-        router.replace('/(booth)');
-        break;
-      case 'bmc':
-        router.replace('/(bmc)');
-        break;
-      case 'union':
-        router.replace('/(union)');
-        break;
-      case 'veterinary':
-        router.replace('/(veterinary)');
-        break;
-      case 'admin':
-        router.replace('/(admin)');
-        break;
     }
   };
 
@@ -533,77 +507,7 @@ export default function BmcProfileScreen() {
           </Card>
         </View>
 
-        {/* 6. AI4Bharat IndicTrans2 Language Switcher */}
-        <View style={styles.sectionBlock}>
-          <IndicTransLanguageSwitch variant="expanded" />
-        </View>
-
-        {/* 7. Quick Role Switcher (For Evaluation & Multi-Portal Testing) */}
-        <View style={styles.sectionBlock}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons name="swap-horizontal" size={18} color={colors.primary} />
-            <Text style={styles.sectionHeaderTitle}>SWITCH EVALUATION ROLE</Text>
-          </View>
-
-          <Card style={styles.alignedCard}>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
-              Tap any role below to test role-specific workflows, permissions, and twin interfaces:
-            </Text>
-
-            <View style={styles.roleChipsGrid}>
-              {[
-                { role: 'bmc' as UserRole, label: 'BMC Center', icon: '🏭', desc: 'Chilling & intake' },
-                { role: 'booth' as UserRole, label: 'Feeder Society', icon: '🏢', desc: 'Village collection' },
-                { role: 'farmer' as UserRole, label: 'Dairy Farmer', icon: '👨‍🌾', desc: 'Cow passport' },
-                { role: 'union' as UserRole, label: 'Union Admin', icon: '🏛️', desc: 'Federation returns' },
-                { role: 'veterinary' as UserRole, label: 'Veterinarian', icon: '🩺', desc: 'Health & withdrawal' },
-                { role: 'admin' as UserRole, label: 'System Admin', icon: '🛡️', desc: 'Audit & config' },
-              ].map(item => {
-                const isActive = (user?.role || 'bmc') === item.role;
-                return (
-                  <Pressable
-                    key={item.role}
-                    style={[
-                      styles.roleChipBtn,
-                      { width: col2Width },
-                      isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
-                      !isActive && { backgroundColor: colors.card, borderColor: colors.border }
-                    ]}
-                    onPress={() => handleRoleSwitch(item.role)}
-                  >
-                    <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-                    <View style={{ flex: 1, marginLeft: 8 }}>
-                      <Text
-                        style={[
-                          Typography.caption1,
-                          { fontWeight: '800' },
-                          isActive ? { color: '#FFFFFF' } : { color: colors.text },
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                      <Text
-                        style={[
-                          Typography.caption2,
-                          { fontSize: 10 },
-                          isActive ? { color: 'rgba(255,255,255,0.85)' } : { color: colors.textMuted },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {item.desc}
-                      </Text>
-                    </View>
-                    {isActive && (
-                      <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Card>
-        </View>
-
-        {/* 8. Account Sign Out & Build Metadata */}
+        {/* 6. Account Sign Out & Build Metadata */}
         <View style={styles.sectionBlock}>
           <Button
             title={t('common.logout', 'Sign Out from BMC Portal')}
@@ -877,23 +781,6 @@ const styles = StyleSheet.create({
   },
   toggleTextCol: {
     flex: 1,
-  },
-
-  // Role chips grid
-  roleChipsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  roleChipBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexGrow: 0,
-    flexShrink: 0,
   },
 
   // Sign out & footer
