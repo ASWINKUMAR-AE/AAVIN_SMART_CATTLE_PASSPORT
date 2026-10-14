@@ -28,6 +28,7 @@ INSERT INTO `users` (`id`, `username`, `email`, `phone`, `password_hash`, `full_
 ('usr-vet-01', 'vet_anand', 'dr.anand.vet@aavin.tn.gov.in', '9842000004', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'Dr. R. Anand BVSc (Veterinary Officer)', 'active', 'en'),
 ('usr-centre-01', 'operator_kannan', 'kannan.cc@aavin.tn.gov.in', '9842000005', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'P. Kannan (Centre In-Charge)', 'active', 'en'),
 ('usr-booth-01', 'booth_kannan', 'booth.kannan@aavin.tn.gov.in', '9842000009', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'P. Kannan (Booth Officer)', 'active', 'ta'),
+('usr-booth-02', 'booth_muthu', 'muthu.booth@aavin.tn.gov.in', '9842000011', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'S. Muthu (Booth Officer)', 'active', 'ta'),
 ('usr-bmc-01', 'bmc_raman', 'raman.bmc@aavin.tn.gov.in', '9842000007', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'M. Ramanathan (BMC Manager)', 'active', 'en'),
 ('usr-union-01', 'union_director', 'director.union@aavin.tn.gov.in', '9842000008', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'Er. K. Rajendran (Union GM)', 'active', 'en'),
 ('usr-vendor-01', 'vendor_kumar', 'kumar.transport@gmail.com', '9842000006', '$2b$10$MHG7DzRCdM8t.cg8tcHgWehZyo8s8h/.DFq7s2lXAtje1eirltmjG', 'V. Kumar (Tanker Logistics)', 'active', 'en');
@@ -40,6 +41,7 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
 ('usr-vet-01', 'role-vet'),
 ('usr-centre-01', 'role-centre'),
 ('usr-booth-01', 'role-booth'),
+('usr-booth-02', 'role-booth'),
 ('usr-bmc-01', 'role-bmc'),
 ('usr-union-01', 'role-union'),
 ('usr-vendor-01', 'role-vendor');
@@ -245,7 +247,8 @@ INSERT INTO `bmc_booth_assignments` (`bmc_id`, `booth_id`) VALUES
 -- 36. Farmer Booth Assignments
 INSERT INTO `farmer_booth_assignments` (`farmer_user_id`, `booth_id`) VALUES
 ('usr-farmer-01', 'booth-mdu-01'),
-('usr-farmer-02', 'booth-mdu-01');
+('usr-farmer-02', 'booth-mdu-01'),
+('usr-farmer-02', 'booth-mdu-02');
 
 -- 37. Vendors
 INSERT INTO `vendors` (`id`, `code`, `name`, `vehicle_number`, `vehicle_type`, `phone`, `route_name`) VALUES

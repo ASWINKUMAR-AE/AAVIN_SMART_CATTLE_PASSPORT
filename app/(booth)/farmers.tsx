@@ -1772,7 +1772,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     gap: 14,
-    paddingBottom: 40,
+    paddingBottom: 96,
   },
   farmerCard: {
     padding: 16,
