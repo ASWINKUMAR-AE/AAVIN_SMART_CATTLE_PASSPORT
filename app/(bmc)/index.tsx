@@ -7,7 +7,8 @@ import {
   Pressable, 
   RefreshControl, 
   TextInput,
-  useWindowDimensions 
+  useWindowDimensions,
+  Platform 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
@@ -37,7 +38,13 @@ export default function BMCDashboard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  const isTablet = width >= 768;
+  // Responsive layout: 2 columns on mobile (<768px), 4 columns on web/desktop (>=768px)
+  const isWeb = Platform.OS === 'web';
+  const isWebOrDesktop = (isWeb && width >= 768) || width >= 992;
+  const numCols = isWebOrDesktop ? 4 : 2;
+  const overviewCardWidth = (isWeb
+    ? (isWebOrDesktop ? 'calc(25% - 8px)' : 'calc(50% - 6px)')
+    : Math.floor((width - 32 - (numCols - 1) * 10) / numCols)) as any;
 
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,6 +104,133 @@ export default function BMCDashboard() {
       return true;
     });
   }, [processedSocieties, searchQuery, societyFilter]);
+
+  // Operations & Governance Overview: dynamic n-cards configuration
+  interface OverviewCardItem {
+    id: string;
+    title: string;
+    subtitle: string;
+    value: string | number;
+    valueSecondary?: string;
+    valueColor?: string;
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    iconColor: string;
+    badgeText?: string;
+    badgeBg?: string;
+    badgeColor?: string;
+    onPress: () => void;
+  }
+
+  const summaryCards: OverviewCardItem[] = useMemo(() => [
+    {
+      id: 'registered_societies',
+      icon: 'business',
+      iconColor: colors.primary,
+      value: stats.registeredBoothsCount,
+      title: 'Registered Societies',
+      subtitle: 'Feeder societies assigned',
+      onPress: () => setSocietyFilter('all'),
+    },
+    {
+      id: 'active_status',
+      icon: 'radio',
+      iconColor: '#16A34A',
+      badgeText: `${stats.activeBoothsCount} Active`,
+      badgeBg: '#DCFCE7',
+      badgeColor: '#166534',
+      value: stats.activeBoothsCount,
+      valueSecondary: `/ ${stats.inactiveBoothsCount} Inactive`,
+      title: 'Active / Inactive Status',
+      subtitle: 'Supplying this cycle',
+      onPress: () => setSocietyFilter(societyFilter === 'active' ? 'inactive' : 'active'),
+    },
+    {
+      id: 'today_collected',
+      icon: 'water',
+      iconColor: '#0284C7',
+      value: `${stats.todayCollected.toFixed(1)} L`,
+      valueColor: '#0284C7',
+      title: 'Total Milk Collected Today',
+      subtitle: 'Society weigh scales',
+      onPress: () => router.push('/(bmc)/reports'),
+    },
+    {
+      id: 'today_received',
+      icon: 'flask',
+      iconColor: colors.primary,
+      value: `${stats.todayReceived.toFixed(1)} L`,
+      valueColor: colors.primary,
+      title: 'Milk Received at BMC',
+      subtitle: 'Chilling flow meter verified',
+      onPress: () => router.push('/(bmc)/receive-milk'),
+    },
+    {
+      id: 'dispatched_to_union',
+      icon: 'arrow-up-circle',
+      iconColor: '#7C3AED',
+      value: `${stats.todayDispatchedToUnion.toFixed(1)} L`,
+      valueColor: '#7C3AED',
+      title: 'Reported to Union',
+      subtitle: 'Consolidated submissions',
+      onPress: () => router.push('/(bmc)/submit-union-report'),
+    },
+    {
+      id: 'net_discrepancy',
+      icon: 'swap-vertical',
+      iconColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A',
+      badgeText: stats.totalDifference > 0 ? 'Variance' : 'Reconciled',
+      badgeBg: stats.totalDifference > 0 ? '#FEE2E2' : '#DCFCE7',
+      badgeColor: stats.totalDifference > 0 ? '#991B1B' : '#166534',
+      value: stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L` : '0.0 L',
+      valueColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A',
+      title: 'Net Discrepancy Litres',
+      subtitle: 'Difference requiring review',
+      onPress: () => router.push('/(bmc)/investigations'),
+    },
+    {
+      id: 'recorded_income',
+      icon: 'wallet',
+      iconColor: '#059669',
+      value: `₹${stats.totalRecordedIncome.toLocaleString('en-IN')}`,
+      valueColor: '#059669',
+      title: 'Recorded Society Income',
+      subtitle: 'Total ledger transactions',
+      onPress: () => router.push('/(bmc)/society-income'),
+    },
+    {
+      id: 'submitted_to_union',
+      icon: 'receipt',
+      iconColor: '#2563EB',
+      value: `₹${stats.totalSubmittedToUnionIncome.toLocaleString('en-IN')}`,
+      valueColor: '#2563EB',
+      title: 'Amount Reported to Union',
+      subtitle: 'In submitted BMC receipts',
+      onPress: () => router.push('/(bmc)/submit-union-report'),
+    },
+    {
+      id: 'pending_reports',
+      icon: 'hourglass',
+      iconColor: '#D97706',
+      badgeText: stats.pendingDeliveriesCount > 0 ? 'Pending' : 'Done',
+      badgeBg: stats.pendingDeliveriesCount > 0 ? '#FEF3C7' : '#F1F5F9',
+      badgeColor: stats.pendingDeliveriesCount > 0 ? '#B45309' : '#475569',
+      value: stats.pendingDeliveriesCount,
+      valueColor: stats.pendingDeliveriesCount > 0 ? '#D97706' : colors.text,
+      title: 'Pending Society Reports',
+      subtitle: 'Dispatches awaiting intake',
+      onPress: () => router.push('/(bmc)/receive-milk'),
+    },
+    {
+      id: 'union_signoff',
+      icon: 'shield-checkmark',
+      iconColor: '#4338CA',
+      value: stats.reportsAwaitingUnionCount,
+      valueColor: '#4338CA',
+      title: 'Awaiting Union Sign-Off',
+      subtitle: 'Under review by Union GM',
+      onPress: () => router.push('/(bmc)/submit-union-report'),
+    },
+  ], [stats, societyFilter, colors, router]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -242,233 +376,35 @@ export default function BMCDashboard() {
         </View>
 
         <View style={styles.tenCardsGrid}>
-          {/* Card 1: Registered Societies */}
-          <Pressable 
-            style={styles.tenCardWrapper} 
-            onPress={() => setSocietyFilter('all')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="business" size={18} color={colors.primary} />
-                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-              </View>
-              <Text style={styles.tenCardNumber}>{stats.registeredBoothsCount}</Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Registered Societies
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Feeder societies assigned
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 2: Active vs Inactive Societies */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => setSocietyFilter(societyFilter === 'active' ? 'inactive' : 'active')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="radio" size={18} color="#16A34A" />
-                <View style={[styles.pillBadge, { backgroundColor: '#DCFCE7' }]}>
-                  <Text style={[styles.pillText, { color: '#166534' }]}>{stats.activeBoothsCount} Active</Text>
+          {summaryCards.map((card) => (
+            <Pressable 
+              key={card.id}
+              style={[styles.tenCardWrapper, { width: overviewCardWidth }]} 
+              onPress={card.onPress}
+            >
+              <Card style={styles.tenCard}>
+                <View style={styles.tenCardTop}>
+                  <Ionicons name={card.icon} size={18} color={card.iconColor} />
+                  {card.badgeText ? (
+                    <View style={[styles.pillBadge, { backgroundColor: card.badgeBg }]}>
+                      <Text style={[styles.pillText, { color: card.badgeColor }]}>{card.badgeText}</Text>
+                    </View>
+                  ) : (
+                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                  )}
                 </View>
-              </View>
-              <Text style={styles.tenCardNumber}>
-                {stats.activeBoothsCount} <Text style={{ fontSize: 13, color: colors.textMuted }}>/ {stats.inactiveBoothsCount} Inactive</Text>
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Active / Inactive Status
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Supplying this cycle
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 3: Total Milk Collected Today */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/reports')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="water" size={18} color="#0284C7" />
-                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-              </View>
-              <Text style={[styles.tenCardNumber, { color: '#0284C7' }]}>
-                {stats.todayCollected.toFixed(1)} L
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Total Milk Collected Today
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Society weigh scales
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 4: Total Milk Received at BMC */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/receive-milk')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="flask" size={18} color={colors.primary} />
-                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-              </View>
-              <Text style={[styles.tenCardNumber, { color: colors.primary }]}>
-                {stats.todayReceived.toFixed(1)} L
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Milk Received at BMC
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Chilling flow meter verified
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 5: Dispatched / Reported to Union */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/submit-union-report')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="arrow-up-circle" size={18} color="#7C3AED" />
-                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-              </View>
-              <Text style={[styles.tenCardNumber, { color: '#7C3AED' }]}>
-                {stats.todayDispatchedToUnion.toFixed(1)} L
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Reported to Union
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Consolidated submissions
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 6: Total Milk Discrepancy */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/investigations')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="swap-vertical" size={18} color={stats.totalDifference > 0 ? '#DC2626' : '#16A34A'} />
-                <View style={[styles.pillBadge, { backgroundColor: stats.totalDifference > 0 ? '#FEE2E2' : '#DCFCE7' }]}>
-                  <Text style={[styles.pillText, { color: stats.totalDifference > 0 ? '#991B1B' : '#166534' }]}>
-                    {stats.totalDifference > 0 ? 'Variance' : 'Reconciled'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.tenCardNumber, { color: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
-                {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L` : '0.0 L'}
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Net Discrepancy Litres
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Difference requiring review
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 7: Total Recorded Society Income */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/society-income')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="wallet" size={18} color="#059669" />
-                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-              </View>
-              <Text style={[styles.tenCardNumber, { color: '#059669' }]}>
-                ₹{stats.totalRecordedIncome.toLocaleString('en-IN')}
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Recorded Society Income
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Total ledger transactions
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 8: Submitted / Reported to Union (Amount) */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/submit-union-report')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="receipt" size={18} color="#2563EB" />
-                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-              </View>
-              <Text style={[styles.tenCardNumber, { color: '#2563EB' }]}>
-                ₹{stats.totalSubmittedToUnionIncome.toLocaleString('en-IN')}
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Amount Reported to Union
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                In submitted BMC receipts
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 9: Number of Pending Society Reports */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/receive-milk')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="hourglass" size={18} color="#D97706" />
-                <View style={[styles.pillBadge, { backgroundColor: stats.pendingDeliveriesCount > 0 ? '#FEF3C7' : '#F1F5F9' }]}>
-                  <Text style={[styles.pillText, { color: stats.pendingDeliveriesCount > 0 ? '#B45309' : '#475569' }]}>
-                    {stats.pendingDeliveriesCount > 0 ? 'Pending' : 'Done'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.tenCardNumber, { color: stats.pendingDeliveriesCount > 0 ? '#D97706' : colors.text }]}>
-                {stats.pendingDeliveriesCount}
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Pending Society Reports
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Dispatches awaiting intake
-              </Text>
-            </Card>
-          </Pressable>
-
-          {/* Card 10: Reports Awaiting Union Confirmation */}
-          <Pressable 
-            style={styles.tenCardWrapper}
-            onPress={() => router.push('/(bmc)/submit-union-report')}
-          >
-            <Card style={styles.tenCard}>
-              <View style={styles.tenCardTop}>
-                <Ionicons name="shield-checkmark" size={18} color="#4338CA" />
-                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-              </View>
-              <Text style={[styles.tenCardNumber, { color: '#4338CA' }]}>
-                {stats.reportsAwaitingUnionCount}
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                Awaiting Union Sign-Off
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Under review by Union GM
-              </Text>
-            </Card>
-          </Pressable>
+                <Text style={[styles.tenCardNumber, card.valueColor ? { color: card.valueColor } : null]}>
+                  {card.value} {card.valueSecondary ? <Text style={{ fontSize: 13, color: colors.textMuted }}>{card.valueSecondary}</Text> : null}
+                </Text>
+                <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
+                  {card.title}
+                </Text>
+                <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                  {card.subtitle}
+                </Text>
+              </Card>
+            </Pressable>
+          ))}
         </View>
 
         {/* Section 3: Requirement #3 — Society Management Directory */}
@@ -806,7 +742,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tenCardWrapper: {
-    width: '48.5%',
+    flexGrow: 0,
+    flexShrink: 0,
   },
   tenCard: {
     padding: 12,
