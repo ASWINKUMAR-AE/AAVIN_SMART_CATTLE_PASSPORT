@@ -71,7 +71,7 @@ export default function SocietyIncomeScreen() {
   // Existing records for this BMC
   const existingRecords = useMemo(() => {
     const assignedIds = assignedSocieties.map(s => s.id);
-    return societyIncomeRecords.filter(r => 
+    return (societyIncomeRecords || []).filter(r => 
       r.bmcId === bmc.id || assignedIds.includes(r.societyId)
     );
   }, [societyIncomeRecords, bmc, assignedSocieties]);

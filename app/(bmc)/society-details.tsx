@@ -38,7 +38,7 @@ export default function SocietyDetailsScreen() {
 
   const societyIncome = useMemo(() => {
     if (!society) return [];
-    return societyIncomeRecords.filter(i => i.societyId === society.id);
+    return (societyIncomeRecords || []).filter(i => i.societyId === society.id);
   }, [society, societyIncomeRecords]);
 
   const societyDeliveries = useMemo(() => {

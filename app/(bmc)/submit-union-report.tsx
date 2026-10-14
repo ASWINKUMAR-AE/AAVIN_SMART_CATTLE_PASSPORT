@@ -82,7 +82,7 @@ export default function SubmitUnionReportScreen() {
         return d.collectionDate >= periodStartDate && d.collectionDate <= periodEndDate;
       });
 
-      const incomeList = societyIncomeRecords.filter(i => {
+      const incomeList = (societyIncomeRecords || []).filter(i => {
         if (i.societyId !== society.id) return false;
         if (periodType === 'daily') return i.transactionDate === collectionDate;
         return i.transactionDate >= periodStartDate && i.transactionDate <= periodEndDate;

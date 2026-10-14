@@ -92,7 +92,7 @@ export default function SocietyComparisonScreen() {
       const society = booths.find(b => b.id === id);
       const records = milkRecords.filter(r => r.boothId === id);
       const deliveries = bmcDeliveries.filter(d => d.boothId === id);
-      const incomeList = societyIncomeRecords.filter(i => i.societyId === id);
+      const incomeList = (societyIncomeRecords || []).filter(i => i.societyId === id);
       const discrepancies = discrepancyCases.filter(c => c.boothId === id);
 
       // Daily totals

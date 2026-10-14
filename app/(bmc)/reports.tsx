@@ -50,7 +50,7 @@ export default function BMCReportsScreen() {
     return assignedSocieties.map((society) => {
       const records = milkRecords.filter(r => r.boothId === society.id && r.collectionDate === selectedDate);
       const delivery = bmcDeliveries.find(d => d.boothId === society.id && d.collectionDate === selectedDate);
-      const incomeEntries = societyIncomeRecords.filter(i => i.societyId === society.id && i.transactionDate === selectedDate);
+      const incomeEntries = (societyIncomeRecords || []).filter(i => i.societyId === society.id && i.transactionDate === selectedDate);
       const discrepancy = discrepancyCases.find(c => c.boothId === society.id && c.collectionDate === selectedDate);
 
       const collectedLitres = records.reduce((sum, r) => sum + r.quantityLitres, 0);
@@ -83,7 +83,7 @@ export default function BMCReportsScreen() {
     return assignedSocieties.map((society) => {
       const records = milkRecords.filter(r => r.boothId === society.id && r.collectionDate.startsWith(selectedMonth));
       const deliveries = bmcDeliveries.filter(d => d.boothId === society.id && d.collectionDate.startsWith(selectedMonth));
-      const incomeEntries = societyIncomeRecords.filter(i => i.societyId === society.id && i.financialPeriod === selectedMonth);
+      const incomeEntries = (societyIncomeRecords || []).filter(i => i.societyId === society.id && i.financialPeriod === selectedMonth);
       const discrepancies = discrepancyCases.filter(c => c.boothId === society.id && c.collectionDate.startsWith(selectedMonth));
 
       const dailyMap: Record<string, number> = {};
@@ -124,7 +124,7 @@ export default function BMCReportsScreen() {
     return assignedSocieties.map((society) => {
       const records = milkRecords.filter(r => r.boothId === society.id && r.collectionDate.startsWith(selectedYear));
       const deliveries = bmcDeliveries.filter(d => d.boothId === society.id && d.collectionDate.startsWith(selectedYear));
-      const incomeEntries = societyIncomeRecords.filter(i => i.societyId === society.id && i.transactionDate.startsWith(selectedYear));
+      const incomeEntries = (societyIncomeRecords || []).filter(i => i.societyId === society.id && i.transactionDate.startsWith(selectedYear));
       const discrepancies = discrepancyCases.filter(c => c.boothId === society.id && c.collectionDate.startsWith(selectedYear));
 
       const annualMilkTotal = records.reduce((sum, r) => sum + r.quantityLitres, 0);

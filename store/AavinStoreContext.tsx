@@ -38,7 +38,7 @@ import {
 } from '../data/seedData';
 import { WorkflowApi } from '../services/workflowApi';
 
-const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v4';
+const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v5';
 
 interface AavinState {
   farmers: Farmer[];
@@ -271,15 +271,23 @@ function sanitizeLoadedState(loadedState: AavinState): AavinState {
 
   return {
     ...loadedState,
-    booths: (loadedState.booths || []).map(b => ({
+    farmers: loadedState.farmers || SEED_FARMERS,
+    cows: loadedState.cows || SEED_COWS,
+    vendors: loadedState.vendors || SEED_VENDORS,
+    milkRecords: loadedState.milkRecords || SEED_MILK_RECORDS,
+    bmcReceipts: loadedState.bmcReceipts || SEED_BMC_RECEIPTS,
+    societyIncomeRecords: (loadedState.societyIncomeRecords && Array.isArray(loadedState.societyIncomeRecords) && loadedState.societyIncomeRecords.length > 0)
+      ? loadedState.societyIncomeRecords
+      : SEED_SOCIETY_INCOME,
+    booths: (loadedState.booths || SEED_BOOTHS).map(b => ({
       ...b,
       name: replaceText(b.name),
     })),
-    bmcs: (loadedState.bmcs || []).map(bmc => ({
+    bmcs: (loadedState.bmcs || SEED_BMCS).map(bmc => ({
       ...bmc,
       name: replaceText(bmc.name),
     })),
-    discrepancyCases: (loadedState.discrepancyCases || []).map(dc => ({
+    discrepancyCases: (loadedState.discrepancyCases || SEED_DISCREPANCY_CASES).map(dc => ({
       ...dc,
       boothName: replaceText(dc.boothName),
       resolutionReason: dc.resolutionReason ? replaceText(dc.resolutionReason) : undefined,
@@ -289,17 +297,17 @@ function sanitizeLoadedState(loadedState: AavinState): AavinState {
         note: replaceText(n.note),
       })),
     })),
-    notifications: (loadedState.notifications || []).map(n => ({
+    notifications: (loadedState.notifications || SEED_NOTIFICATIONS).map(n => ({
       ...n,
       title: replaceText(n.title),
       message: replaceText(n.message),
     })),
-    boothReceipts: (loadedState.boothReceipts || []).map(r => ({
+    boothReceipts: (loadedState.boothReceipts || SEED_BOOTH_RECEIPTS).map(r => ({
       ...r,
       boothName: replaceText(r.boothName),
       notes: r.notes ? replaceText(r.notes) : r.notes,
     })),
-    bmcDeliveries: (loadedState.bmcDeliveries || []).map(d => ({
+    bmcDeliveries: (loadedState.bmcDeliveries || SEED_BMC_DELIVERIES).map(d => ({
       ...d,
       boothName: replaceText(d.boothName),
     })),
@@ -1168,7 +1176,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
     const updated = {
       ...state,
-      societyIncomeRecords: [newRecord, ...state.societyIncomeRecords],
+      societyIncomeRecords: [newRecord, ...(state.societyIncomeRecords || [])],
     };
     persistState(updated);
 
@@ -1478,7 +1486,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const todayDispatchedToUnion = submittedReceipts.reduce((sum, r) => sum + r.totalReceivedQuantity, 0);
 
     // Financial totals
-    const bmcIncomeRecords = state.societyIncomeRecords.filter(inc => inc.bmcId === bmcId || assignedBoothIds.includes(inc.societyId));
+    const bmcIncomeRecords = (state.societyIncomeRecords || []).filter(inc => inc.bmcId === bmcId || assignedBoothIds.includes(inc.societyId));
     const totalRecordedIncome = bmcIncomeRecords.reduce((sum, inc) => sum + inc.amountInr, 0);
 
     const totalSubmittedToUnionIncome = submittedReceipts.reduce((sum, r) => sum + (r.totalRecordedIncome || 0), 0);
@@ -1514,7 +1522,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const today = '2026-10-12';
     const societyRecords = state.milkRecords.filter(r => r.boothId === societyId);
     const deliveries = state.bmcDeliveries.filter(d => d.boothId === societyId);
-    const incomeRecords = state.societyIncomeRecords.filter(i => i.societyId === societyId);
+    const incomeRecords = (state.societyIncomeRecords || []).filter(i => i.societyId === societyId);
     const activeDiscrepancies = state.discrepancyCases.filter(
       c => c.boothId === societyId && (c.status === 'open' || c.status === 'under_investigation' || c.status === 'escalated_to_union')
     );
