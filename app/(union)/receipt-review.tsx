@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable, BackHandler } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable, BackHandler, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
@@ -11,11 +11,13 @@ import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { BMCReceipt } from '../../types/aavin';
+import { UnionDesktopReports } from '../../components/union/desktop/UnionDesktopReports';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function UnionReceiptReviewScreen() {
   const { user } = useAuth();
   const { bmcReceipts, bmcDeliveries, reviewBmcReceipt } = useAavinStore();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
 
   const handleBackToHome = () => {
@@ -79,6 +81,22 @@ export default function UnionReceiptReviewScreen() {
     }
   };
 
+  const isDesktop = useIsDesktop();
+
+  if (isDesktop) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <DemoHeader
+          title="BMC Daily Receipts Review"
+          subtitle="Executive Audit & Reconciliation • Madurai District"
+          showBack
+          onBack={handleBackToHome}
+        />
+        <UnionDesktopReports />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
@@ -88,34 +106,66 @@ export default function UnionReceiptReviewScreen() {
         onBack={handleBackToHome}
       />
 
-      {/* BMC Filter Chips */}
-      <View style={styles.bmcFilterRow}>
-        <Pressable
-          style={[
-            styles.bmcFilterChip,
-            bmcFilter === 'all' && { backgroundColor: colors.primary, borderColor: colors.primary }
-          ]}
-          onPress={() => setBmcFilter('all')}
+      {/* BMC Filter Chips (Horizontal Scrollable Strip) */}
+      <View style={styles.bmcFilterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bmcFilterScrollContent}
         >
-          <Text style={[styles.filterChipText, bmcFilter === 'all' && { color: '#FFFFFF' }]}>
-            All BMCs ({bmcReceipts.length})
-          </Text>
-        </Pressable>
-
-        {bmcs.map(b => (
           <Pressable
-            key={b.id}
             style={[
               styles.bmcFilterChip,
-              bmcFilter === b.id && { backgroundColor: colors.primary, borderColor: colors.primary }
+              { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: colors.border },
+              bmcFilter === 'all' && { backgroundColor: colors.primary, borderColor: colors.primary }
             ]}
-            onPress={() => setBmcFilter(b.id)}
+            onPress={() => setBmcFilter('all')}
           >
-            <Text style={[styles.filterChipText, bmcFilter === b.id && { color: '#FFFFFF' }]}>
-              {b.name}
+            <Ionicons 
+              name="business" 
+              size={13} 
+              color={bmcFilter === 'all' ? '#FFFFFF' : colors.primary} 
+              style={{ marginRight: 5 }} 
+            />
+            <Text style={[
+              styles.filterChipText, 
+              { color: isDark ? colors.textSecondary : '#475569' },
+              bmcFilter === 'all' && { color: '#FFFFFF', fontWeight: '800' }
+            ]}>
+              All BMCs ({bmcReceipts.length})
             </Text>
           </Pressable>
-        ))}
+
+          {bmcs.map(b => {
+            const countForBmc = bmcReceipts.filter(r => r.bmcId === b.id).length;
+            const isSelected = bmcFilter === b.id;
+            return (
+              <Pressable
+                key={b.id}
+                style={[
+                  styles.bmcFilterChip,
+                  { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: colors.border },
+                  isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
+                ]}
+                onPress={() => setBmcFilter(b.id)}
+              >
+                <Ionicons 
+                  name="snow-outline" 
+                  size={13} 
+                  color={isSelected ? '#FFFFFF' : '#0284C7'} 
+                  style={{ marginRight: 5 }} 
+                />
+                <Text style={[
+                  styles.filterChipText, 
+                  { color: isDark ? colors.textSecondary : '#475569' },
+                  isSelected && { color: '#FFFFFF', fontWeight: '800' }
+                ]}>
+                  {b.name} ({countForBmc})
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <FlatList
@@ -202,9 +252,9 @@ export default function UnionReceiptReviewScreen() {
 
               {/* Financial Total if present */}
               {item.totalRecordedIncome !== undefined && item.totalRecordedIncome > 0 && (
-                <View style={styles.incomeHighlightStrip}>
-                  <Ionicons name="cash-outline" size={16} color="#059669" />
-                  <Text style={[Typography.caption1, { color: '#047857', fontWeight: '800', marginLeft: 6 }]}>
+                <View style={[styles.incomeHighlightStrip, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(5, 150, 105, 0.08)' }]}>
+                  <Ionicons name="cash-outline" size={16} color={isDark ? '#34D399' : '#059669'} />
+                  <Text style={[Typography.caption1, { color: isDark ? '#34D399' : '#047857', fontWeight: '800', marginLeft: 6 }]}>
                     Recorded Society Income: ₹{item.totalRecordedIncome.toLocaleString('en-IN')}
                   </Text>
                 </View>
@@ -212,12 +262,12 @@ export default function UnionReceiptReviewScreen() {
 
               {/* Consolidated Society Breakdown if available */}
               {item.societySummaries && item.societySummaries.length > 0 ? (
-                <View style={styles.linkedSection}>
+                <View style={[styles.linkedSection, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: colors.border }]}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 6 }]}>
                     CONSOLIDATED FEEDER SOCIETIES ({item.societySummaries.length})
                   </Text>
                   {item.societySummaries.map((s) => (
-                    <View key={s.societyId} style={styles.deliveryCard}>
+                    <View key={s.societyId} style={[styles.deliveryCard, { borderBottomColor: colors.border }]}>
                       <View style={styles.deliveryTopRow}>
                         <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
                           • {s.societyName}
@@ -236,14 +286,14 @@ export default function UnionReceiptReviewScreen() {
                   ))}
                 </View>
               ) : (
-                <View style={styles.linkedSection}>
+                <View style={[styles.linkedSection, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: colors.border }]}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 6 }]}>
                     LINKED FEEDER DELIVERIES ({linkedDeliveries.length})
                   </Text>
                   {linkedDeliveries.map((d) => (
-                    <View key={d.id} style={styles.deliveryCard}>
+                    <View key={d.id} style={[styles.deliveryCard, { borderBottomColor: colors.border }]}>
                       <View style={styles.deliveryTopRow}>
-                        <Text style={[Typography.caption1, { color: colors.primaryDark, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
+                        <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
                           • {d.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}
                         </Text>
                         <Text
@@ -267,7 +317,7 @@ export default function UnionReceiptReviewScreen() {
               )}
 
               {item.supervisorNotes && (
-                <View style={[styles.reviewNotesBox, { backgroundColor: '#F8FAFC', borderColor: colors.border }]}>
+                <View style={[styles.reviewNotesBox, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
                     BMC SUPERVISOR REMARKS: "{item.supervisorNotes}"
                   </Text>
@@ -276,13 +326,13 @@ export default function UnionReceiptReviewScreen() {
 
               {item.unionReviewNotes && (
                 <View style={[styles.reviewNotesBox, { 
-                  backgroundColor: isReturned ? '#FEF2F2' : '#F0FDF4', 
-                  borderColor: isReturned ? '#FCA5A5' : '#BBF7D0' 
+                  backgroundColor: isReturned ? (isDark ? '#3E1818' : '#FEF2F2') : (isDark ? '#132E1D' : '#F0FDF4'), 
+                  borderColor: isReturned ? (isDark ? '#7F1D1D' : '#FCA5A5') : (isDark ? '#166534' : '#BBF7D0') 
                 }]}>
-                  <Text style={[Typography.caption1, { color: isReturned ? '#991B1B' : '#166534', fontWeight: '800' }]}>
+                  <Text style={[Typography.caption1, { color: isReturned ? (isDark ? '#FCA5A5' : '#991B1B') : (isDark ? '#86EFAC' : '#166534'), fontWeight: '800' }]}>
                     GM DIRECTIVE: {item.unionReviewNotes}
                   </Text>
-                  <Text style={[Typography.caption2, { color: isReturned ? '#B91C1C' : '#15803D', marginTop: 2 }]}>
+                  <Text style={[Typography.caption2, { color: isReturned ? (isDark ? '#F87171' : '#B91C1C') : (isDark ? '#4ADE80' : '#15803D'), marginTop: 2 }]}>
                     Actioned by: {item.reviewedBy || 'General Manager'} on {item.reviewedAt?.split('T')[0]}
                   </Text>
                 </View>
@@ -364,30 +414,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  bmcFilterRow: {
-    flexDirection: 'row',
+  bmcFilterContainer: {
+    paddingVertical: 10,
+  },
+  bmcFilterScrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   bmcFilterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
   },
   filterChipText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#475569',
   },
   listContent: {
     padding: 16,
     gap: 14,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   card: {
     padding: 16,
@@ -421,14 +472,12 @@ const styles = StyleSheet.create({
   incomeHighlightStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(5, 150, 105, 0.08)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     marginBottom: 6,
   },
   linkedSection: {
-    backgroundColor: '#F8FAFC',
     padding: 10,
     borderRadius: 8,
     marginVertical: 8,
@@ -437,7 +486,6 @@ const styles = StyleSheet.create({
   deliveryCard: {
     paddingVertical: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
   },
   deliveryTopRow: {
     flexDirection: 'row',

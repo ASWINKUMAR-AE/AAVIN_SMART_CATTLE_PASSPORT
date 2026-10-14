@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, Pressable, BackHandler } from 'react-native';
+import { StyleSheet, View, Text, FlatList, Pressable, BackHandler, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -7,6 +7,7 @@ import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
+import { UnionDesktopBmcMonitoring } from '../../components/union/desktop/UnionDesktopBmcMonitoring';
 import { 
   AnalyticsPeriod, 
   PERIOD_LABELS, 
@@ -14,6 +15,7 @@ import {
   getDistrictBmcAnalytics 
 } from '../../services/bmcAnalyticsService';
 import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function BMCMonitoringScreen() {
   const { bmcs, booths, bmcReceipts, discrepancyCases, bmcDeliveries } = useAavinStore();
@@ -112,6 +114,22 @@ export default function BMCMonitoringScreen() {
       </View>
     </View>
   );
+
+  const isDesktop = useIsDesktop();
+
+  if (isDesktop) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <DemoHeader 
+          title="BMC Facility Monitoring"
+          subtitle="District Bulk Milk Cooling Infrastructure"
+          showBack
+          onBack={handleBackToHome}
+        />
+        <UnionDesktopBmcMonitoring />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

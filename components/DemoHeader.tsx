@@ -20,7 +20,7 @@ interface DemoHeaderProps {
   onBack?: () => void;
 }
 
-export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, showBack = false, onBack }) => {
+export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBack = false, onBack }) => {
   const { user, activeRole, switchRole, demoUsers, logout } = useAuth();
   const { colors } = useTheme();
   const { language, toggleLanguage } = useTranslation();
@@ -190,6 +190,11 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, showBack = false,
             <Text style={styles.headerTitleText} numberOfLines={1}>
               {title || user?.fullName || 'Aavin Milk Safety Twin'}
             </Text>
+            {subtitle ? (
+              <Text style={styles.headerSubtitleText} numberOfLines={1}>
+                {subtitle}
+              </Text>
+            ) : null}
           </View>
         </View>
       </View>

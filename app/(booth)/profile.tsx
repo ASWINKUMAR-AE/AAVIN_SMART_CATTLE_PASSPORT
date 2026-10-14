@@ -133,7 +133,7 @@ export default function BoothProfileScreen() {
               </View>
             </View>
 
-            <View style={styles.facilityDivider} />
+            <View style={[styles.facilityDivider, { backgroundColor: colors.border }]} />
 
             <View style={styles.facilityItem}>
               <Ionicons name="snow" size={16} color="#0284C7" />
@@ -419,23 +419,23 @@ export default function BoothProfileScreen() {
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Society Reg. No:</Text>
-            <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>TNDD-MDU-SOC-401/2018</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Society Reg. No:</Text>
+            <Text style={[styles.hardwareValue, { color: colors.text }]}>TNDD-MDU-SOC-401/2018</Text>
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Ultrasonic Analyzer:</Text>
-            <Text style={[Typography.caption1, { color: '#15803D', fontWeight: '700' }]}>AAVIN-SCAN-088 (Calibrated)</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Ultrasonic Analyzer:</Text>
+            <Text style={[styles.hardwareValue, { color: '#15803D' }]}>AAVIN-SCAN-088 (Calibrated)</Text>
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Bulk Storage Vat:</Text>
-            <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>1,500 L Insulated Tank</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Bulk Storage Vat:</Text>
+            <Text style={[styles.hardwareValue, { color: colors.text }]}>1,500 L Insulated Tank</Text>
           </View>
 
           <View style={styles.hardwareRow}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Firmware Version:</Text>
-            <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>v2.4.12-PROD-MADURAI</Text>
+            <Text style={[styles.hardwareLabel, { color: colors.textSecondary }]}>Firmware Version:</Text>
+            <Text style={[styles.hardwareValue, { color: colors.text }]}>v2.4.12-PROD-MADURAI</Text>
           </View>
         </Card>
 
@@ -482,7 +482,7 @@ export default function BoothProfileScreen() {
           </Pressable>
 
           <Pressable 
-            style={[styles.shortcutRow, { borderBottomColor: colors.border }]}
+            style={[styles.shortcutRow, { borderBottomWidth: 0 }]}
             onPress={() => router.push('/(booth)/sent-receipts')}
           >
             <View style={[styles.shortcutIcon, { backgroundColor: '#EFF6FF' }]}>
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     gap: 14,
-    paddingBottom: 48,
+    paddingBottom: 110,
   },
   credentialCard: {
     padding: 16,
@@ -608,6 +608,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
+    minHeight: 118,
+    justifyContent: 'space-between',
   },
   statTileTop: {
     flexDirection: 'row',
@@ -746,7 +748,22 @@ const styles = StyleSheet.create({
   hardwareRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 5,
+    alignItems: 'flex-start',
+    paddingVertical: 6,
+    gap: 12,
+  },
+  hardwareLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: '45%',
+    lineHeight: 18,
+  },
+  hardwareValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'right',
+    lineHeight: 18,
   },
   shortcutsCard: {
     padding: 14,

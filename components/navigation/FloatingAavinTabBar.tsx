@@ -62,6 +62,12 @@ const ROUTE_META_MAP: Record<
     labelKey: 'nav.profile',
     fallbackLabel: 'Profile',
   },
+  'union-profile': {
+    outline: 'person-outline',
+    filled: 'person',
+    labelKey: 'nav.profile',
+    fallbackLabel: 'Profile',
+  },
 
   // Society Staff
   farmers: {

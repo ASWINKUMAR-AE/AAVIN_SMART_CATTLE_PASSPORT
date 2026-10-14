@@ -38,7 +38,7 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
   stats,
 }) => {
   const { user, logout, switchRole } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { language, toggleLanguage, t } = useTranslation();
   const router = useRouter();
 
@@ -82,7 +82,7 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
         {/* Main Staff Card */}
         <Card style={styles.card}>
           <View style={styles.avatarRow}>
-            <View style={[styles.avatarCircle, { backgroundColor: colors.primaryLight }]}>
+            <View style={[styles.avatarCircle, { backgroundColor: isDark ? '#1E293B' : colors.primaryLight }]}>
               <Text style={{ fontSize: 32 }}>{roleIcon}</Text>
             </View>
             <View style={{ flex: 1, marginLeft: 14 }}>
@@ -92,9 +92,9 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700' }]}>
                 {staffId || user?.username || 'STAFF-AUTH-01'}
               </Text>
-              <View style={[styles.badge, { backgroundColor: '#DCFCE7' }]}>
-                <Ionicons name="shield-checkmark" size={13} color="#15803D" />
-                <Text style={[styles.badgeText, { color: '#15803D' }]}>
+              <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7' }]}>
+                <Ionicons name="shield-checkmark" size={13} color={isDark ? '#4ADE80' : '#15803D'} />
+                <Text style={[styles.badgeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>
                   Aavin Authorized Personnel
                 </Text>
               </View>
@@ -103,18 +103,18 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
 
           <View style={[styles.detailsList, { borderTopColor: colors.border }]}>
             <View style={styles.row}>
-              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>{facilityTitle}:</Text>
-              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{facilityValue}</Text>
+              <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>{facilityTitle}:</Text>
+              <Text style={[styles.rowValue, { color: colors.text, fontWeight: '700' }]}>{facilityValue}</Text>
             </View>
             {jurisdictionTitle && (
               <View style={styles.row}>
-                <Text style={[Typography.caption1, { color: colors.textSecondary }]}>{jurisdictionTitle}:</Text>
-                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{jurisdictionValue}</Text>
+                <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>{jurisdictionTitle}:</Text>
+                <Text style={[styles.rowValue, { color: colors.text, fontWeight: '600' }]}>{jurisdictionValue}</Text>
               </View>
             )}
             <View style={styles.row}>
-              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Security Access:</Text>
-              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700' }]}>Level 3 (Operational Twin)</Text>
+              <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Security Access:</Text>
+              <Text style={[styles.rowValue, { color: colors.primary, fontWeight: '700' }]}>Level 3 (Operational Twin)</Text>
             </View>
           </View>
         </Card>
@@ -127,9 +127,9 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
             </Text>
             <View style={styles.statsGrid}>
               {stats.map((stat, idx) => (
-                <View key={idx} style={[styles.statBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <Text style={[Typography.title3, { color: colors.primary, fontWeight: '900' }]}>{stat.value}</Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2, textAlign: 'center' }]}>{stat.label}</Text>
+                <View key={idx} style={[styles.statBox, { backgroundColor: isDark ? '#1E293B' : colors.background, borderColor: colors.border }]}>
+                  <Text style={[Typography.title3, { color: colors.primary, fontWeight: '900', textAlign: 'center' }]} numberOfLines={1}>{stat.value}</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4, textAlign: 'center' }]}>{stat.label}</Text>
                 </View>
               ))}
             </View>
@@ -233,12 +233,27 @@ const styles = StyleSheet.create({
   detailsList: {
     borderTopWidth: 1,
     paddingTop: 12,
-    gap: 10,
+    gap: 8,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    paddingVertical: 5,
+    gap: 12,
+  },
+  rowLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: '44%',
+    lineHeight: 18,
+  },
+  rowValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'right',
+    lineHeight: 18,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -246,19 +261,13 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    paddingVertical: 12,
+    minHeight: 76,
+    paddingVertical: 10,
     paddingHorizontal: 6,
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
-  },
-  langBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
+    justifyContent: 'center',
   },
   roleChips: {
     flexDirection: 'row',
@@ -268,9 +277,12 @@ const styles = StyleSheet.create({
   roleChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
+    justifyContent: 'center',
+    flexBasis: '31%',
+    flexGrow: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
 });

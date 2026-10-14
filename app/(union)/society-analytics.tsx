@@ -16,8 +16,10 @@ import {
   getFarmersAnalyticsBySocietyId,
 } from '../../services/bmcAnalyticsService';
 import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function SocietyAnalyticsScreen() {
+  const isDesktop = useIsDesktop();
   const { societyId, bmcId } = useLocalSearchParams<{ societyId: string; bmcId?: string }>();
   const { bmcs, booths, bmcDeliveries, farmers, milkRecords, cows, discrepancyCases } = useAavinStore();
   const { colors, isDark } = useTheme();
@@ -134,7 +136,7 @@ export default function SocietyAnalyticsScreen() {
         onBack={handleBack}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.desktopScrollContent]} showsVerticalScrollIndicator={false}>
         {/* 1. Facility Header & Intake Load Card */}
         <Card style={styles.facilityCard}>
           <View style={styles.facilityHeaderRow}>
@@ -546,6 +548,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+  desktopScrollContent: {
+    width: '100%',
+    maxWidth: 1040,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 80,
   },
   emptyContainer: {
     flex: 1,

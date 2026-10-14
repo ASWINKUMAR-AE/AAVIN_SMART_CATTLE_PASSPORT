@@ -30,9 +30,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
-import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeColors } from '../../constants/Colors';
+import { UnionDesktopHome } from '../../components/union/desktop/UnionDesktopHome';
+
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function UnionDashboard() {
   const { user } = useAuth();
@@ -53,9 +55,9 @@ export default function UnionDashboard() {
   const { width } = useWindowDimensions();
 
   // Responsive breakpoints
-  const isDesktop = width >= 1060;
-  const isTablet = width >= 700 && width < 1060;
-  const isMobile = width < 700;
+  const isDesktop = useIsDesktop();
+  const isTablet = !isDesktop && width >= 700 && width < 1060;
+  const isMobile = !isDesktop && width < 700;
 
   const styles = useMemo(() => getStyles(colors, isDark, isMobile), [colors, isDark, isMobile]);
   const router = useRouter();
@@ -246,6 +248,18 @@ export default function UnionDashboard() {
   const totalDeliveries = bmcDeliveries.length > 0 ? bmcDeliveries.length : 12;
   const verifiedDeliveries = Math.max(0, totalDeliveries - stats.activeDiscrepanciesCount);
 
+  if (isDesktop) {
+    return (
+      <View style={styles.outerContainer}>
+        <DemoHeader
+          title="Aavin Union Madurai"
+          subtitle="Executive Control Room • Madurai District"
+        />
+        <UnionDesktopHome onIssueDirective={() => setShowDirectiveModal(true)} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.outerContainer}>
       {/* Retain DemoHeader (Layout Header is completely preserved) */}
@@ -281,30 +295,6 @@ export default function UnionDashboard() {
               <Ionicons name="add" size={17} color={isDark ? '#09121E' : '#FFFFFF'} />
               <Text style={styles.newTaskBtnText}>New Directive</Text>
             </Pressable>
-          </View>
-
-          {/* Filter Tabs - Horizontally scrollable strip */}
-          <View style={styles.filterPillsWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterPillsScrollContent}
-            >
-              {(['Overview', 'Booths & Low Yield', 'MCP Chilling', 'Herd & Cows', 'Payments'] as const).map((tab) => {
-                const isActive = activeTabFilter === tab;
-                return (
-                  <Pressable
-                    key={tab}
-                    onPress={() => setActiveTabFilter(tab)}
-                    style={[styles.filterPill, isActive && styles.filterPillActive]}
-                  >
-                    <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
-                      {tab}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
           </View>
 
           {/* URGENT EXECUTIVE AUDIT BANNER */}
@@ -479,124 +469,83 @@ export default function UnionDashboard() {
               NEW FEATURE 1: TODAY'S TOTAL LITRES & INCOME ANALYSIS (FINANCIAL SUMMARY)
              ========================================================================= */}
           <View style={[styles.cognifyCard, styles.incomeAnalyticsCard]}>
+            {/* Header: Icon + Titles (aligned together) & Gross Procurement Value Badge */}
             <View style={[styles.incomeHeaderRow, isMobile && styles.mobileIncomeHeaderRow]}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={styles.incomeBadgeIcon}>
-                    <Ionicons name="cash" size={18} color="#16A34A" />
-                  </View>
-                  <Text style={styles.analyticsTitle}>Today's Milk Procurement & Income</Text>
+              <View style={styles.incomeHeaderLeftGroup}>
+                <View style={[styles.incomeBadgeIcon, { backgroundColor: isDark ? '#143C22' : '#DCFCE7' }]}>
+                  <Ionicons name="cash" size={20} color="#16A34A" />
                 </View>
-                <Text style={styles.analyticsSubtitle}>
-                  Realized District Value based on {todayLitres.toFixed(1)} L Intake @ ₹{procurementRatePerLitre.toFixed(2)}/L Tariff
-                </Text>
+                <View style={styles.incomeHeaderTitleContainer}>
+                  <Text style={styles.analyticsTitle}>Today's Milk Procurement & Income</Text>
+                  <Text style={styles.analyticsSubtitle}>
+                    Realized District Value based on {todayLitres.toFixed(1)} L Intake @ ₹{procurementRatePerLitre.toFixed(2)}/L Aavin Tariff
+                  </Text>
+                </View>
               </View>
 
               <View style={[styles.incomeStatBadge, isMobile && styles.mobileIncomeStatBadge]}>
+                <View style={styles.incomeStatBadgeLabelCol}>
+                  <Text style={styles.incomeStatBadgeSub}>Gross Procurement Value</Text>
+                  <Text style={styles.incomeStatBadgeTariff}>Intake: {todayLitres.toFixed(0)} L @ ₹{procurementRatePerLitre.toFixed(1)}/L</Text>
+                </View>
                 <Text style={styles.incomeStatBadgeText}>₹{todayIncomeRevenue.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeStatBadgeSub}>Gross Procurement Value</Text>
               </View>
             </View>
 
-            {/* Income Distribution Breakdown */}
+            {/* Income Distribution Breakdown (3 Balanced Columns / Stacked on Mobile) */}
             <View style={[styles.incomeBreakdownGrid, isMobile && styles.mobileIncomeBreakdownGrid]}>
               {/* Box 1: Farmer DBT Payout (85%) */}
               <View style={[styles.incomeBoxItem, isMobile && styles.mobileIncomeBoxItem, { backgroundColor: isDark ? '#0E2819' : '#F0FDF4', borderColor: isDark ? '#166534' : '#BBF7D0' }]}>
-                {isMobile ? (
-                  <>
-                    <View style={styles.mobileIncomeBoxLeft}>
-                      <View style={[styles.mobileIncomeIconBadge, { backgroundColor: isDark ? '#143C22' : '#DCFCE7' }]}>
-                        <Ionicons name="people" size={18} color="#16A34A" />
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={styles.incomeBoxLabel}>Direct Farmer DBT Payout</Text>
-                        <Text style={styles.incomeBoxSub}>Canara & SBI direct credit</Text>
-                      </View>
-                    </View>
-                    <View style={styles.mobileIncomeBoxRight}>
-                      <Text style={styles.incomeBoxValue}>₹{farmerPayoutShare.toLocaleString('en-IN')}</Text>
-                      <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#143C22' : '#DCFCE7' }]}>
-                        <Text style={[styles.incomeBoxTag, { color: isDark ? '#4ADE80' : '#15803D' }]}>85% Share</Text>
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.incomeBoxTop}>
-                      <Ionicons name="people" size={16} color="#16A34A" />
-                      <Text style={[styles.incomeBoxTag, { color: isDark ? '#4ADE80' : '#15803D' }]}>85% Share</Text>
-                    </View>
-                    <Text style={styles.incomeBoxValue}>₹{farmerPayoutShare.toLocaleString('en-IN')}</Text>
-                    <Text style={styles.incomeBoxLabel}>Direct Farmer DBT Payout</Text>
-                    <Text style={styles.incomeBoxSub}>Direct credit to Canara / SBI accounts</Text>
-                  </>
-                )}
+                <View style={styles.incomeBoxTopRow}>
+                  <View style={[styles.incomeBoxIconBadge, { backgroundColor: isDark ? '#143C22' : '#DCFCE7' }]}>
+                    <Ionicons name="people" size={18} color="#16A34A" />
+                  </View>
+                  <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#143C22' : '#DCFCE7' }]}>
+                    <Text style={[styles.incomeBoxTagText, { color: isDark ? '#4ADE80' : '#15803D' }]}>85% Share</Text>
+                  </View>
+                </View>
+
+                <View style={styles.incomeBoxBody}>
+                  <Text style={styles.incomeBoxValue}>₹{farmerPayoutShare.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.incomeBoxLabel} numberOfLines={1}>Direct Farmer DBT Payout</Text>
+                  <Text style={styles.incomeBoxSub} numberOfLines={1}>Direct credit to Canara / SBI accounts</Text>
+                </View>
               </View>
 
               {/* Box 2: Tanker Logistics (10%) */}
               <View style={[styles.incomeBoxItem, isMobile && styles.mobileIncomeBoxItem, { backgroundColor: isDark ? '#0E2038' : '#EFF6FF', borderColor: isDark ? '#1E40AF' : '#BFDBFE' }]}>
-                {isMobile ? (
-                  <>
-                    <View style={styles.mobileIncomeBoxLeft}>
-                      <View style={[styles.mobileIncomeIconBadge, { backgroundColor: isDark ? '#132C4E' : '#DBEAFE' }]}>
-                        <Ionicons name="bus" size={18} color="#2563EB" />
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={styles.incomeBoxLabel}>Insulated Tanker Logistics</Text>
-                        <Text style={styles.incomeBoxSub}>Transit & chill transport</Text>
-                      </View>
-                    </View>
-                    <View style={styles.mobileIncomeBoxRight}>
-                      <Text style={styles.incomeBoxValue}>₹{logisticsShare.toLocaleString('en-IN')}</Text>
-                      <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#132C4E' : '#DBEAFE' }]}>
-                        <Text style={[styles.incomeBoxTag, { color: isDark ? '#60A5FA' : '#1D4ED8' }]}>10% Share</Text>
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.incomeBoxTop}>
-                      <Ionicons name="bus" size={16} color="#2563EB" />
-                      <Text style={[styles.incomeBoxTag, { color: isDark ? '#60A5FA' : '#1D4ED8' }]}>10% Share</Text>
-                    </View>
-                    <Text style={styles.incomeBoxValue}>₹{logisticsShare.toLocaleString('en-IN')}</Text>
-                    <Text style={styles.incomeBoxLabel}>Insulated Tanker Logistics</Text>
-                    <Text style={styles.incomeBoxSub}>Transit allowance & chill transport</Text>
-                  </>
-                )}
+                <View style={styles.incomeBoxTopRow}>
+                  <View style={[styles.incomeBoxIconBadge, { backgroundColor: isDark ? '#132C4E' : '#DBEAFE' }]}>
+                    <Ionicons name="bus" size={18} color="#2563EB" />
+                  </View>
+                  <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#132C4E' : '#DBEAFE' }]}>
+                    <Text style={[styles.incomeBoxTagText, { color: isDark ? '#60A5FA' : '#1D4ED8' }]}>10% Share</Text>
+                  </View>
+                </View>
+
+                <View style={styles.incomeBoxBody}>
+                  <Text style={styles.incomeBoxValue}>₹{logisticsShare.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.incomeBoxLabel} numberOfLines={1}>Insulated Tanker Logistics</Text>
+                  <Text style={styles.incomeBoxSub} numberOfLines={1}>Transit allowance & chill transport</Text>
+                </View>
               </View>
 
               {/* Box 3: Society Handling Commission (5%) */}
               <View style={[styles.incomeBoxItem, isMobile && styles.mobileIncomeBoxItem, { backgroundColor: isDark ? '#231438' : '#FAF5FF', borderColor: isDark ? '#6B21A8' : '#E9D5FF' }]}>
-                {isMobile ? (
-                  <>
-                    <View style={styles.mobileIncomeBoxLeft}>
-                      <View style={[styles.mobileIncomeIconBadge, { backgroundColor: isDark ? '#331B50' : '#F3E8FF' }]}>
-                        <Ionicons name="business" size={18} color="#9333EA" />
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={styles.incomeBoxLabel}>DCS Handling Commission</Text>
-                        <Text style={styles.incomeBoxSub}>Testing & booth allowance</Text>
-                      </View>
-                    </View>
-                    <View style={styles.mobileIncomeBoxRight}>
-                      <Text style={styles.incomeBoxValue}>₹{societyIncentiveShare.toLocaleString('en-IN')}</Text>
-                      <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#331B50' : '#F3E8FF' }]}>
-                        <Text style={[styles.incomeBoxTag, { color: isDark ? '#C084FC' : '#7E22CE' }]}>5% Share</Text>
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.incomeBoxTop}>
-                      <Ionicons name="business" size={16} color="#9333EA" />
-                      <Text style={[styles.incomeBoxTag, { color: isDark ? '#C084FC' : '#7E22CE' }]}>5% Share</Text>
-                    </View>
-                    <Text style={styles.incomeBoxValue}>₹{societyIncentiveShare.toLocaleString('en-IN')}</Text>
-                    <Text style={styles.incomeBoxLabel}>DCS Handling Commission</Text>
-                    <Text style={styles.incomeBoxSub}>Booth operator testing allowance</Text>
-                  </>
-                )}
+                <View style={styles.incomeBoxTopRow}>
+                  <View style={[styles.incomeBoxIconBadge, { backgroundColor: isDark ? '#331B50' : '#F3E8FF' }]}>
+                    <Ionicons name="business" size={18} color="#9333EA" />
+                  </View>
+                  <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#331B50' : '#F3E8FF' }]}>
+                    <Text style={[styles.incomeBoxTagText, { color: isDark ? '#C084FC' : '#7E22CE' }]}>5% Share</Text>
+                  </View>
+                </View>
+
+                <View style={styles.incomeBoxBody}>
+                  <Text style={styles.incomeBoxValue}>₹{societyIncentiveShare.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.incomeBoxLabel} numberOfLines={1}>DCS Handling Commission</Text>
+                  <Text style={styles.incomeBoxSub} numberOfLines={1}>Booth operator testing allowance</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -1791,20 +1740,31 @@ const getStyles = (colors: ThemeColors, isDark: boolean, isMobile: boolean) => S
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
   },
   mobileIncomeHeaderRow: {
     flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  incomeHeaderLeftGroup: {
+    flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    flex: 1,
+    minWidth: 240,
+    gap: 12,
+  },
+  incomeHeaderTitleContainer: {
+    flex: 1,
   },
   incomeBadgeIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: isDark ? '#132E1D' : '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
   incomeStatBadge: {
     backgroundColor: isDark ? '#132E1D' : '#F0FDF4',
@@ -1814,19 +1774,30 @@ const getStyles = (colors: ThemeColors, isDark: boolean, isMobile: boolean) => S
     paddingHorizontal: 14,
     paddingVertical: 8,
     alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   mobileIncomeStatBadge: {
     width: '100%',
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  incomeStatBadgeLabelCol: {
+    alignItems: isMobile ? 'flex-start' : 'flex-end',
   },
   incomeStatBadgeText: {
-    fontSize: 22,
+    fontSize: isMobile ? 20 : 22,
     fontWeight: '900',
     color: isDark ? '#4ADE80' : '#15803D',
   },
   incomeStatBadgeSub: {
     fontSize: 10,
     fontWeight: '700',
+    color: isDark ? '#86EFAC' : '#166534',
+  },
+  incomeStatBadgeTariff: {
+    fontSize: 10,
+    fontWeight: '600',
     color: isDark ? '#86EFAC' : '#166534',
     marginTop: 1,
   },
@@ -1837,66 +1808,61 @@ const getStyles = (colors: ThemeColors, isDark: boolean, isMobile: boolean) => S
   },
   mobileIncomeBreakdownGrid: {
     flexDirection: 'column',
-    gap: 8,
+    gap: 10,
   },
   incomeBoxItem: {
     flex: 1,
-    minWidth: 160,
+    minWidth: isMobile ? '100%' : 180,
     borderWidth: 1,
     borderRadius: 16,
     padding: 14,
+    minHeight: 145,
+    justifyContent: 'space-between',
   },
   mobileIncomeBoxItem: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    padding: 14,
+    minHeight: 120,
+    gap: 10,
+  },
+  incomeBoxTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-  },
-  mobileIncomeBoxLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
+    marginBottom: 8,
   },
-  mobileIncomeIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  incomeBoxIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mobileIncomeBoxRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
   incomeBoxTagBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
-  incomeBoxTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  incomeBoxTag: {
+  incomeBoxTagText: {
     fontSize: 10,
     fontWeight: '800',
   },
+  incomeBoxBody: {
+    gap: 2,
+  },
   incomeBoxValue: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
     color: colors.text,
-    marginVertical: 2,
   },
   incomeBoxLabel: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.text,
   },
   incomeBoxSub: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: colors.textSecondary,
     marginTop: 1,
   },

@@ -38,7 +38,7 @@ import {
 } from '../data/seedData';
 import { WorkflowApi } from '../services/workflowApi';
 
-const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v5';
+const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v6';
 
 interface AavinState {
   farmers: Farmer[];

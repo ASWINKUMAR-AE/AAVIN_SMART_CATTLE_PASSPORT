@@ -14,8 +14,10 @@ import {
   formatLitres, 
   getFarmerAnalyticsById 
 } from '../../services/bmcAnalyticsService';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 
 export default function FarmerAnalyticsScreen() {
+  const isDesktop = useIsDesktop();
   const { farmerId, societyId, bmcId } = useLocalSearchParams<{ 
     farmerId: string; 
     societyId?: string; 
@@ -120,7 +122,7 @@ export default function FarmerAnalyticsScreen() {
         onBack={handleBackToSociety}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.desktopScrollContent]} showsVerticalScrollIndicator={false}>
         {/* 1. Farmer Profile Card */}
         <Card style={styles.profileCard}>
           <View style={styles.profileHeaderRow}>
@@ -520,6 +522,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+  desktopScrollContent: {
+    width: '100%',
+    maxWidth: 1040,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 80,
   },
   emptyContainer: {
     flex: 1,

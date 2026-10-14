@@ -56,7 +56,7 @@ export default function UnionLayout() {
 
       {/* 5. Profile */}
       <Tabs.Screen
-        name="profile"
+        name="union-profile"
         options={{
           title: 'Profile',
           headerShown: false,
