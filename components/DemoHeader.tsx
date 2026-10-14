@@ -11,6 +11,7 @@ import { UserRole } from '../types/aavin';
 
 import { useTranslation } from '../context/LanguageContext';
 import { useScroll } from '../context/ScrollContext';
+import { IndicTransLanguageSwitch } from './ui/IndicTransLanguageSwitch';
 
 interface DemoHeaderProps {
   title?: string;
@@ -151,14 +152,8 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, showBack = false,
           </View>
 
           <View style={styles.rightIconsRow}>
-            {/* Quick Language Toggle */}
-            <Pressable
-              style={styles.langBtn}
-              onPress={toggleLanguage}
-              accessibilityLabel="Switch Language"
-            >
-              <Text style={styles.langBtnText}>{language === 'en' ? 'தமிழ்' : 'EN'}</Text>
-            </Pressable>
+            {/* AI4Bharat IndicTrans2 Language Switcher (eng_Latn ⇄ tam_Taml) */}
+            <IndicTransLanguageSwitch variant="compact" />
 
             {/* Notification Bell */}
             <Pressable

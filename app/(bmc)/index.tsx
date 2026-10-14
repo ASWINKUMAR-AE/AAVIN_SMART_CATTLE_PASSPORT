@@ -1,5 +1,16 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  ScrollView, 
+  Pressable, 
+  RefreshControl, 
+  TextInput,
+  useWindowDimensions,
+  Platform,
+  ImageBackground 
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +21,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 
+type SocietyFilter = 'all' | 'active' | 'inactive' | 'pending' | 'submitted' | 'discrepancy';
+
 export default function BMCDashboard() {
   const { user } = useAuth();
   const { 
@@ -18,12 +31,25 @@ export default function BMCDashboard() {
     bmcDeliveries, 
     discrepancyCases, 
     getBmcStats,
-    bmcReceipts 
+    getSocietyDetailedStats,
+    bmcReceipts,
+    societyIncomeRecords 
   } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+
+  // Responsive layout: 2 columns on mobile (<768px), 4 columns on web/desktop (>=768px)
+  const isWeb = Platform.OS === 'web';
+  const isWebOrDesktop = (isWeb && width >= 768) || width >= 992;
+  const numCols = isWebOrDesktop ? 4 : 2;
+  const overviewCardWidth = (isWeb
+    ? (isWebOrDesktop ? 'calc(25% - 8px)' : 'calc(50% - 6px)')
+    : Math.floor((width - 32 - (numCols - 1) * 10) / numCols)) as any;
 
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [societyFilter, setSocietyFilter] = useState<SocietyFilter>('all');
 
   const bmcId = user?.associatedId || 'BMC001';
   const bmc = bmcs.find(b => b.id === bmcId) || bmcs[0];
@@ -33,25 +59,192 @@ export default function BMCDashboard() {
   const deliveries = bmcDeliveries.filter(d => d.bmcId === bmc.id);
   const pendingArrivals = deliveries.filter(d => d.status === 'pending_arrival');
   const discrepancies = discrepancyCases.filter(c => c.bmcId === bmc.id);
-  const openDiscrepancies = discrepancies.filter(c => c.status === 'open' || c.status === 'under_investigation' || c.status === 'escalated_to_union');
+  const openDiscrepancies = discrepancies.filter(
+    c => c.status === 'open' || c.status === 'under_investigation' || c.status === 'escalated_to_union'
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 400);
+    setTimeout(() => setRefreshing(false), 300);
   };
+
+  // Filtered assigned societies with detailed stats
+  const processedSocieties = useMemo(() => {
+    return assignedBooths.map(society => {
+      const detail = getSocietyDetailedStats(society.id);
+      const delivery = deliveries.find(d => d.boothId === society.id && d.collectionDate === '2026-10-12');
+      return {
+        ...society,
+        detail,
+        hasPendingDelivery: delivery?.status === 'pending_arrival',
+        isSubmitted: delivery?.status !== undefined && delivery?.status !== 'pending_arrival',
+        hasDiscrepancy: detail.unresolvedDiscrepanciesCount > 0 || detail.reconciliationStatus === 'variance',
+      };
+    });
+  }, [assignedBooths, deliveries, getSocietyDetailedStats]);
+
+  const filteredSocieties = useMemo(() => {
+    return processedSocieties.filter(s => {
+      // Search
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q || 
+        s.name.toLowerCase().includes(q) || 
+        s.code.toLowerCase().includes(q) || 
+        s.village.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q);
+
+      if (!matchesSearch) return false;
+
+      // Filter chips
+      if (societyFilter === 'active') return s.detail.isActive;
+      if (societyFilter === 'inactive') return !s.detail.isActive;
+      if (societyFilter === 'pending') return s.hasPendingDelivery;
+      if (societyFilter === 'submitted') return s.isSubmitted;
+      if (societyFilter === 'discrepancy') return s.hasDiscrepancy;
+
+      return true;
+    });
+  }, [processedSocieties, searchQuery, societyFilter]);
+
+  // Operations & Governance Overview: dynamic n-cards configuration
+  interface OverviewCardItem {
+    id: string;
+    title: string;
+    subtitle: string;
+    value: string | number;
+    valueSecondary?: string;
+    valueColor?: string;
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    iconColor: string;
+    badgeText?: string;
+    badgeBg?: string;
+    badgeColor?: string;
+    onPress: () => void;
+  }
+
+  const summaryCards: OverviewCardItem[] = useMemo(() => [
+    {
+      id: 'registered_societies',
+      icon: 'business',
+      iconColor: colors.primary,
+      value: stats.registeredBoothsCount,
+      title: 'Registered Societies',
+      subtitle: 'Feeder societies assigned',
+      onPress: () => setSocietyFilter('all'),
+    },
+    {
+      id: 'active_status',
+      icon: 'radio',
+      iconColor: '#16A34A',
+      badgeText: `${stats.activeBoothsCount} Active`,
+      badgeBg: '#DCFCE7',
+      badgeColor: '#166534',
+      value: stats.activeBoothsCount,
+      valueSecondary: `/ ${stats.inactiveBoothsCount} Inactive`,
+      title: 'Active / Inactive Status',
+      subtitle: 'Supplying this cycle',
+      onPress: () => setSocietyFilter(societyFilter === 'active' ? 'inactive' : 'active'),
+    },
+    {
+      id: 'today_collected',
+      icon: 'water',
+      iconColor: '#0284C7',
+      value: `${stats.todayCollected.toFixed(1)} L`,
+      valueColor: '#0284C7',
+      title: 'Total Milk Collected Today',
+      subtitle: 'Society weigh scales',
+      onPress: () => router.push('/(bmc)/reports'),
+    },
+    {
+      id: 'today_received',
+      icon: 'flask',
+      iconColor: colors.primary,
+      value: `${stats.todayReceived.toFixed(1)} L`,
+      valueColor: colors.primary,
+      title: 'Milk Received at BMC',
+      subtitle: 'Chilling flow meter verified',
+      onPress: () => router.push('/(bmc)/receive-milk'),
+    },
+    {
+      id: 'dispatched_to_union',
+      icon: 'arrow-up-circle',
+      iconColor: '#7C3AED',
+      value: `${stats.todayDispatchedToUnion.toFixed(1)} L`,
+      valueColor: '#7C3AED',
+      title: 'Reported to Union',
+      subtitle: 'Consolidated submissions',
+      onPress: () => router.push('/(bmc)/submit-union-report'),
+    },
+    {
+      id: 'net_discrepancy',
+      icon: 'swap-vertical',
+      iconColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A',
+      badgeText: stats.totalDifference > 0 ? 'Variance' : 'Reconciled',
+      badgeBg: stats.totalDifference > 0 ? '#FEE2E2' : '#DCFCE7',
+      badgeColor: stats.totalDifference > 0 ? '#991B1B' : '#166534',
+      value: stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L` : '0.0 L',
+      valueColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A',
+      title: 'Net Discrepancy Litres',
+      subtitle: 'Difference requiring review',
+      onPress: () => router.push('/(bmc)/investigations'),
+    },
+    {
+      id: 'recorded_income',
+      icon: 'wallet',
+      iconColor: '#059669',
+      value: `₹${stats.totalRecordedIncome.toLocaleString('en-IN')}`,
+      valueColor: '#059669',
+      title: 'Recorded Society Income',
+      subtitle: 'Total ledger transactions',
+      onPress: () => router.push('/(bmc)/society-income'),
+    },
+    {
+      id: 'submitted_to_union',
+      icon: 'receipt',
+      iconColor: '#2563EB',
+      value: `₹${stats.totalSubmittedToUnionIncome.toLocaleString('en-IN')}`,
+      valueColor: '#2563EB',
+      title: 'Amount Reported to Union',
+      subtitle: 'In submitted BMC receipts',
+      onPress: () => router.push('/(bmc)/submit-union-report'),
+    },
+    {
+      id: 'pending_reports',
+      icon: 'hourglass',
+      iconColor: '#D97706',
+      badgeText: stats.pendingDeliveriesCount > 0 ? 'Pending' : 'Done',
+      badgeBg: stats.pendingDeliveriesCount > 0 ? '#FEF3C7' : '#F1F5F9',
+      badgeColor: stats.pendingDeliveriesCount > 0 ? '#B45309' : '#475569',
+      value: stats.pendingDeliveriesCount,
+      valueColor: stats.pendingDeliveriesCount > 0 ? '#D97706' : colors.text,
+      title: 'Pending Society Reports',
+      subtitle: 'Dispatches awaiting intake',
+      onPress: () => router.push('/(bmc)/receive-milk'),
+    },
+    {
+      id: 'union_signoff',
+      icon: 'shield-checkmark',
+      iconColor: '#4338CA',
+      value: stats.reportsAwaitingUnionCount,
+      valueColor: '#4338CA',
+      title: 'Awaiting Union Sign-Off',
+      subtitle: 'Under review by Union GM',
+      onPress: () => router.push('/(bmc)/submit-union-report'),
+    },
+  ], [stats, societyFilter, colors, router]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={bmc.name}
-        subtitle={`${assignedBooths.length} Feeder Societies • Capacity: ${bmc.capacityLitres.toLocaleString()} L`}
+        subtitle={`${assignedBooths.length} Feeder Societies • Chilling Capacity: ${bmc.capacityLitres.toLocaleString()} L`}
       />
 
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Pending Deliveries Alert Banner */}
+        {/* Urgent Action Banners */}
         {pendingArrivals.length > 0 && (
           <View style={[styles.alertBanner, { backgroundColor: '#E0F2FE', borderColor: '#38BDF8' }]}>
             <Ionicons name="time" size={24} color="#0284C7" />
@@ -60,7 +253,7 @@ export default function BMCDashboard() {
                 {pendingArrivals.length} Society Delivery Awaiting Measurement
               </Text>
               <Text style={[Typography.caption1, { color: '#0284C7', marginTop: 2 }]}>
-                {pendingArrivals[0].boothName} dispatched {pendingArrivals[0].declaredDispatchQuantity} L. Confirm arrival volume.
+                {pendingArrivals[0].boothName} dispatched {pendingArrivals[0].declaredDispatchQuantity} L. Weigh-scale intake pending.
               </Text>
             </View>
             <Button
@@ -71,7 +264,6 @@ export default function BMCDashboard() {
           </View>
         )}
 
-        {/* Active Discrepancy Alert */}
         {openDiscrepancies.length > 0 && (
           <View style={[styles.alertBanner, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
             <Ionicons name="alert-circle" size={24} color="#DC2626" />
@@ -92,158 +284,272 @@ export default function BMCDashboard() {
           </View>
         )}
 
-        {/* Signature Hero Dark Navy Card (Reference Wallet UI) */}
-        <View style={styles.heroNavyCard}>
-          <View style={styles.heroCardHeaderRow}>
-            <View style={styles.heroHeaderPill}>
-              <Text style={styles.heroHeaderPillText}>BMC Intake Volume ›</Text>
+        {/* Signature Hero Dark Navy Card with Assets bmc.png Background & Dark Overlay */}
+        <ImageBackground
+          source={require('../../assets/bmc.png')}
+          style={styles.heroNavyCard}
+          imageStyle={styles.heroBgImage}
+          resizeMode="cover"
+        >
+          {/* Dark Color Layer above image */}
+          <View style={styles.darkOverlayLayer}>
+            <View style={styles.heroCardHeaderRow}>
+              <View style={styles.heroHeaderPill}>
+                <Text style={styles.heroHeaderPillText}>BMC Intake Volume ›</Text>
+              </View>
+              <View style={[styles.heroStatusBadge, { backgroundColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
+                <Text style={styles.heroStatusBadgeText}>
+                  {stats.totalDifference > 0 ? '⚠️ VARIANCE DETECTED' : '✓ BALANCED'}
+                </Text>
+              </View>
             </View>
-            <View style={[styles.heroStatusBadge, { backgroundColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
-              <Text style={styles.heroStatusBadgeText}>
-                {stats.totalDifference > 0 ? '⚠️ VARIANCE DETECTED' : '✓ BALANCED'}
-              </Text>
-            </View>
-          </View>
 
-          <Text style={styles.heroBalanceNumber}>
-            {stats.todayReceived.toFixed(1)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
-          </Text>
-
-          <View style={styles.heroSubRow}>
-            <View style={[styles.growthPill, { backgroundColor: stats.totalDifference > 0 ? 'rgba(220, 38, 38, 0.2)' : 'rgba(22, 163, 74, 0.2)' }]}>
-              <Text style={[styles.growthPillText, { color: stats.totalDifference > 0 ? '#F87171' : '#4ADE80' }]}>
-                {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L Diff` : '100% Reconciled'}
-              </Text>
-            </View>
-            <Text style={styles.heroSubText}>
-              Society Declared: {stats.todayDeclared.toFixed(1)} L
+            <Text style={styles.heroBalanceNumber}>
+              {stats.todayReceived.toFixed(1)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
             </Text>
+
+            <View style={styles.heroSubRow}>
+              <View style={[styles.growthPill, { backgroundColor: stats.totalDifference > 0 ? 'rgba(220, 38, 38, 0.2)' : 'rgba(22, 163, 74, 0.2)' }]}>
+                <Text style={[styles.growthPillText, { color: stats.totalDifference > 0 ? '#F87171' : '#4ADE80' }]}>
+                  {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L Diff` : '100% Reconciled'}
+                </Text>
+              </View>
+              <Text style={styles.heroSubText}>
+                Society Declared: {stats.todayDeclared.toFixed(1)} L • Income: ₹{stats.totalRecordedIncome.toLocaleString('en-IN')}
+              </Text>
+            </View>
           </View>
+        </ImageBackground>
 
-          {/* 4 Circular Action Buttons (from Reference UI: Down, Up-Right, Swap, Plus) */}
-          <View style={styles.heroActionsRow}>
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/receive-milk')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Measure</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/daily-summary')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Summary</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/investigations')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Audit</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/receive-milk')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="add" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Intake</Text>
-            </Pressable>
-          </View>
+        {/* Section 2: Requirement #2 — Ten Summary Metric Cards */}
+        <View style={styles.sectionTitleRow}>
+          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+            📊 Operations & Governance Overview
+          </Text>
+          <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+            Real-time Database Audit
+          </Text>
         </View>
 
-        {/* Big Reconciliation Metric Cards */}
-        <View style={styles.metricsRow}>
-          {/* Declared vs Received */}
-          <Card style={styles.metricCard}>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
-              SOCIETY DECLARED
-            </Text>
-            <Text style={[styles.metricNumber, { color: colors.text }]}>
-              {stats.todayDeclared.toFixed(1)} L
+        <View style={styles.tenCardsGrid}>
+          {summaryCards.map((card) => (
+            <Pressable 
+              key={card.id}
+              style={[styles.tenCardWrapper, { width: overviewCardWidth }]} 
+              onPress={card.onPress}
+            >
+              <Card style={styles.tenCard}>
+                <View style={styles.tenCardTop}>
+                  <Ionicons name={card.icon} size={18} color={card.iconColor} />
+                  {card.badgeText ? (
+                    <View style={[styles.pillBadge, { backgroundColor: card.badgeBg }]}>
+                      <Text style={[styles.pillText, { color: card.badgeColor }]}>{card.badgeText}</Text>
+                    </View>
+                  ) : (
+                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                  )}
+                </View>
+                <Text style={[styles.tenCardNumber, card.valueColor ? { color: card.valueColor } : null]}>
+                  {card.value} {card.valueSecondary ? <Text style={{ fontSize: 13, color: colors.textMuted }}>{card.valueSecondary}</Text> : null}
+                </Text>
+                <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
+                  {card.title}
+                </Text>
+                <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                  {card.subtitle}
+                </Text>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Section 3: Requirement #3 — Society Management Directory */}
+        <View style={styles.sectionHeaderWithAction}>
+          <View>
+            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
+              🏢 Assigned Feeder Societies ({assignedBooths.length})
             </Text>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Total Feeder Dispatches
+              Search, filter and inspect society dashboards
             </Text>
-          </Card>
+          </View>
 
-          <Card style={styles.metricCard}>
-            <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
-              BMC RECEIVED
-            </Text>
-            <Text style={[styles.metricNumber, { color: colors.primary }]}>
-              {stats.todayReceived.toFixed(1)} L
-            </Text>
-            <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '600' }]}>
-              Actual Measured Vol
-            </Text>
-          </Card>
-
-          <Card style={styles.metricCard}>
-            <Text style={[Typography.caption2, { color: '#DC2626', fontWeight: '700' }]}>
-              NET VARIANCE
-            </Text>
-            <Text 
-              style={[
-                styles.metricNumber, 
-                { color: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }
-              ]}
-            >
-              {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L` : '0.0 L'}
-            </Text>
-            <Text style={[Typography.caption2, { color: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
-              {stats.totalDifference > 0 ? 'Shortfall' : 'Balanced'}
-            </Text>
-          </Card>
+          <Button
+            title="+ Record Income"
+            size="sm"
+            variant="outline"
+            onPress={() => router.push('/(bmc)/society-income')}
+          />
         </View>
 
-        {/* Assigned Feeder Societies */}
-        <Card style={styles.sectionCard}>
-          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Assigned Feeder Societies ({assignedBooths.length})
-          </Text>
+        {/* Search Bar */}
+        <View style={[styles.searchBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search by Society Name, Code, ID, or Village..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <Pressable onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
 
-          {assignedBooths.map((b) => {
-            const boothDelivery = deliveries.find(d => d.boothId === b.id && d.collectionDate === '2026-10-12');
+        {/* Filter Pills */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsContainer}>
+          {[
+            { id: 'all', label: `All (${assignedBooths.length})` },
+            { id: 'active', label: `Active (${stats.activeBoothsCount})` },
+            { id: 'inactive', label: `Inactive (${stats.inactiveBoothsCount})` },
+            { id: 'pending', label: `Reports Pending (${stats.pendingDeliveriesCount})` },
+            { id: 'submitted', label: `Submitted Today` },
+            { id: 'discrepancy', label: `Discrepancies (${stats.activeDiscrepanciesCount})` },
+          ].map(f => {
+            const isActive = societyFilter === f.id;
             return (
-              <View key={b.id} style={[styles.boothRow, { borderBottomColor: colors.border }]}>
-                <View style={[styles.boothIcon, { backgroundColor: colors.primaryLight }]}>
-                  <Ionicons name="business" size={20} color={colors.primary} />
-                </View>
-
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                    {b.name}
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Code: {b.code} • {b.village} • In-Charge: {b.operatorName}
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Status: {boothDelivery ? (boothDelivery.status === 'pending_arrival' ? 'Awaiting Measurement' : `Measured (${boothDelivery.measuredReceivedQuantity}L)`) : 'No Dispatch Today'}
-                  </Text>
-                </View>
-
-                <View style={styles.boothAction}>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                </View>
-              </View>
+              <Pressable
+                key={f.id}
+                style={[
+                  styles.filterPill,
+                  isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  !isActive && { backgroundColor: colors.card, borderColor: colors.border }
+                ]}
+                onPress={() => setSocietyFilter(f.id as SocietyFilter)}
+              >
+                <Text style={[
+                  Typography.caption2,
+                  { fontWeight: '700' },
+                  isActive ? { color: '#FFFFFF' } : { color: colors.textSecondary }
+                ]}>
+                  {f.label}
+                </Text>
+              </Pressable>
             );
           })}
-        </Card>
+        </ScrollView>
 
-        {/* Quick Operations Actions */}
+        {/* Societies List */}
+        {filteredSocieties.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Ionicons name="search-outline" size={36} color={colors.textMuted} />
+            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginTop: 8 }]}>
+              No Societies Found
+            </Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
+              No assigned feeder societies match the query "{searchQuery}" and active filter.
+            </Text>
+            <Button
+              title="Reset Filters"
+              size="sm"
+              variant="outline"
+              style={{ marginTop: 12 }}
+              onPress={() => { setSearchQuery(''); setSocietyFilter('all'); }}
+            />
+          </Card>
+        ) : (
+          filteredSocieties.map((society) => {
+            const detail = society.detail;
+            return (
+              <Pressable
+                key={society.id}
+                onPress={() => router.push({ pathname: '/(bmc)/society-details', params: { societyId: society.id } })}
+              >
+                <Card style={styles.societyCard}>
+                  {/* Card Header */}
+                  <View style={styles.societyCardHeader}>
+                    <View style={[styles.societyIconBadge, { backgroundColor: colors.primaryLight }]}>
+                      <Ionicons name="business" size={20} color={colors.primary} />
+                    </View>
+
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <View style={styles.societyNameRow}>
+                        <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
+                          {society.name}
+                        </Text>
+                        <View style={[styles.statusBadge, { 
+                          backgroundColor: detail.isActive ? '#DCFCE7' : '#F1F5F9' 
+                        }]}>
+                          <Text style={[styles.statusText, { 
+                            color: detail.isActive ? '#166534' : '#64748B' 
+                          }]}>
+                            {detail.isActive ? 'ACTIVE' : 'INACTIVE'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                        ID: {society.id} • Code: {society.code} • {society.village}, {society.taluk}
+                      </Text>
+                      <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                        In-Charge: {society.operatorName} • 📞 {society.phone} • Assigned BMC: {bmc.name}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Volume Grid */}
+                  <View style={[styles.societyVolGrid, { borderTopColor: colors.border }]}>
+                    <View style={styles.volCell}>
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>TODAY</Text>
+                      <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                        {detail.dailyMilk > 0 ? `${detail.dailyMilk} L` : 'Pending'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.volCell}>
+                      <Text style={[Typography.caption2, { color: colors.primary }]}>MONTH</Text>
+                      <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
+                        {detail.monthlyTotalMilk.toLocaleString()} L
+                      </Text>
+                    </View>
+
+                    <View style={styles.volCell}>
+                      <Text style={[Typography.caption2, { color: '#7C3AED' }]}>YEAR</Text>
+                      <Text style={[Typography.subhead, { color: '#7C3AED', fontWeight: '800' }]}>
+                        {detail.yearlyTotalMilk.toLocaleString()} L
+                      </Text>
+                    </View>
+
+                    <View style={styles.volCell}>
+                      <Text style={[Typography.caption2, { color: '#059669' }]}>INCOME</Text>
+                      <Text style={[Typography.subhead, { color: '#059669', fontWeight: '800' }]}>
+                        ₹{detail.totalRecordedIncome.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Card Footer: Reconciliation & Submission Status */}
+                  <View style={[styles.societyFooter, { backgroundColor: '#F8FAFC' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons 
+                        name={detail.reconciliationStatus === 'variance' ? 'warning' : 'checkmark-circle'} 
+                        size={14} 
+                        color={detail.reconciliationStatus === 'variance' ? '#DC2626' : '#16A34A'} 
+                      />
+                      <Text style={[Typography.caption2, { 
+                        color: detail.reconciliationStatus === 'variance' ? '#B91C1C' : '#15803D',
+                        fontWeight: '700',
+                        marginLeft: 4,
+                      }]}>
+                        Reconciliation: {detail.reconciliationStatus.toUpperCase()}
+                        {detail.differenceLitres !== 0 ? ` (${detail.differenceLitres > 0 ? '-' : '+'}${Math.abs(detail.differenceLitres)}L)` : ''}
+                      </Text>
+                    </View>
+
+                    <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
+                      View Dashboard ›
+                    </Text>
+                  </View>
+                </Card>
+              </Pressable>
+            );
+          })
+        )}
+
+        {/* Quick Operations Actions Grid */}
         <View style={styles.actionGrid}>
           <Button
             title="📥 Confirm Milk Received (Intake)"
@@ -251,14 +557,14 @@ export default function BMCDashboard() {
             onPress={() => router.push('/(bmc)/receive-milk')}
           />
           <Button
-            title="🔍 View Discrepancies & Audit Cases"
+            title="📊 Multi-Society Comparison & Analytics"
             variant="secondary"
-            onPress={() => router.push('/(bmc)/investigations')}
+            onPress={() => router.push('/(bmc)/society-comparison')}
           />
           <Button
-            title="📋 Close BMC Daily Receipt for Union"
+            title="📋 Close Consolidated Report for Union"
             variant="outline"
-            onPress={() => router.push('/(bmc)/daily-summary')}
+            onPress={() => router.push('/(bmc)/submit-union-report')}
           />
         </View>
       </ScrollView>
@@ -282,51 +588,26 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
   },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  metricCard: {
-    flex: 1,
-    padding: 12,
-  },
-  metricNumber: {
-    fontSize: 18,
-    fontWeight: '900',
-    marginVertical: 4,
-  },
-  sectionCard: {
-    padding: 16,
-  },
-  boothRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  boothIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  boothAction: {
-    paddingLeft: 8,
-  },
-  actionGrid: {
-    gap: 10,
-    marginTop: 4,
-  },
   heroNavyCard: {
-    backgroundColor: '#0D1E36',
     borderRadius: 24,
-    padding: 18,
+    marginBottom: 4,
+    overflow: 'hidden',
     shadowColor: '#071325',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
+  },
+  heroBgImage: {
+    borderRadius: 24,
+    width: '100%',
+    height: '100%',
+  },
+  darkOverlayLayer: {
+    backgroundColor: 'rgba(8, 20, 38, 0.82)',
+    padding: 18,
+    borderRadius: 24,
+    width: '100%',
   },
   heroCardHeaderRow: {
     flexDirection: 'row',
@@ -365,7 +646,7 @@ const styles = StyleSheet.create({
   heroSubRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 2,
   },
   growthPill: {
     paddingHorizontal: 8,
@@ -382,32 +663,131 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  heroActionsRow: {
+  sectionTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.12)',
-    paddingTop: 14,
+    marginTop: 6,
   },
-  heroCircleAction: {
+  sectionHeaderWithAction: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    flex: 1,
+    marginTop: 10,
   },
-  circleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#162C4E',
+  tenCardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  tenCardWrapper: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  tenCard: {
+    padding: 12,
+    borderRadius: 14,
+  },
+  tenCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  tenCardNumber: {
+    fontSize: 19,
+    fontWeight: '900',
+    marginVertical: 4,
+  },
+  pillBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  pillText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  filterPillsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  societyCard: {
+    padding: 14,
+    borderRadius: 16,
+    marginBottom: 2,
+  },
+  societyCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  societyIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  circleBtnLabel: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
+  societyNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  societyVolGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    marginTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  volCell: {
+    alignItems: 'flex-start',
+  },
+  societyFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  emptyCard: {
+    padding: 24,
+    alignItems: 'center',
+    borderRadius: 14,
+  },
+  actionGrid: {
+    gap: 10,
+    marginTop: 6,
   },
 });

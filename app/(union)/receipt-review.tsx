@@ -34,9 +34,19 @@ export default function UnionReceiptReviewScreen() {
   const [selectedReceipt, setSelectedReceipt] = useState<BMCReceipt | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
+  const [actionType, setActionType] = useState<'reviewed_by_union' | 'returned_for_correction'>('reviewed_by_union');
+  const [bmcFilter, setBmcFilter] = useState<string>('all');
 
-  const handleOpenReview = (receipt: BMCReceipt) => {
+  const { bmcs } = useAavinStore();
+
+  const filteredReceipts = bmcReceipts.filter(r => {
+    if (bmcFilter !== 'all' && r.bmcId !== bmcFilter) return false;
+    return true;
+  });
+
+  const handleOpenReview = (receipt: BMCReceipt, type: 'reviewed_by_union' | 'returned_for_correction' = 'reviewed_by_union') => {
     setSelectedReceipt(receipt);
+    setActionType(type);
     setReviewNotes(receipt.unionReviewNotes || '');
   };
 
@@ -44,7 +54,7 @@ export default function UnionReceiptReviewScreen() {
     if (!selectedReceipt) return;
 
     if (!reviewNotes.trim()) {
-      Alert.alert('Notes Required', 'Please enter executive review findings or directives.');
+      Alert.alert('Notes Required', 'Please enter review findings or directives.');
       return;
     }
 
@@ -53,13 +63,14 @@ export default function UnionReceiptReviewScreen() {
       reviewBmcReceipt(
         selectedReceipt.id,
         reviewNotes.trim(),
-        user?.fullName || 'Dr. S. Sundaram (General Manager)'
+        user?.fullName || 'Dr. S. Sundaram (General Manager)',
+        actionType
       );
 
       setSelectedReceipt(null);
       Alert.alert(
-        'Executive Review Saved',
-        `Receipt #${selectedReceipt.id} marked as 'Reviewed by Union' with executive directives. Audit history preserved.`
+        actionType === 'reviewed_by_union' ? 'Consolidated Report Approved' : 'Report Returned for Correction',
+        `Receipt #${selectedReceipt.id} updated with executive directives. Audit history preserved.`
       );
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Could not save review.');
@@ -77,45 +88,88 @@ export default function UnionReceiptReviewScreen() {
         onBack={handleBackToHome}
       />
 
+      {/* BMC Filter Chips */}
+      <View style={styles.bmcFilterRow}>
+        <Pressable
+          style={[
+            styles.bmcFilterChip,
+            bmcFilter === 'all' && { backgroundColor: colors.primary, borderColor: colors.primary }
+          ]}
+          onPress={() => setBmcFilter('all')}
+        >
+          <Text style={[styles.filterChipText, bmcFilter === 'all' && { color: '#FFFFFF' }]}>
+            All BMCs ({bmcReceipts.length})
+          </Text>
+        </Pressable>
+
+        {bmcs.map(b => (
+          <Pressable
+            key={b.id}
+            style={[
+              styles.bmcFilterChip,
+              bmcFilter === b.id && { backgroundColor: colors.primary, borderColor: colors.primary }
+            ]}
+            onPress={() => setBmcFilter(b.id)}
+          >
+            <Text style={[styles.filterChipText, bmcFilter === b.id && { color: '#FFFFFF' }]}>
+              {b.name}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <FlatList
-        data={bmcReceipts}
+        data={filteredReceipts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No BMC Receipts"
-            message="No daily collection receipts have been submitted by BMC centers yet."
+            title="No BMC Receipts Found"
+            message="No collection receipts match the current BMC filter criteria."
             icon="document-text-outline"
           />
         }
         renderItem={({ item }) => {
-          const isPending = item.status === 'sent_to_union';
           const isReviewed = item.status === 'reviewed_by_union';
+          const isReturned = item.status === 'returned_for_correction';
           const linkedDeliveries = bmcDeliveries.filter(d => item.includedDeliveryIds.includes(d.id));
 
           return (
-            <Card style={[styles.card, item.hasDiscrepancies && { borderColor: '#F59E0B', borderWidth: 1.5 }]}>
+            <Card style={[
+              styles.card, 
+              item.hasDiscrepancies && { borderColor: '#F59E0B', borderWidth: 1.5 },
+              isReturned && { borderColor: '#EF4444', borderWidth: 1.5 }
+            ]}>
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
                     {item.id}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    BMC: {item.bmcName} • Date: {item.collectionDate}
+                    BMC: {item.bmcName} • Period: {item.reportingPeriodType ? item.reportingPeriodType.toUpperCase() : 'DAILY'} ({item.collectionDate})
                   </Text>
                 </View>
 
-                <View style={[styles.statusBadge, { backgroundColor: isReviewed ? '#DCFCE7' : '#FEF3C7', flexShrink: 0 }]}>
-                  <Text style={[styles.statusText, { color: isReviewed ? '#15803D' : '#B45309' }]}>
-                    {isReviewed ? 'REVIEWED & AUDITED' : 'PENDING REVIEW'}
+                <View style={[
+                  styles.statusBadge, 
+                  { 
+                    backgroundColor: isReviewed ? '#DCFCE7' : isReturned ? '#FEE2E2' : '#FEF3C7', 
+                    flexShrink: 0 
+                  }
+                ]}>
+                  <Text style={[
+                    styles.statusText, 
+                    { color: isReviewed ? '#15803D' : isReturned ? '#991B1B' : '#B45309' }
+                  ]}>
+                    {isReviewed ? 'APPROVED BY UNION' : isReturned ? 'RETURNED FOR CORRECTION' : 'PENDING REVIEW'}
                   </Text>
                 </View>
               </View>
 
-              {/* Volume Comparison Table */}
+              {/* Volume & Financial Grid */}
               <View style={[styles.volumeGrid, { borderTopColor: colors.border }]}>
                 <View style={styles.volItem}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Declared by Societies</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Declared Litres</Text>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>
                     {item.totalDeclaredQuantity.toFixed(1)} L
                   </Text>
@@ -146,55 +200,111 @@ export default function UnionReceiptReviewScreen() {
                 </View>
               </View>
 
-              {/* Linked Feeder Deliveries list preview */}
-              <View style={styles.linkedSection}>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 6 }]}>
-                  LINKED FEEDER DELIVERIES ({linkedDeliveries.length})
-                </Text>
-                {linkedDeliveries.map((d) => (
-                  <View key={d.id} style={styles.deliveryCard}>
-                    <View style={styles.deliveryTopRow}>
-                      <Text style={[Typography.caption1, { color: colors.primaryDark, fontWeight: '700', flex: 1, minWidth: 0, marginRight: 8 }]} numberOfLines={1}>
-                        • {d.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}
-                      </Text>
-                      <Text
-                        style={[
-                          Typography.caption2,
-                          {
-                            fontWeight: '800',
-                            color: (d.difference || 0) > 0 ? '#DC2626' : '#16A34A',
-                            flexShrink: 0
-                          }
-                        ]}
-                      >
-                        {d.difference !== undefined ? `${d.difference > 0 ? `-${d.difference}L` : 'OK'}` : ''}
-                      </Text>
-                    </View>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                      Declared: {d.declaredDispatchQuantity}L | Measured: {d.measuredReceivedQuantity || 'Pending'}L
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              {item.unionReviewNotes && (
-                <View style={[styles.reviewNotesBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-                  <Text style={[Typography.caption1, { color: '#166534', fontWeight: '800' }]}>
-                    GM DIRECTIVE: {item.unionReviewNotes}
-                  </Text>
-                  <Text style={[Typography.caption2, { color: '#15803D', marginTop: 2 }]}>
-                    Reviewed by: {item.reviewedBy || 'General Manager'} on {item.reviewedAt?.split('T')[0]}
+              {/* Financial Total if present */}
+              {item.totalRecordedIncome !== undefined && item.totalRecordedIncome > 0 && (
+                <View style={styles.incomeHighlightStrip}>
+                  <Ionicons name="cash-outline" size={16} color="#059669" />
+                  <Text style={[Typography.caption1, { color: '#047857', fontWeight: '800', marginLeft: 6 }]}>
+                    Recorded Society Income: ₹{item.totalRecordedIncome.toLocaleString('en-IN')}
                   </Text>
                 </View>
               )}
 
-              {/* Action */}
-              <Button
-                title={isReviewed ? "Update Directives / Notes" : "Audit & Review BMC Receipt"}
-                variant={isReviewed ? "outline" : "primary"}
-                onPress={() => handleOpenReview(item)}
-                style={{ marginTop: 12 }}
-              />
+              {/* Consolidated Society Breakdown if available */}
+              {item.societySummaries && item.societySummaries.length > 0 ? (
+                <View style={styles.linkedSection}>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 6 }]}>
+                    CONSOLIDATED FEEDER SOCIETIES ({item.societySummaries.length})
+                  </Text>
+                  {item.societySummaries.map((s) => (
+                    <View key={s.societyId} style={styles.deliveryCard}>
+                      <View style={styles.deliveryTopRow}>
+                        <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
+                          • {s.societyName}
+                        </Text>
+                        <Text style={[Typography.caption2, { 
+                          fontWeight: '800', 
+                          color: s.varianceLitres > 0 ? '#DC2626' : '#16A34A' 
+                        }]}>
+                          {s.varianceLitres > 0 ? `-${s.varianceLitres}L` : 'Balanced'}
+                        </Text>
+                      </View>
+                      <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                        Declared: {s.declaredLitres}L | Received: {s.receivedLitres}L | Income: ₹{s.recordedIncome.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.linkedSection}>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 6 }]}>
+                    LINKED FEEDER DELIVERIES ({linkedDeliveries.length})
+                  </Text>
+                  {linkedDeliveries.map((d) => (
+                    <View key={d.id} style={styles.deliveryCard}>
+                      <View style={styles.deliveryTopRow}>
+                        <Text style={[Typography.caption1, { color: colors.primaryDark, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
+                          • {d.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}
+                        </Text>
+                        <Text
+                          style={[
+                            Typography.caption2,
+                            {
+                              fontWeight: '800',
+                              color: (d.difference || 0) > 0 ? '#DC2626' : '#16A34A',
+                            }
+                          ]}
+                        >
+                          {d.difference !== undefined ? `${d.difference > 0 ? `-${d.difference}L` : 'OK'}` : ''}
+                        </Text>
+                      </View>
+                      <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                        Declared: {d.declaredDispatchQuantity}L | Measured: {d.measuredReceivedQuantity || 'Pending'}L
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {item.supervisorNotes && (
+                <View style={[styles.reviewNotesBox, { backgroundColor: '#F8FAFC', borderColor: colors.border }]}>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                    BMC SUPERVISOR REMARKS: "{item.supervisorNotes}"
+                  </Text>
+                </View>
+              )}
+
+              {item.unionReviewNotes && (
+                <View style={[styles.reviewNotesBox, { 
+                  backgroundColor: isReturned ? '#FEF2F2' : '#F0FDF4', 
+                  borderColor: isReturned ? '#FCA5A5' : '#BBF7D0' 
+                }]}>
+                  <Text style={[Typography.caption1, { color: isReturned ? '#991B1B' : '#166534', fontWeight: '800' }]}>
+                    GM DIRECTIVE: {item.unionReviewNotes}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: isReturned ? '#B91C1C' : '#15803D', marginTop: 2 }]}>
+                    Actioned by: {item.reviewedBy || 'General Manager'} on {item.reviewedAt?.split('T')[0]}
+                  </Text>
+                </View>
+              )}
+
+              {/* Action Buttons: Approve vs Return for Correction */}
+              <View style={styles.cardActionsRow}>
+                <Button
+                  title="✅ Approve Report"
+                  size="sm"
+                  variant="primary"
+                  style={{ flex: 1 }}
+                  onPress={() => handleOpenReview(item, 'reviewed_by_union')}
+                />
+                <Button
+                  title="⚠️ Return for Correction"
+                  size="sm"
+                  variant="outline"
+                  style={{ flex: 1 }}
+                  onPress={() => handleOpenReview(item, 'returned_for_correction')}
+                />
+              </View>
             </Card>
           );
         }}
@@ -208,20 +318,24 @@ export default function UnionReceiptReviewScreen() {
               <View style={styles.modalHeader}>
                 <View>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '900' }]}>
-                    Review BMC Receipt #{selectedReceipt.id}
+                    {actionType === 'reviewed_by_union' ? 'Approve BMC Report' : 'Return for Correction'}
                   </Text>
                   <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-                    {selectedReceipt.bmcName} • Net Received: {selectedReceipt.totalReceivedQuantity} L
+                    Receipt #{selectedReceipt.id} • {selectedReceipt.bmcName}
                   </Text>
                 </View>
-                <Pressable onPress={() => setSelectedReceipt(null)}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
+                <Pressable onPress={() => setSelectedReceipt(null)}>
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </Pressable>
               </View>
 
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>
-                Executive Directives / Findings *
+                Executive Directives & Audit Notes *
               </Text>
               <TextInput
-                placeholder="e.g. Approved for central dairy plant transfer. Investigation case DISC-101 referred for tanker seal inspection."
+                placeholder={actionType === 'reviewed_by_union' 
+                  ? "e.g. Approved for central dairy plant transfer and fortnight financial disbursement." 
+                  : "e.g. Clarification required on Melur society 12.5L variance before approval."}
                 placeholderTextColor={colors.textMuted}
                 value={reviewNotes}
                 onChangeText={setReviewNotes}
@@ -231,8 +345,9 @@ export default function UnionReceiptReviewScreen() {
               />
 
               <Button
-                title={reviewing ? "Saving..." : "Confirm Review & Record Audit Entry"}
+                title={reviewing ? "Saving Decision..." : actionType === 'reviewed_by_union' ? "Confirm Union Approval" : "Return to BMC for Correction"}
                 size="lg"
+                variant={actionType === 'reviewed_by_union' ? 'primary' : 'destructive'}
                 loading={reviewing}
                 onPress={handleSaveReview}
                 style={{ marginTop: 16 }}
@@ -248,6 +363,26 @@ export default function UnionReceiptReviewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  bmcFilterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+    gap: 8,
+  },
+  bmcFilterChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
   },
   listContent: {
     padding: 16,
@@ -283,6 +418,15 @@ const styles = StyleSheet.create({
   volItem: {
     flex: 1,
   },
+  incomeHighlightStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(5, 150, 105, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
   linkedSection: {
     backgroundColor: '#F8FAFC',
     padding: 10,
@@ -305,6 +449,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     marginTop: 6,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
   },
   modalOverlay: {
     flex: 1,
