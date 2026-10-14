@@ -13,7 +13,7 @@ import {
   formatLitres, 
   getBmcAnalyticsById 
 } from '../../services/bmcAnalyticsService';
-import { HorizontalComparisonBar } from '../../components/analytics/HorizontalComparisonBar';
+import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
 
 export default function BMCAnalyticsScreen() {
   const { bmcId } = useLocalSearchParams<{ bmcId: string }>();
@@ -37,8 +37,6 @@ export default function BMCAnalyticsScreen() {
 
   // Selected time period for feeder societies comparison
   const [selectedPeriod, setSelectedPeriod] = useState<AnalyticsPeriod>('daily');
-  // Expanded society ID for viewing its detailed self-history
-  const [expandedSocietyId, setExpandedSocietyId] = useState<string | null>(null);
 
   const activeBmcId = bmcId || bmcs[0]?.id;
   const bmcAnalytics = getBmcAnalyticsById(activeBmcId, bmcs, booths, bmcDeliveries);
@@ -191,7 +189,7 @@ export default function BMCAnalyticsScreen() {
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Ranked comparison of feeder societies. Tap any society to inspect its historical ledger.
+          Ranked comparison of feeder societies. Tap any society for dedicated analytics & member intake.
         </Text>
 
         {/* Period Selector Tabs */}
@@ -220,67 +218,23 @@ export default function BMCAnalyticsScreen() {
           })}
         </View>
 
-        {/* Feeder Societies Comparison List */}
-        <View style={styles.societiesList}>
-          {sortedSocieties.map((society, idx) => {
-            const isExpanded = expandedSocietyId === society.societyId;
-            const comp = society.metrics[selectedPeriod];
-
-            return (
-              <View key={society.societyId} style={styles.societyItemContainer}>
-                <HorizontalComparisonBar
-                  rank={idx + 1}
-                  title={society.societyName}
-                  code={society.code}
-                  subtitle={`In-Charge: ${society.operatorName}`}
-                  comparison={comp}
-                  maxVolume={maxSocietyVolume}
-                  onPress={() => setExpandedSocietyId(isExpanded ? null : society.societyId)}
-                  showChevron={true}
-                />
-
-                {/* Expanded In-Place History Ledger for Society */}
-                {isExpanded && (
-                  <Card style={[styles.societyExpandedCard, { backgroundColor: colors.background, borderColor: colors.primary }]}>
-                    <View style={styles.expandedHeaderRow}>
-                      <Ionicons name="analytics" size={16} color={colors.primary} />
-                      <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800', marginLeft: 6 }]}>
-                        {society.societyName} • Historical Ledger
-                      </Text>
-                    </View>
-
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 8 }]}>
-                      Operator: {society.operatorName} {society.phone ? `• ${society.phone}` : ''}
-                    </Text>
-
-                    <View style={styles.miniLedgerGrid}>
-                      {periods.map((pKey) => {
-                        const m = society.metrics[pKey];
-                        const isPPos = m.deltaPercentage >= 0;
-                        return (
-                          <View key={pKey} style={[styles.miniLedgerItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase' }]}>
-                              {PERIOD_LABELS[pKey].title}
-                            </Text>
-                            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900', marginVertical: 2 }]}>
-                              {formatLitres(m.current)}
-                            </Text>
-                            <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                              vs {formatLitres(m.previous)} ({m.periodLabel})
-                            </Text>
-                            <Text style={[Typography.caption2, { color: isPPos ? '#15803D' : '#DC2626', fontWeight: '800', marginTop: 2 }]}>
-                              {isPPos ? `+${m.deltaPercentage}% ↑` : `${m.deltaPercentage}% ↓`}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </Card>
-                )}
-              </View>
-            );
-          })}
-        </View>
+        {/* Feeder Societies Vertical Comparison Bar Chart */}
+        <VerticalComparisonBarChart
+          items={sortedSocieties.map((society, idx) => ({
+            id: society.societyId,
+            rank: idx + 1,
+            title: society.societyName,
+            code: society.code,
+            subtitle: `In-Charge: ${society.operatorName} ${society.phone ? `• ${society.phone}` : ''}`,
+            comparison: society.metrics[selectedPeriod],
+            onPress: () =>
+              router.push({
+                pathname: '/(union)/society-analytics' as any,
+                params: { societyId: society.societyId, bmcId: activeBmcId },
+              }),
+          }))}
+          maxVolume={maxSocietyVolume}
+        />
       </ScrollView>
     </View>
   );

@@ -182,3 +182,42 @@ export function getBmcAnalyticsById(
   const all = getDistrictBmcAnalytics(bmcs, booths, deliveries);
   return all.find((b) => b.bmcId === bmcId) || null;
 }
+
+export interface SocietyFullAnalyticsData extends SocietyAnalyticsData {
+  taluk: string;
+  village: string;
+  district: string;
+  bmcName: string;
+  bmcCode: string;
+}
+
+/**
+ * Get detailed analytics for a single Society by ID
+ */
+export function getSocietyAnalyticsById(
+  societyId: string,
+  bmcs: BMC[],
+  booths: Booth[],
+  deliveries: BMCDelivery[]
+): { society: SocietyFullAnalyticsData; bmc: BMC | undefined } | null {
+  const districtAnalytics = getDistrictBmcAnalytics(bmcs, booths, deliveries);
+  for (const bmcData of districtAnalytics) {
+    const soc = bmcData.societies.find((s) => s.societyId === societyId);
+    if (soc) {
+      const rawBooth = booths.find((b) => b.id === societyId);
+      const rawBmc = bmcs.find((b) => b.id === soc.assignedBmcId);
+      return {
+        society: {
+          ...soc,
+          taluk: rawBooth?.taluk || 'Madurai District',
+          village: rawBooth?.village || 'Primary Society',
+          district: rawBooth?.district || 'Madurai',
+          bmcName: bmcData.bmcName,
+          bmcCode: bmcData.code,
+        },
+        bmc: rawBmc,
+      };
+    }
+  }
+  return null;
+}

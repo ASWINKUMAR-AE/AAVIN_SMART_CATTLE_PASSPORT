@@ -72,6 +72,15 @@ export default function UnionLayout() {
           headerShown: false,
         }}
       />
+
+      <Tabs.Screen
+        name="society-analytics"
+        options={{
+          href: null,
+          title: 'Society Production Analytics',
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }

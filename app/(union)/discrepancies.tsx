@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable, BackHandler } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,6 +16,20 @@ export default function UnionDiscrepanciesScreen() {
   const { user } = useAuth();
   const { discrepancyCases, resolveDiscrepancyCase, addInvestigationNote } = useAavinStore();
   const { colors } = useTheme();
+  const router = useRouter();
+
+  const handleBackToHome = () => {
+    router.replace('/(union)' as any);
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBackToHome();
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, []);
 
   const [selectedCase, setSelectedCase] = useState<DiscrepancyCase | null>(null);
   const [activeModal, setActiveModal] = useState<'directive' | 'resolve' | null>(null);
@@ -52,6 +67,7 @@ export default function UnionDiscrepanciesScreen() {
         title="District Discrepancy Ledger"
         subtitle="Cross-Facility Reconciliation & Integrity Audit"
         showBack
+        onBack={handleBackToHome}
       />
 
       <FlatList

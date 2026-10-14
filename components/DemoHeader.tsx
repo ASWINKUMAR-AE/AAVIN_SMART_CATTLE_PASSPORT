@@ -101,6 +101,40 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   const currentMeta = activeRole ? roleMeta[activeRole] : roleMeta.farmer;
 
+  const handleBackPress = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      switch (activeRole) {
+        case 'farmer':
+          router.replace('/(farmer)' as any);
+          break;
+        case 'booth':
+          router.replace('/(booth)' as any);
+          break;
+        case 'bmc':
+          router.replace('/(bmc)' as any);
+          break;
+        case 'union':
+          router.replace('/(union)' as any);
+          break;
+        case 'veterinary':
+          router.replace('/(veterinary)' as any);
+          break;
+        case 'admin':
+          router.replace('/(admin)' as any);
+          break;
+        default:
+          router.replace('/');
+          break;
+      }
+    }
+  };
+
   return (
     <>
       <View style={[styles.container, isScrolled && styles.containerScrolled]}>
@@ -151,7 +185,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
         {/* User Info Bar */}
         <View style={styles.userBar}>
           {showBack && (
-            <Pressable onPress={onBack || (() => router.back())} style={styles.backBtn}>
+            <Pressable onPress={handleBackPress} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </Pressable>
           )}

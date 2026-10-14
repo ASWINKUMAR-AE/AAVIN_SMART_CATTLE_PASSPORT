@@ -203,6 +203,7 @@ export function FloatingAavinTabBar({
     'cow-details': ['cows', 'cattle-registry'],
     'milk-entry': ['milk-history', 'record-milk'],
     'bmc-analytics': ['bmc-monitoring'],
+    'society-analytics': ['bmc-monitoring'],
   };
 
   const parentTabNames = SUBROUTE_PARENT_MAP[activeRoute?.name];

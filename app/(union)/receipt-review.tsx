@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable, BackHandler } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,6 +16,20 @@ export default function UnionReceiptReviewScreen() {
   const { user } = useAuth();
   const { bmcReceipts, bmcDeliveries, reviewBmcReceipt } = useAavinStore();
   const { colors } = useTheme();
+  const router = useRouter();
+
+  const handleBackToHome = () => {
+    router.replace('/(union)' as any);
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBackToHome();
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, []);
 
   const [selectedReceipt, setSelectedReceipt] = useState<BMCReceipt | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
@@ -59,6 +74,7 @@ export default function UnionReceiptReviewScreen() {
         title="BMC Daily Receipts Review"
         subtitle="Executive Audit & Reconciliation • Madurai District"
         showBack
+        onBack={handleBackToHome}
       />
 
       <FlatList

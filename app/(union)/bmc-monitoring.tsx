@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, FlatList, Pressable, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -13,12 +13,26 @@ import {
   formatLitres, 
   getDistrictBmcAnalytics 
 } from '../../services/bmcAnalyticsService';
-import { HorizontalComparisonBar } from '../../components/analytics/HorizontalComparisonBar';
+import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
 
 export default function BMCMonitoringScreen() {
   const { bmcs, booths, bmcReceipts, discrepancyCases, bmcDeliveries } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
+
+  const handleBackToHome = () => {
+    router.replace('/(union)' as any);
+  };
+
+  // Ensure Android hardware back button also returns to Union Home
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBackToHome();
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, []);
 
   const [comparisonPeriod, setComparisonPeriod] = useState<AnalyticsPeriod>('daily');
 
@@ -74,22 +88,19 @@ export default function BMCMonitoringScreen() {
           })}
         </View>
 
-        {/* Ranked Comparative Bars */}
-        <View style={styles.barsList}>
-          {sortedBmcs.map((bmcItem, idx) => (
-            <HorizontalComparisonBar
-              key={bmcItem.bmcId}
-              rank={idx + 1}
-              title={bmcItem.bmcName}
-              code={bmcItem.code}
-              subtitle={`Load: ${formatLitres(bmcItem.metrics[comparisonPeriod].current)} • ${bmcItem.location}`}
-              comparison={bmcItem.metrics[comparisonPeriod]}
-              maxVolume={maxBmcVolume}
-              onPress={() => router.push({ pathname: '/(union)/bmc-analytics' as any, params: { bmcId: bmcItem.bmcId } })}
-              showChevron={true}
-            />
-          ))}
-        </View>
+        {/* Vertical Comparison Bar Chart */}
+        <VerticalComparisonBarChart
+          items={sortedBmcs.map((bmcItem, idx) => ({
+            id: bmcItem.bmcId,
+            rank: idx + 1,
+            title: bmcItem.bmcName,
+            code: bmcItem.code,
+            subtitle: `In-Charge: ${bmcItem.managerName} • ${bmcItem.location}`,
+            comparison: bmcItem.metrics[comparisonPeriod],
+            onPress: () => router.push({ pathname: '/(union)/bmc-analytics' as any, params: { bmcId: bmcItem.bmcId } }),
+          }))}
+          maxVolume={maxBmcVolume}
+        />
       </Card>
 
       {/* Facilities Section Header */}
@@ -108,6 +119,7 @@ export default function BMCMonitoringScreen() {
         title="BMC Facility Monitoring"
         subtitle="District Bulk Milk Cooling Infrastructure"
         showBack
+        onBack={handleBackToHome}
       />
 
       <FlatList
@@ -167,7 +179,16 @@ export default function BMCMonitoringScreen() {
                 ) : (
                   <View style={styles.boothList}>
                     {bmcBooths.map((b) => (
-                      <View key={b.id} style={[styles.boothItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                      <Pressable
+                        key={b.id}
+                        style={[styles.boothItem, { backgroundColor: colors.background, borderColor: colors.border }]}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/(union)/society-analytics' as any,
+                            params: { societyId: b.id, bmcId: item.id },
+                          })
+                        }
+                      >
                         <View style={styles.boothTopRow}>
                           <Text
                             style={[Typography.subhead, { color: colors.text, fontWeight: '700', flex: 1, minWidth: 0, marginRight: 8 }]}
@@ -179,6 +200,7 @@ export default function BMCMonitoringScreen() {
                               {b.code}
                             </Text>
                           </View>
+                          <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
                         </View>
                         <View style={styles.boothMetaRow}>
                           <Ionicons name="person-outline" size={12} color={colors.textSecondary} />
@@ -186,7 +208,7 @@ export default function BMCMonitoringScreen() {
                             In-Charge: {b.operatorName} {b.phone ? `• ${b.phone}` : ''}
                           </Text>
                         </View>
-                      </View>
+                      </Pressable>
                     ))}
                   </View>
                 )}
