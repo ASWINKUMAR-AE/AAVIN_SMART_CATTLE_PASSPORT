@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -32,6 +32,7 @@ import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { ThemeColors } from '../../constants/Colors';
 
 export default function UnionDashboard() {
   const { user } = useAuth();
@@ -48,7 +49,8 @@ export default function UnionDashboard() {
     addInvestigationNote,
     reviewBmcReceipt,
   } = useAavinStore();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -258,7 +260,7 @@ export default function UnionDashboard() {
           isDesktop && styles.desktopScrollContent,
           isTablet && styles.tabletScrollContent,
         ]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.mainDashboardCanvas, isDesktop && styles.desktopDashboardCanvas]}>
@@ -367,7 +369,7 @@ export default function UnionDashboard() {
                   style={[styles.arrowCircleBtn, isDesktop && styles.desktopArrowCircleBtn]}
                   onPress={() => router.push('/(union)/bmc-monitoring' as any)}
                 >
-                  <Ionicons name="arrow-up" size={isDesktop ? 17 : 13} color="#475569" style={{ transform: [{ rotate: '45deg' }] }} />
+                  <Ionicons name="arrow-up" size={isDesktop ? 17 : 13} color={isDark ? colors.textSecondary : '#475569'} style={{ transform: [{ rotate: '45deg' }] }} />
                 </Pressable>
               </View>
 
@@ -385,7 +387,7 @@ export default function UnionDashboard() {
 
               <View style={[styles.cardFooterRow, isDesktop && styles.desktopCardFooterRow]}>
                 <View style={styles.dynamicLabelRow}>
-                  <Ionicons name="infinite-outline" size={isDesktop ? 15 : 12} color="#94A3B8" />
+                  <Ionicons name="infinite-outline" size={isDesktop ? 15 : 12} color={colors.textMuted} />
                   <Text style={styles.dynamicLabelText} numberOfLines={1}>District Network</Text>
                 </View>
                 <View style={styles.periodPill}>
@@ -404,7 +406,7 @@ export default function UnionDashboard() {
                   style={[styles.arrowCircleBtn, isDesktop && styles.desktopArrowCircleBtn]}
                   onPress={() => router.push('/(union)/receipt-review' as any)}
                 >
-                  <Ionicons name="arrow-up" size={isDesktop ? 17 : 13} color="#475569" style={{ transform: [{ rotate: '45deg' }] }} />
+                  <Ionicons name="arrow-up" size={isDesktop ? 17 : 13} color={isDark ? colors.textSecondary : '#475569'} style={{ transform: [{ rotate: '45deg' }] }} />
                 </Pressable>
               </View>
 
@@ -422,7 +424,7 @@ export default function UnionDashboard() {
 
               <View style={[styles.cardFooterRow, isDesktop && styles.desktopCardFooterRow]}>
                 <View style={styles.dynamicLabelRow}>
-                  <Ionicons name="infinite-outline" size={isDesktop ? 15 : 12} color="#94A3B8" />
+                  <Ionicons name="infinite-outline" size={isDesktop ? 15 : 12} color={colors.textMuted} />
                   <Text style={styles.dynamicLabelText} numberOfLines={1}>@₹{procurementRatePerLitre}/L</Text>
                 </View>
                 <View style={styles.periodPill}>
@@ -441,7 +443,7 @@ export default function UnionDashboard() {
                   style={[styles.arrowCircleBtn, isDesktop && styles.desktopArrowCircleBtn]}
                   onPress={() => router.push('/(union)/discrepancies' as any)}
                 >
-                  <Ionicons name="arrow-up" size={isDesktop ? 17 : 13} color="#475569" style={{ transform: [{ rotate: '45deg' }] }} />
+                  <Ionicons name="arrow-up" size={isDesktop ? 17 : 13} color={isDark ? colors.textSecondary : '#475569'} style={{ transform: [{ rotate: '45deg' }] }} />
                 </Pressable>
               </View>
 
@@ -610,7 +612,7 @@ export default function UnionDashboard() {
                     <View style={styles.boothCompareMeters}>
                       <View style={styles.meterCol}>
                         <Text style={styles.meterLabel}>This Month</Text>
-                        <Text style={[styles.meterValue, { color: isNegative ? '#DC2626' : '#0F172A' }]}>
+                        <Text style={[styles.meterValue, { color: isNegative ? (isDark ? '#F87171' : '#DC2626') : colors.text }]}>
                           {b.currentMonthLitres.toFixed(1)} L
                         </Text>
                       </View>
@@ -662,7 +664,7 @@ export default function UnionDashboard() {
                 style={styles.accessTileCard}
                 onPress={() => router.push('/(booth)' as any)}
               >
-                <View style={[styles.accessTileIcon, { backgroundColor: '#E0F2FE' }]}>
+                <View style={[styles.accessTileIcon, { backgroundColor: isDark ? '#132840' : '#E0F2FE' }]}>
                   <Ionicons name="storefront" size={22} color="#0284C7" />
                 </View>
                 <Text style={styles.accessTileTitle}>Village Booths</Text>
@@ -679,7 +681,7 @@ export default function UnionDashboard() {
                 style={styles.accessTileCard}
                 onPress={() => router.push('/(union)/bmc-monitoring' as any)}
               >
-                <View style={[styles.accessTileIcon, { backgroundColor: '#DCFCE7' }]}>
+                <View style={[styles.accessTileIcon, { backgroundColor: isDark ? '#132E1D' : '#DCFCE7' }]}>
                   <Ionicons name="snow" size={22} color="#16A34A" />
                 </View>
                 <Text style={styles.accessTileTitle}>MCP Chilling Hubs</Text>
@@ -696,7 +698,7 @@ export default function UnionDashboard() {
                 style={styles.accessTileCard}
                 onPress={() => router.push('/(veterinary)/cattle-registry' as any)}
               >
-                <View style={[styles.accessTileIcon, { backgroundColor: '#FDF2F8' }]}>
+                <View style={[styles.accessTileIcon, { backgroundColor: isDark ? '#381628' : '#FDF2F8' }]}>
                   <Ionicons name="heart" size={22} color="#EC4899" />
                 </View>
                 <Text style={styles.accessTileTitle}>Herd & Pashu Aadhaar</Text>
@@ -715,7 +717,7 @@ export default function UnionDashboard() {
                 style={styles.accessTileCard}
                 onPress={() => router.push('/(farmer)/payments' as any)}
               >
-                <View style={[styles.accessTileIcon, { backgroundColor: '#FAF5FF' }]}>
+                <View style={[styles.accessTileIcon, { backgroundColor: isDark ? '#261447' : '#FAF5FF' }]}>
                   <Ionicons name="wallet" size={22} color="#9333EA" />
                 </View>
                 <Text style={styles.accessTileTitle}>DBT Payments</Text>
@@ -747,7 +749,7 @@ export default function UnionDashboard() {
 
                 <View style={styles.taskCategoriesCol}>
                   <View style={styles.taskCategoryItem}>
-                    <View style={[styles.categoryMiniIcon, { backgroundColor: '#FDF2F8' }]}>
+                    <View style={[styles.categoryMiniIcon, { backgroundColor: isDark ? '#381628' : '#FDF2F8' }]}>
                       <Ionicons name="water" size={13} color="#EC4899" />
                     </View>
                     <View>
@@ -757,7 +759,7 @@ export default function UnionDashboard() {
                   </View>
 
                   <View style={styles.taskCategoryItem}>
-                    <View style={[styles.categoryMiniIcon, { backgroundColor: '#EFF6FF' }]}>
+                    <View style={[styles.categoryMiniIcon, { backgroundColor: isDark ? '#132840' : '#EFF6FF' }]}>
                       <Ionicons name="analytics" size={13} color="#3B82F6" />
                     </View>
                     <View>
@@ -767,7 +769,7 @@ export default function UnionDashboard() {
                   </View>
 
                   <View style={styles.taskCategoryItem}>
-                    <View style={[styles.categoryMiniIcon, { backgroundColor: '#F0FDF4' }]}>
+                    <View style={[styles.categoryMiniIcon, { backgroundColor: isDark ? '#132E1D' : '#F0FDF4' }]}>
                       <Ionicons name="thermometer" size={13} color="#22C55E" />
                     </View>
                     <View>
@@ -797,7 +799,7 @@ export default function UnionDashboard() {
 
                   <G transform="translate(10, 10)">
                     <G transform="translate(0, 36)">
-                      {renderHatchPattern('pinkPillHatch', 66, 104, 18, '#F472B6', '#FDF2F8', 6)}
+                      {renderHatchPattern('pinkPillHatch', 66, 104, 18, '#F472B6', isDark ? '#381628' : '#FDF2F8', 6)}
                     </G>
                     <Rect x={0} y={0} width={66} height={42} rx={18} fill="url(#pinkHeadGrad)" />
                     <SvgText x={33} y={26} fill="#FFFFFF" fontSize="11" fontWeight="800" textAnchor="middle">
@@ -807,7 +809,7 @@ export default function UnionDashboard() {
 
                   <G transform="translate(90, 40)">
                     <G transform="translate(0, 34)">
-                      {renderHatchPattern('bluePillHatch', 82, 76, 18, '#60A5FA', '#EFF6FF', 6)}
+                      {renderHatchPattern('bluePillHatch', 82, 76, 18, '#60A5FA', isDark ? '#132840' : '#EFF6FF', 6)}
                     </G>
                     <Rect x={0} y={0} width={82} height={40} rx={18} fill="url(#blueHeadGrad)" />
                     <SvgText x={41} y={25} fill="#FFFFFF" fontSize="11" fontWeight="800" textAnchor="middle">
@@ -817,7 +819,7 @@ export default function UnionDashboard() {
 
                   <G transform="translate(186, 38)">
                     <G transform="translate(0, 34)">
-                      {renderHatchPattern('greenPillHatch', 84, 78, 18, '#4ADE80', '#F0FDF4', 6)}
+                      {renderHatchPattern('greenPillHatch', 84, 78, 18, '#4ADE80', isDark ? '#132E1D' : '#F0FDF4', 6)}
                     </G>
                     <Rect x={0} y={0} width={84} height={40} rx={18} fill="url(#greenHeadGrad)" />
                     <SvgText x={42} y={25} fill="#FFFFFF" fontSize="11" fontWeight="800" textAnchor="middle">
@@ -891,10 +893,10 @@ export default function UnionDashboard() {
                     />
                   </G>
 
-                  <SvgText x="120" y="72" fill="#0F172A" fontSize="28" fontWeight="800" textAnchor="middle">
+                  <SvgText x="120" y="72" fill={colors.text} fontSize="28" fontWeight="800" textAnchor="middle">
                     {totalDeliveries}
                   </SvgText>
-                  <SvgText x="120" y="89" fill="#94A3B8" fontSize="11" fontWeight="600" textAnchor="middle">
+                  <SvgText x="120" y="89" fill={colors.textMuted} fontSize="11" fontWeight="600" textAnchor="middle">
                     batches
                   </SvgText>
 
@@ -913,7 +915,7 @@ export default function UnionDashboard() {
                   <Text style={styles.statusBarLabel}>Balanced</Text>
                   <View style={styles.statusBarTrack}>
                     <Svg width="100%" height={10} viewBox="0 0 160 10">
-                      {renderHatchPattern('compHatch', 82, 10, 5, '#16A34A', '#22C55E', 5)}
+                      {renderHatchPattern('compHatch', 82, 10, 5, '#16A34A', isDark ? '#132E1D' : '#22C55E', 5)}
                     </Svg>
                   </View>
                   <Text style={styles.statusBarCount}>
@@ -925,7 +927,7 @@ export default function UnionDashboard() {
                   <Text style={styles.statusBarLabel}>Discrepant</Text>
                   <View style={styles.statusBarTrack}>
                     <Svg width="100%" height={10} viewBox="0 0 160 10">
-                      {renderHatchPattern('progHatch', 28, 10, 5, '#DB2777', '#EC4899', 5)}
+                      {renderHatchPattern('progHatch', 28, 10, 5, '#DB2777', isDark ? '#3E182A' : '#EC4899', 5)}
                     </Svg>
                   </View>
                   <Text style={styles.statusBarCount}>
@@ -937,7 +939,7 @@ export default function UnionDashboard() {
                   <Text style={styles.statusBarLabel}>Pending GM</Text>
                   <View style={styles.statusBarTrack}>
                     <Svg width="100%" height={10} viewBox="0 0 160 10">
-                      {renderHatchPattern('upcHatch', 52, 10, 5, '#2563EB', '#3B82F6', 5)}
+                      {renderHatchPattern('upcHatch', 52, 10, 5, '#2563EB', isDark ? '#14294D' : '#3B82F6', 5)}
                     </Svg>
                   </View>
                   <Text style={styles.statusBarCount}>
@@ -1104,7 +1106,7 @@ export default function UnionDashboard() {
             </View>
 
             <View style={[styles.pipelineRow, isMobile && styles.mobilePipelineCol]}>
-              <View style={[styles.pipelineNodeCard, { borderColor: '#BAE6FD', backgroundColor: '#F8FAFC' }]}>
+              <View style={[styles.pipelineNodeCard, { borderColor: isDark ? '#0284C7' : '#BAE6FD', backgroundColor: isDark ? '#0D1E34' : '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#0284C7' }]}>
                     <Text style={styles.nodeMiniBadgeText}>STAGE 1: BOOTHS</Text>
@@ -1117,10 +1119,10 @@ export default function UnionDashboard() {
               </View>
 
               <View style={styles.nodeArrowDivider}>
-                <Ionicons name="arrow-forward" size={16} color="#94A3B8" />
+                <Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
               </View>
 
-              <View style={[styles.pipelineNodeCard, { borderColor: '#BBF7D0', backgroundColor: '#F8FAFC' }]}>
+              <View style={[styles.pipelineNodeCard, { borderColor: isDark ? '#16A34A' : '#BBF7D0', backgroundColor: isDark ? '#0D1E34' : '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#16A34A' }]}>
                     <Text style={styles.nodeMiniBadgeText}>STAGE 2: BMCS</Text>
@@ -1133,10 +1135,10 @@ export default function UnionDashboard() {
               </View>
 
               <View style={styles.nodeArrowDivider}>
-                <Ionicons name="arrow-forward" size={16} color="#94A3B8" />
+                <Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
               </View>
 
-              <View style={[styles.pipelineNodeCard, { borderColor: '#E9D5FF', backgroundColor: '#F8FAFC' }]}>
+              <View style={[styles.pipelineNodeCard, { borderColor: isDark ? '#9333EA' : '#E9D5FF', backgroundColor: isDark ? '#0D1E34' : '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#9333EA' }]}>
                     <Text style={styles.nodeMiniBadgeText}>STAGE 3: SLIPS</Text>
@@ -1186,7 +1188,7 @@ export default function UnionDashboard() {
                 onPress={() => setShowDirectiveModal(false)}
                 style={styles.modalCloseBtn}
               >
-                <Ionicons name="close" size={20} color="#64748B" />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
@@ -1252,7 +1254,7 @@ export default function UnionDashboard() {
               <TextInput
                 style={styles.modalTextInput}
                 placeholder="Enter executive instructions, low yield deficit inquiry, tanker custody seal inspection, or GM order..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={4}
                 value={directiveText}
@@ -1300,7 +1302,7 @@ export default function UnionDashboard() {
                 onPress={() => setShowSignOffModal(false)}
                 style={styles.modalCloseBtn}
               >
-                <Ionicons name="close" size={20} color="#64748B" />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
@@ -1315,13 +1317,13 @@ export default function UnionDashboard() {
                     style={[styles.receiptSelectCard, isSel && styles.receiptSelectCardActive]}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.receiptSelectId, isSel && { color: '#0284C7' }]}>Slip #{r.id}</Text>
+                      <Text style={[styles.receiptSelectId, isSel && { color: isDark ? colors.primary : '#0284C7' }]}>Slip #{r.id}</Text>
                       <Text style={styles.receiptSelectSub}>BMC: {r.bmcName} • {r.totalReceivedQuantity} L</Text>
                     </View>
                     <Ionicons 
                       name={isSel ? "checkmark-circle" : "ellipse-outline"} 
                       size={20} 
-                      color={isSel ? "#0284C7" : "#CBD5E1"} 
+                      color={isSel ? (isDark ? colors.primary : '#0284C7') : (isDark ? colors.border : '#CBD5E1')} 
                     />
                   </Pressable>
                 );
@@ -1331,7 +1333,7 @@ export default function UnionDashboard() {
               <TextInput
                 style={styles.modalTextInput}
                 placeholder="Audit findings: milk fat compliant, cooling temperature within 4°C, zero adulteration certified."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={3}
                 value={signOffNotes}
@@ -1363,10 +1365,10 @@ export default function UnionDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: '#F3F4F7',
+    backgroundColor: colors.background,
   },
   scrollArea: {
     flex: 1,
@@ -1413,12 +1415,12 @@ const styles = StyleSheet.create({
   dashboardMainTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     letterSpacing: -0.4,
   },
   dashboardSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 2,
     fontWeight: '500',
   },
@@ -1433,7 +1435,7 @@ const styles = StyleSheet.create({
   },
   filterPillsGroup: {
     flexDirection: 'row',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: isDark ? '#15273E' : '#E2E8F0',
     borderRadius: 24,
     padding: 3,
     gap: 2,
@@ -1444,22 +1446,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   filterPillActive: {
-    backgroundColor: '#0F172A',
+    backgroundColor: isDark ? colors.primary : '#0F172A',
   },
   filterPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
+    color: isDark ? colors.textSecondary : '#475569',
   },
   filterPillTextActive: {
-    color: '#FFFFFF',
+    color: isDark ? '#09121E' : '#FFFFFF',
     fontWeight: '700',
   },
   newTaskBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0F172A',
+    backgroundColor: isDark ? colors.primary : '#0F172A',
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 22,
@@ -1470,7 +1472,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   newTaskBtnText: {
-    color: '#FFFFFF',
+    color: isDark ? '#09121E' : '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1480,9 +1482,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: isDark ? '#2D1515' : '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: isDark ? '#5C1D1D' : '#FECACA',
     borderRadius: 18,
     padding: 14,
   },
@@ -1497,18 +1499,18 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: isDark ? '#3E1818' : '#FEE2E2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   alertNoticeTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#991B1B',
+    color: isDark ? '#FCA5A5' : '#991B1B',
   },
   alertNoticeDesc: {
     fontSize: 11,
-    color: '#B91C1C',
+    color: isDark ? '#F87171' : '#B91C1C',
     marginTop: 2,
   },
   alertBannerButtonsRow: {
@@ -1520,15 +1522,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: isDark ? '#132E1D' : '#DCFCE7',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: isDark ? '#166534' : '#BBF7D0',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
   },
   signOffBtnMiniText: {
-    color: '#15803D',
+    color: isDark ? '#4ADE80' : '#15803D',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -1549,14 +1551,14 @@ const styles = StyleSheet.create({
 
   /* The Signature Cognify White Card Base */
   cognifyCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#ECEEF2',
+    borderColor: colors.border,
     padding: 20,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
+    shadowOpacity: isDark ? 0.25 : 0.04,
     shadowRadius: 16,
     elevation: 2,
   },
@@ -1609,7 +1611,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: isDark ? '#15273E' : '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1621,7 +1623,7 @@ const styles = StyleSheet.create({
   cardKpiLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#4B5563',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   statValueWithTrendRow: {
@@ -1634,7 +1636,7 @@ const styles = StyleSheet.create({
   cardBigNumber: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.text,
     letterSpacing: -0.5,
   },
   desktopCardBigNumber: {
@@ -1645,13 +1647,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 1,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: isDark ? '#3E1818' : '#FEF2F2',
     paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 8,
   },
   trendTextDown: {
-    color: '#EF4444',
+    color: isDark ? '#F87171' : '#EF4444',
     fontSize: 10,
     fontWeight: '800',
   },
@@ -1659,13 +1661,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 1,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: isDark ? '#132E1D' : '#F0FDF4',
     paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 8,
   },
   trendTextUp: {
-    color: '#10B981',
+    color: isDark ? '#4ADE80' : '#10B981',
     fontSize: 10,
     fontWeight: '800',
   },
@@ -1675,7 +1677,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
+    borderTopColor: colors.border,
   },
   desktopCardFooterRow: {
     flexDirection: 'row',
@@ -1690,11 +1692,11 @@ const styles = StyleSheet.create({
   },
   dynamicLabelText: {
     fontSize: 9.5,
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontWeight: '600',
   },
   periodPill: {
-    backgroundColor: '#F1F4F8',
+    backgroundColor: isDark ? '#15273E' : '#F1F4F8',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
@@ -1702,12 +1704,12 @@ const styles = StyleSheet.create({
   },
   periodPillText: {
     fontSize: 9,
-    color: '#475569',
+    color: isDark ? colors.textSecondary : '#475569',
     fontWeight: '700',
   },
   manageCustText: {
     fontSize: 9.5,
-    color: '#64748B',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   avatarCluster: {
@@ -1718,7 +1720,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#F1F4F8',
+    backgroundColor: isDark ? '#15273E' : '#F1F4F8',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 4,
@@ -1728,7 +1730,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1751,14 +1753,14 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: isDark ? '#132E1D' : '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   incomeStatBadge: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: isDark ? '#132E1D' : '#F0FDF4',
     borderWidth: 1.5,
-    borderColor: '#86EFAC',
+    borderColor: isDark ? '#166534' : '#86EFAC',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -1767,12 +1769,12 @@ const styles = StyleSheet.create({
   incomeStatBadgeText: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#15803D',
+    color: isDark ? '#4ADE80' : '#15803D',
   },
   incomeStatBadgeSub: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#166534',
+    color: isDark ? '#86EFAC' : '#166534',
     marginTop: 1,
   },
   incomeBreakdownGrid: {
@@ -1800,17 +1802,17 @@ const styles = StyleSheet.create({
   incomeBoxValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     marginVertical: 2,
   },
   incomeBoxLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#334155',
+    color: colors.text,
   },
   incomeBoxSub: {
     fontSize: 9.5,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 2,
   },
 
@@ -1819,33 +1821,33 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   lowYieldAlertBadge: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: isDark ? '#3E1818' : '#FEE2E2',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   lowYieldAlertBadgeText: {
-    color: '#DC2626',
+    color: isDark ? '#F87171' : '#DC2626',
     fontSize: 11,
     fontWeight: '800',
   },
   lowYieldWarningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: isDark ? '#2D1515' : '#FEF2F2',
     borderWidth: 1.5,
-    borderColor: '#F87171',
+    borderColor: isDark ? '#5C1D1D' : '#F87171',
     borderRadius: 18,
     padding: 14,
   },
   lowYieldWarningTitle: {
     fontSize: 12,
     fontWeight: '900',
-    color: '#991B1B',
+    color: isDark ? '#FCA5A5' : '#991B1B',
   },
   lowYieldWarningDesc: {
     fontSize: 11,
-    color: '#B91C1C',
+    color: isDark ? '#F87171' : '#B91C1C',
     marginTop: 2,
     lineHeight: 16,
   },
@@ -1870,7 +1872,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.border,
     flexWrap: 'wrap',
     gap: 10,
   },
@@ -1892,11 +1894,11 @@ const styles = StyleSheet.create({
   boothCompareName: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
   },
   boothCompareSub: {
     fontSize: 11,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 1,
   },
   boothCompareMeters: {
@@ -1909,19 +1911,19 @@ const styles = StyleSheet.create({
   },
   meterLabel: {
     fontSize: 9.5,
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontWeight: '600',
   },
   meterValue: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     marginTop: 1,
   },
   meterDivider: {
     width: 1,
     height: 20,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.border,
   },
   variancePercentBadge: {
     flexDirection: 'row',
@@ -1944,13 +1946,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F3E8FF',
+    backgroundColor: isDark ? '#261447' : '#F3E8FF',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   fullAccessRoleText: {
-    color: '#7C3AED',
+    color: isDark ? '#C084FC' : '#7C3AED',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -1962,9 +1964,9 @@ const styles = StyleSheet.create({
   accessTileCard: {
     flex: 1,
     minWidth: 140,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: isDark ? '#0D1E34' : '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 18,
     padding: 14,
   },
@@ -1979,17 +1981,17 @@ const styles = StyleSheet.create({
   accessTileTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
   },
   accessTileStat: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#334155',
+    color: colors.text,
     marginVertical: 2,
   },
   accessTileDesc: {
     fontSize: 10,
-    color: '#64748B',
+    color: colors.textSecondary,
     lineHeight: 14,
     marginBottom: 10,
   },
@@ -2002,7 +2004,7 @@ const styles = StyleSheet.create({
   accessTileLinkText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#0284C7',
+    color: isDark ? colors.primary : '#0284C7',
   },
 
   /* Analytics Grid (Bottom 3) */
@@ -2031,12 +2033,12 @@ const styles = StyleSheet.create({
   analyticsTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     letterSpacing: -0.2,
   },
   analyticsSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 2,
     fontWeight: '500',
   },
@@ -2045,7 +2047,7 @@ const styles = StyleSheet.create({
   taskProgressBigNum: {
     fontSize: 38,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     letterSpacing: -1,
     marginTop: 4,
   },
@@ -2066,12 +2068,12 @@ const styles = StyleSheet.create({
   },
   categoryNameText: {
     fontSize: 11,
-    color: '#64748B',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   categoryPercentText: {
     fontSize: 13,
-    color: '#0F172A',
+    color: colors.text,
     fontWeight: '800',
   },
   cylinderChartContainer: {
@@ -2083,7 +2085,7 @@ const styles = StyleSheet.create({
   /* Card 5: Project Status */
   sumPercentTogglePill: {
     flexDirection: 'row',
-    backgroundColor: '#F1F4F8',
+    backgroundColor: isDark ? '#15273E' : '#F1F4F8',
     borderRadius: 12,
     padding: 2,
   },
@@ -2093,7 +2095,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   togglePillBtnActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -2103,10 +2105,10 @@ const styles = StyleSheet.create({
   togglePillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748B',
+    color: colors.textMuted,
   },
   togglePillTextActive: {
-    color: '#0F172A',
+    color: colors.text,
   },
   donutContainer: {
     alignItems: 'center',
@@ -2125,13 +2127,13 @@ const styles = StyleSheet.create({
   statusBarLabel: {
     width: 82,
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   statusBarTrack: {
     flex: 1,
     height: 10,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: isDark ? '#15273E' : '#F1F5F9',
     borderRadius: 5,
     marginHorizontal: 10,
     overflow: 'hidden',
@@ -2140,7 +2142,7 @@ const styles = StyleSheet.create({
     width: 58,
     fontSize: 11,
     fontWeight: '800',
-    color: '#334155',
+    color: colors.text,
     textAlign: 'right',
   },
 
@@ -2149,14 +2151,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#F1F4F8',
+    backgroundColor: isDark ? '#15273E' : '#F1F4F8',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   dailyDropdownText: {
     fontSize: 12,
-    color: '#475569',
+    color: isDark ? colors.textSecondary : '#475569',
     fontWeight: '700',
   },
   trendTooltipsHeaderRow: {
@@ -2170,7 +2172,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0F172A',
+    backgroundColor: isDark ? '#15273E' : '#0F172A',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -2190,9 +2192,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: isDark ? '#0D1E34' : '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -2204,7 +2206,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EC4899',
   },
   pauseTimePillText: {
-    color: '#475569',
+    color: isDark ? colors.textSecondary : '#475569',
     fontSize: 10,
     fontWeight: '700',
   },
@@ -2226,9 +2228,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   daySelectorPillActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: isDark ? '#15273E' : '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -2237,11 +2239,11 @@ const styles = StyleSheet.create({
   },
   daySelectorPillText: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontWeight: '600',
   },
   daySelectorPillTextActive: {
-    color: '#0F172A',
+    color: colors.text,
     fontWeight: '800',
   },
   productivityStatsRow: {
@@ -2249,11 +2251,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
+    borderTopColor: colors.border,
   },
   prodStatLabel: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontWeight: '600',
     marginBottom: 2,
   },
@@ -2265,7 +2267,7 @@ const styles = StyleSheet.create({
   prodStatValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
   },
   prodTrendGreenPill: {
     flexDirection: 'row',
@@ -2307,18 +2309,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: isDark ? '#132840' : '#E0F2FE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   chainTitleText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
   },
   chainSubtitleText: {
     fontSize: 11,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 1,
   },
   retentionPillBadge: {
@@ -2348,6 +2350,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 16,
     padding: 12,
+    backgroundColor: isDark ? '#0D1E34' : '#F8FAFC',
   },
   nodeHeaderSmall: {
     flexDirection: 'row',
@@ -2368,22 +2371,22 @@ const styles = StyleSheet.create({
   nodeCardTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#334155',
+    color: colors.textSecondary,
   },
   nodeCardValue: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     marginVertical: 2,
   },
   nodeCardUnit: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   nodeCardSub: {
     fontSize: 10,
-    color: '#64748B',
+    color: colors.textMuted,
     fontWeight: '500',
   },
   nodeArrowDivider: {
@@ -2410,7 +2413,7 @@ const styles = StyleSheet.create({
   /* Modals */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 18,
@@ -2418,12 +2421,12 @@ const styles = StyleSheet.create({
   modalContentCard: {
     width: '100%',
     maxWidth: 520,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
+    shadowOpacity: isDark ? 0.35 : 0.15,
     shadowRadius: 18,
     elevation: 6,
   },
@@ -2433,17 +2436,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.border,
     paddingBottom: 12,
   },
   modalMainTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
   },
   modalSubTitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   modalCloseBtn: {
@@ -2452,7 +2455,7 @@ const styles = StyleSheet.create({
   inputFieldLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#334155',
+    color: colors.text,
     marginBottom: 6,
     marginTop: 8,
   },
@@ -2466,13 +2469,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: isDark ? '#15273E' : '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: isDark ? '#1A304C' : '#E2E8F0',
   },
   modalSelectorPillActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
+    backgroundColor: isDark ? colors.primary : '#0F172A',
+    borderColor: isDark ? colors.primary : '#0F172A',
   },
   pillRedActive: {
     backgroundColor: '#DC2626',
@@ -2481,19 +2484,19 @@ const styles = StyleSheet.create({
   modalSelectorPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
+    color: isDark ? colors.textSecondary : '#475569',
   },
   modalSelectorPillTextActive: {
-    color: '#FFFFFF',
+    color: isDark ? '#09121E' : '#FFFFFF',
   },
   modalTextInput: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     borderRadius: 14,
     padding: 12,
     fontSize: 13,
-    color: '#0F172A',
-    backgroundColor: '#F8FAFC',
+    color: colors.text,
+    backgroundColor: isDark ? '#0D1E34' : '#F8FAFC',
     textAlignVertical: 'top',
     minHeight: 80,
   },
@@ -2504,7 +2507,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 18,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.border,
     paddingTop: 14,
   },
   modalCancelBtn: {
@@ -2515,19 +2518,19 @@ const styles = StyleSheet.create({
   modalCancelBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748B',
+    color: colors.textSecondary,
   },
   modalSubmitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0F172A',
+    backgroundColor: isDark ? colors.primary : '#0F172A',
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 14,
   },
   modalSubmitBtnText: {
-    color: '#FFFFFF',
+    color: isDark ? '#09121E' : '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -2537,22 +2540,22 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
+    borderColor: colors.border,
+    backgroundColor: isDark ? '#0D1E34' : '#F8FAFC',
     marginBottom: 6,
   },
   receiptSelectCardActive: {
-    borderColor: '#0284C7',
-    backgroundColor: '#F0F9FF',
+    borderColor: isDark ? colors.primary : '#0284C7',
+    backgroundColor: isDark ? '#132840' : '#F0F9FF',
   },
   receiptSelectId: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
   },
   receiptSelectSub: {
     fontSize: 10,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 1,
   },
   sectionHeaderRow: {
