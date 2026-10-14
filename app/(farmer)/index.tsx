@@ -130,12 +130,17 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#E0F2FE' }]}>
                 <Ionicons name="water" size={20} color="#0284C7" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>TODAY</Text>
+              <Text style={[Typography.caption2, styles.statLabel, { color: colors.textSecondary }]}>TODAY</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
+            <Text
+              style={[styles.statNumber, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {ready ? `${stats.todaySupply.toFixed(2)} L` : '—'}
             </Text>
-            <Text style={[Typography.caption2, { color: stats.todaySupply > 0 ? '#16A34A' : colors.textMuted }]}>
+            <Text style={[Typography.caption2, styles.statDescription, { color: stats.todaySupply > 0 ? '#16A34A' : colors.textMuted }]}>
               {!ready ? 'Awaiting server data' : stats.todaySupply > 0 ? '✓ Recorded at Booth' : 'No delivery recorded yet'}
             </Text>
           </Card>
@@ -146,12 +151,17 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#F0FDF4' }]}>
                 <Ionicons name="calendar" size={20} color="#16A34A" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>PAST 7 DAYS</Text>
+              <Text style={[Typography.caption2, styles.statLabel, { color: colors.textSecondary }]}>PAST 7 DAYS</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
+            <Text
+              style={[styles.statNumber, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {ready ? `${stats.last7DaysSupply.toFixed(2)} L` : '—'}
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+            <Text style={[Typography.caption2, styles.statDescription, { color: colors.textSecondary }]}>
               {ready ? `Avg ${(stats.last7DaysSupply / 7).toFixed(2)} L / day` : 'Awaiting server data'}
             </Text>
           </Card>
@@ -162,12 +172,17 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#FAF5FF' }]}>
                 <Ionicons name="ribbon" size={20} color="#9333EA" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>OCTOBER</Text>
+              <Text style={[Typography.caption2, styles.statLabel, { color: colors.textSecondary }]}>OCTOBER</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
+            <Text
+              style={[styles.statNumber, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {ready ? `${stats.monthSupply.toFixed(2)} L` : '—'}
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+            <Text style={[Typography.caption2, styles.statDescription, { color: colors.textSecondary }]}>
               Confirmed monthly milk collections
             </Text>
           </Card>
@@ -325,14 +340,20 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
+    minWidth: 0,
     padding: 12,
   },
   statIconRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
     gap: 8,
+  },
+  statLabel: {
+    alignSelf: 'stretch',
+    minHeight: 26,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontWeight: '700',
   },
   statIconBadge: {
     width: 32,
@@ -344,8 +365,15 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     fontSize: 18,
+    lineHeight: 24,
     fontWeight: '900',
-    marginBottom: 2,
+    fontVariant: ['tabular-nums'],
+    textAlign: 'center',
+    includeFontPadding: false,
+    marginBottom: 4,
+  },
+  statDescription: {
+    textAlign: 'center',
   },
   chartCard: {
     padding: 16,

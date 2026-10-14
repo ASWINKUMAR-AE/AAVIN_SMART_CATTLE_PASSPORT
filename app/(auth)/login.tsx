@@ -2,20 +2,14 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform, Pressable, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { Typography } from '../../constants/Typography';
-import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
-import { Card } from '../../components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { UserRole } from '../../types/aavin';
 import { AavinLogo } from '../../components/ui/AavinLogo';
-import { SEED_DEMO_USERS } from '../../data/seedData';
 import { useTranslation } from '../../context/LanguageContext';
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const { colors } = useTheme();
   const { language, toggleLanguage, t } = useTranslation();
   const router = useRouter();
 
@@ -23,15 +17,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const roleMeta: Record<UserRole, { title: string; badgeColor: string; icon: string }> = {
-    farmer: { title: 'Farmer', badgeColor: '#16A34A', icon: '👨‍🌾' },
-    booth: { title: 'Booth Staff', badgeColor: '#00A5E3', icon: '🏢' },
-    bmc: { title: 'BMC Staff', badgeColor: '#0284C7', icon: '❄️' },
-    union: { title: 'Union Executive', badgeColor: '#7C3AED', icon: '🏛️' },
-    veterinary: { title: 'Veterinarian', badgeColor: '#EA580C', icon: '🩺' },
-    admin: { title: 'System Admin', badgeColor: '#475569', icon: '🛡️' },
-  };
 
   const navigateByRole = (role: UserRole) => {
     switch (role) {
@@ -94,12 +79,6 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFillDemoCredential = (acc: typeof SEED_DEMO_USERS[0]) => {
-    setUsernameOrPhone(acc.phone);
-    setPassword('Password@123');
-    setErrorMessage(null);
   };
 
   return (
@@ -169,7 +148,7 @@ export default function LoginScreen() {
           <View style={styles.inputsGroup}>
             <TextField
               label={language === 'ta' ? 'பயனர் பெயர் / அலைபேசி எண்' : 'Username / Mobile Number'}
-              placeholder="e.g. farmer_murugan, booth_kannan, bmc_raman"
+              placeholder={language === 'ta' ? 'பயனர் பெயர் அல்லது அலைபேசி எண்ணை உள்ளிடவும்' : 'Enter your username or mobile number'}
               value={usernameOrPhone}
               onChangeText={(t) => { setUsernameOrPhone(t); setErrorMessage(null); }}
               autoCapitalize="none"
@@ -199,63 +178,7 @@ export default function LoginScreen() {
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
           </Pressable>
 
-          {/* Authorized Accounts Directory (Quick Access) */}
-          <View style={styles.demoAccountsSection}>
-            <View style={styles.demoSectionHeaderRow}>
-              <Text style={styles.demoSectionTitle}>
-                {language === 'ta' ? 'அங்கீகரிக்கப்பட்ட கணக்குகள் பட்டியல்' : 'AAVIN AUTHORIZED ACCESS DIRECTORY'}
-              </Text>
-              <View style={styles.pwdTag}>
-                <Text style={styles.pwdTagText}>Pass: Password@123</Text>
-              </View>
-            </View>
 
-            <View style={styles.accountsList}>
-              {SEED_DEMO_USERS.map((acc) => {
-                const meta = roleMeta[acc.role] || { title: acc.role, badgeColor: '#00A5E3', icon: '👤' };
-                const isCurrentFilled = usernameOrPhone === acc.phone;
-
-                return (
-                  <Pressable
-                    key={acc.id}
-                    onPress={() => handleFillDemoCredential(acc)}
-                    style={[
-                      styles.accountRowItem,
-                      isCurrentFilled && styles.accountRowItemActive
-                    ]}
-                  >
-                    {/* Circle Icon Badge */}
-                    <View style={[styles.avatarCircle, { backgroundColor: meta.badgeColor + '15' }]}>
-                      <Text style={{ fontSize: 20 }}>{meta.icon}</Text>
-                    </View>
-
-                    {/* Middle Info */}
-                    <View style={styles.accountTextContainer}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.accountRoleLabel}>{meta.title}</Text>
-                        <View style={[styles.roleBadgePill, { backgroundColor: meta.badgeColor + '20' }]}>
-                          <Text style={[styles.roleBadgePillText, { color: meta.badgeColor }]}>{acc.role.toUpperCase()}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.accountNameLabel} numberOfLines={1}>
-                        {acc.fullName}
-                      </Text>
-                      <Text style={styles.accountCredsLabel}>
-                        {'User: '}<Text style={{ fontWeight: '700', color: '#0F1D30' }}>{acc.username}</Text>
-                      </Text>
-                    </View>
-
-                    {/* Right-Side Action Chip */}
-                    <View style={[styles.fillChip, isCurrentFilled && styles.fillChipActive]}>
-                      <Text style={[styles.fillChipText, isCurrentFilled && styles.fillChipTextActive]}>
-                        {isCurrentFilled ? '✓ FILLED' : 'USE'}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -348,7 +271,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     marginTop: -36, // Top layer overlapping the bottom banner layer to completely hide the edges
-    minHeight: 800, // Increased height so the top layer covers downwards completely
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 30,
     paddingBottom: 50,
@@ -409,104 +332,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.2,
-  },
-  demoAccountsSection: {
-    marginTop: 26,
-    paddingTop: 18,
-    borderTopWidth: 1,
-    borderTopColor: '#EEF3F8',
-  },
-  demoSectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  demoSectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#8FA0B5',
-    letterSpacing: 0.6,
-  },
-  pwdTag: {
-    backgroundColor: '#EFF5FB',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  pwdTagText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#566A82',
-  },
-  accountsList: {
-    gap: 8,
-  },
-  accountRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  accountRowItemActive: {
-    borderColor: '#00A5E3',
-    backgroundColor: '#F0F9FF',
-  },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  accountTextContainer: {
-    flex: 1,
-  },
-  accountRoleLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F1D30',
-    marginRight: 6,
-  },
-  roleBadgePill: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  roleBadgePillText: {
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  accountNameLabel: {
-    fontSize: 12,
-    color: '#566A82',
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  accountCredsLabel: {
-    fontSize: 11,
-    color: '#8FA0B5',
-    marginTop: 1,
-  },
-  fillChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 12,
-  },
-  fillChipActive: {
-    backgroundColor: '#0D1E36',
-  },
-  fillChipText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#334155',
-  },
-  fillChipTextActive: {
-    color: '#FFFFFF',
   },
 });

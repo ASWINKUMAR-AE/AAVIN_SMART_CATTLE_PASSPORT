@@ -22,7 +22,6 @@ interface AuthContextType {
   isLoading: boolean;
   token: string | null;
   login: (usernameOrPhone: string, passwordPlain: string) => Promise<LoginResult>;
-  loginAsDemoUser: (userId: string) => Promise<void>;
   switchRole: (role: UserRole) => Promise<void>;
   updateLanguage: (lang: 'en' | 'ta') => Promise<void>;
   logout: () => Promise<void>;
@@ -35,7 +34,6 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   token: null,
   login: async () => ({ success: false, error: 'Not initialized' }),
-  loginAsDemoUser: async () => {},
   switchRole: async () => {},
   updateLanguage: async () => {},
   logout: async () => {},
@@ -123,13 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginAsDemoUser = async (userId: string) => {
-    const selected = SEED_DEMO_USERS.find(item => item.id === userId || item.username === userId);
-    if (!selected) throw new Error('Account not found.');
-    const result = await login(selected.phone, 'Password@123');
-    if (!result.success) throw new Error(result.error);
-  };
-
   const switchRole = async (role: UserRole) => {
     if (role !== activeRole) throw new Error('Log in to an account with the requested role.');
   };
@@ -164,7 +155,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         token,
         login,
-        loginAsDemoUser,
         switchRole,
         updateLanguage,
         logout,
