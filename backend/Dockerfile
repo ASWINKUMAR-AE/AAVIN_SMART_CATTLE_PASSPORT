@@ -1,5 +1,5 @@
 # Build from the project root: docker build -t aavin-backend ./backend
-# Run: docker run --rm -p 4000:4000 --env-file backend/.env aavin-backend
+# Run: docker run --rm -p 8002:8000 --env-file backend/.env aavin-backend
 # Apply migrations separately:
 # docker run --rm --env-file backend/.env aavin-backend python manage.py migrate
 

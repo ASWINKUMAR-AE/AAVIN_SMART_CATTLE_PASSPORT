@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import { StyleSheet, View, Pressable, Modal, ScrollView, Platform, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { goBackOrReplace } from '../../services/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -160,7 +161,7 @@ export const BoothHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBa
         {/* User Info Bar */}
         <View style={styles.userBar}>
           {showBack && (
-            <Pressable onPress={onBack || (() => router.back())} style={styles.backBtn}>
+            <Pressable onPress={onBack || (() => goBackOrReplace(router, '/(booth)'))} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </Pressable>
           )}

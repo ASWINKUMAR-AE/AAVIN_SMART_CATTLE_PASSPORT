@@ -10,6 +10,7 @@ import {
   Pressable
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { goBackOrReplace } from '../../services/navigation';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -227,11 +228,7 @@ export default function RegisterFarmerScreen() {
           {
             text: 'Return to Farmers Directory',
             onPress: () => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(booth)/farmers');
-              }
+              goBackOrReplace(router, '/(booth)/farmers');
             },
           },
         ]
@@ -748,7 +745,7 @@ export default function RegisterFarmerScreen() {
         <Button
           title="Cancel & Return to Farmers Directory"
           variant="outline"
-          onPress={() => router.back()}
+          onPress={() => goBackOrReplace(router, '/(booth)/farmers')}
           style={{ marginTop: 10, marginBottom: 36 }}
         />
       </ScrollView>

@@ -50,6 +50,51 @@ npm --prefix backend test
 
 `npm start` launches Django and the existing Expo frontend together. Install frontend dependencies with `npm install` first. Set `AAVIN_PYTHON` if using a Python environment outside `backend/.venv`. Cloud database reset is disabled.
 
+## Ubuntu server updates with Docker Compose
+
+If `git pull origin backend` reports that untracked `backend/milk_collections/`
+files would be overwritten, plain `git stash` did not save those untracked files.
+Save them in a second stash before retrying the pull. From the repository root:
+
+```bash
+git stash push --include-untracked -m "server untracked files before backend update"
+git pull --ff-only origin backend
+git stash list
+```
+
+The earlier stash containing tracked edits is still saved. Leave both stashes
+saved during deployment; popping the untracked-files stash immediately would
+conflict with the files now supplied by the repository. Inspect any server-only
+changes with `git stash show --include-untracked -p 'stash@{0}'` and
+`git stash show -p 'stash@{1}'` before manually restoring changes you still need.
+The indices assume these are the two most recent stashes; confirm with `git stash list`.
+The ignored `backend/.env` remains in place.
+
+Ensure `backend/.env` contains the production secret, database credentials,
+`DJANGO_DEBUG=false`, and `DJANGO_ALLOWED_HOSTS` including the server's public
+IP or domain. Then run from the repository root:
+
+```bash
+docker compose -f backend/docker-compose.yml config --quiet
+docker compose -f backend/docker-compose.yml build backend
+docker compose -f backend/docker-compose.yml run --rm backend python manage.py check
+docker compose -f backend/docker-compose.yml run --rm backend python manage.py migrate --noinput
+docker compose -f backend/docker-compose.yml up -d backend
+docker compose -f backend/docker-compose.yml ps
+docker compose -f backend/docker-compose.yml logs --tail=100 backend
+```
+
+Compose reads `backend/.env`, builds from `backend/`, and exposes the API on
+host port **8002** (container port **8000**). Database migrations must succeed
+before starting the updated service. This setup connects to the configured
+external PostgreSQL database. See the container logs if startup fails.
+
+If PostgreSQL runs on the Ubuntu Docker host, set `DATABASE_HOST=host.docker.internal`
+in `backend/.env`. Compose maps this hostname to Docker's host gateway on Linux.
+PostgreSQL must listen on an address reachable from the Docker network and allow
+the container's connection in `pg_hba.conf`. For a remote PostgreSQL server, set
+`DATABASE_HOST` to that server's reachable address instead.
+
 ## Authentication API
 
 All paths below use `/api/v1/auth` and do not require trailing slashes.
