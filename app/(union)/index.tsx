@@ -249,8 +249,7 @@ export default function UnionDashboard() {
     <View style={styles.outerContainer}>
       {/* Retain DemoHeader (Layout Header is completely preserved) */}
       <DemoHeader
-        title="Aavin Union Headquarters"
-        subtitle={`${union.name} • Madurai District Co-op`}
+        title="Aavin Union Madurai"
       />
 
       <ScrollView

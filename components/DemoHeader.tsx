@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, Pressable, Modal, ScrollView, Platform, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAavinStore } from '../store/AavinStoreContext';
@@ -18,12 +19,13 @@ interface DemoHeaderProps {
   onBack?: () => void;
 }
 
-export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBack = false, onBack }) => {
+export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, showBack = false, onBack }) => {
   const { user, activeRole, switchRole, demoUsers, logout } = useAuth();
   const { colors } = useTheme();
   const { language, toggleLanguage } = useTranslation();
   const { notifications } = useAavinStore();
   const { isScrolled } = useScroll();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -137,7 +139,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   return (
     <>
-      <View style={[styles.container, isScrolled && styles.containerScrolled]}>
+      <View style={[styles.container, { paddingTop: insets.top + 8 }, isScrolled && styles.containerScrolled]}>
         {/* Top Info Strip */}
         <View style={styles.topStrip}>
           <View style={styles.brandBadgeRow}>
@@ -163,7 +165,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
               style={styles.iconBtn}
               onPress={() => router.push('/notifications' as any)}
             >
-              <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="notifications-outline" size={16} color="#FFFFFF" />
               {unreadCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -177,7 +179,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
               onPress={handleConfirmLogout}
               accessibilityLabel="Log Out"
             >
-              <Ionicons name="log-out-outline" size={19} color="#FFFFFF" />
+              <Ionicons name="log-out-outline" size={16} color="#FFFFFF" />
             </Pressable>
           </View>
         </View>
@@ -192,9 +194,6 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitleText} numberOfLines={1}>
               {title || user?.fullName || 'Aavin Milk Safety Twin'}
-            </Text>
-            <Text style={styles.headerSubtitleText} numberOfLines={1}>
-              {subtitle || user?.description || 'Aavin Madurai District Milk Union'}
             </Text>
           </View>
         </View>
@@ -296,11 +295,10 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#5EA8EE', // Sky-Blue surface matching reference UI
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 48 : 38,
-    paddingBottom: 18,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     zIndex: 100,
     ...Platform.select({
       default: {
@@ -330,7 +328,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   brandBadgeRow: {
     flexDirection: 'row',
@@ -345,25 +343,25 @@ const styles = StyleSheet.create({
   rightIconsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
   },
   langBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.35)',
   },
   langBtnText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
   },
   iconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -377,8 +375,8 @@ const styles = StyleSheet.create({
     right: -2,
     backgroundColor: '#EF4444',
     borderRadius: 9,
-    minWidth: 18,
-    height: 18,
+    minWidth: 15,
+    height: 15,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -387,29 +385,29 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
   },
   userBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 0,
   },
   headerTitleText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   headerSubtitleText: {
     color: 'rgba(255, 255, 255, 0.88)',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    marginTop: 1,
+    marginTop: 0,
   },
   backBtn: {
-    marginRight: 12,
-    padding: 4,
+    marginRight: 8,
+    padding: 2,
   },
   modalOverlay: {
     flex: 1,

@@ -81,6 +81,15 @@ export default function UnionLayout() {
           headerShown: false,
         }}
       />
+
+      <Tabs.Screen
+        name="farmer-analytics"
+        options={{
+          href: null,
+          title: 'Farmer Production Analytics',
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }
