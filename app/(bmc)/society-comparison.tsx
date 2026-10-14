@@ -192,7 +192,8 @@ export default function SocietyComparisonScreen() {
   }, [societyData]);
 
   // Chart Dimensions
-  const chartWidth = Math.max(310, Math.min(width - 48, 640));
+  const isMobile = width < 720;
+  const chartWidth = Math.max(270, Math.min(width - (isMobile ? 48 : 64), 980));
   const chartHeight = 180;
   const paddingX = 40;
   const paddingY = 24;
