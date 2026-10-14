@@ -46,7 +46,7 @@
   },
   "roles": {
     "farmer": "Farmer",
-    "booth": "Booth Staff",
+    "booth": "Society Staff",
     "bmc": "BMC Staff",
     "union": "Union Executive",
     "veterinary": "Veterinarian",
@@ -86,7 +86,7 @@
     "contributingFarmers": "Contributing Farmers",
     "recordMilk": "Record Milk Entry",
     "reviewCollection": "Review Collection",
-    "generateReceipt": "Generate Booth Receipt",
+    "generateReceipt": "Generate Society Receipt",
     "receiptsQueue": "Receipts Awaiting BMC",
     "discrepancyAlerts": "Discrepancy Alerts",
     "directDelivery": "Direct Delivery (Farmer)",
@@ -97,10 +97,10 @@
     "selectVendor": "Select Vendor",
     "enterQuantity": "Enter Measured Quantity (Litres)",
     "dispatchToBmc": "Dispatch to Assigned BMC",
-    "receiptSuccess": "Booth Receipt Generated & Dispatched!"
+    "receiptSuccess": "Society Receipt Generated & Dispatched!"
   },
   "bmc": {
-    "pendingDeliveries": "Pending Booth Deliveries",
+    "pendingDeliveries": "Pending Society Deliveries",
     "declaredLitres": "Declared Dispatch Litres",
     "receivedLitres": "BMC Measured Litres",
     "difference": "Variance (Diff)",

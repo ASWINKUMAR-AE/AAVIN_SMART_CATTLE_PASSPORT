@@ -71,7 +71,7 @@ console.log('\n--- 4. Testing Role Navigation Configurations ---');
 
 const ROLE_SPECS = {
   Farmer: ['Home', 'Milk', 'My Cows', 'Notifications', 'Profile'],
-  'Booth Staff': ['Home', 'Farmers', 'Record Milk', 'Receipts', 'Profile'],
+  'Society Staff': ['Home', 'Farmers', 'Record Milk', 'Receipts', 'Profile'],
   'BMC Staff': ['Home', 'Deliveries', 'Verify Milk', 'Alerts', 'Profile'],
   'Union Management': ['Home', 'BMCs', 'Reports', 'Alerts', 'Profile'],
   Veterinarian: ['Home', 'Cattle', 'Treatments', 'Follow-ups', 'Profile'],

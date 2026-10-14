@@ -89,7 +89,7 @@ export default function BoothProfileScreen() {
   return (
     <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Booth Operator Profile"
+        title="Society Operator Profile"
         subtitle={`Staff Identity & Analytics • ${booth.name}`}
       />
 
@@ -507,7 +507,7 @@ export default function BoothProfileScreen() {
 
         {/* 7. Sign Out / Session Button */}
         <Button
-          title="Sign Out of Booth Operator Account"
+          title="Sign Out of Society Operator Account"
           variant="destructive"
           icon="log-out-outline"
           onPress={handleLogout}

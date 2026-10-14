@@ -1,5 +1,6 @@
 export const TAB_BAR_HEIGHT = 68;
 export const BUTTON_SIZE = 58;
+export const TAB_BAR_CONTENT_INSET = 88;
 
 // Aavin brand theme colors strictly matching requirements
 export const AAVIN_NAV_COLORS = {

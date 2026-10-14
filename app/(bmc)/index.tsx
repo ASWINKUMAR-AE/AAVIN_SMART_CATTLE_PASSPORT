@@ -44,7 +44,7 @@ export default function BMCDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={bmc.name}
-        subtitle={`${assignedBooths.length} Feeder Booths • Capacity: ${bmc.capacityLitres.toLocaleString()} L`}
+        subtitle={`${assignedBooths.length} Feeder Societies • Capacity: ${bmc.capacityLitres.toLocaleString()} L`}
       />
 
       <ScrollView 
@@ -57,7 +57,7 @@ export default function BMCDashboard() {
             <Ionicons name="time" size={24} color="#0284C7" />
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={[Typography.headline, { color: '#0369A1', fontWeight: '800' }]}>
-                {pendingArrivals.length} Booth Delivery Awaiting Measurement
+                {pendingArrivals.length} Society Delivery Awaiting Measurement
               </Text>
               <Text style={[Typography.caption1, { color: '#0284C7', marginTop: 2 }]}>
                 {pendingArrivals[0].boothName} dispatched {pendingArrivals[0].declaredDispatchQuantity} L. Confirm arrival volume.
@@ -80,7 +80,7 @@ export default function BMCDashboard() {
                 ⚠️ {openDiscrepancies.length} Active Discrepancy Case(s)
               </Text>
               <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                Variance detected between Booth dispatch receipt and BMC flow meter.
+                Variance detected between Society dispatch receipt and BMC flow meter.
               </Text>
             </View>
             <Button
@@ -116,7 +116,7 @@ export default function BMCDashboard() {
               </Text>
             </View>
             <Text style={styles.heroSubText}>
-              Booth Declared: {stats.todayDeclared.toFixed(1)} L
+              Society Declared: {stats.todayDeclared.toFixed(1)} L
             </Text>
           </View>
 
@@ -169,7 +169,7 @@ export default function BMCDashboard() {
           {/* Declared vs Received */}
           <Card style={styles.metricCard}>
             <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
-              BOOTH DECLARED
+              SOCIETY DECLARED
             </Text>
             <Text style={[styles.metricNumber, { color: colors.text }]}>
               {stats.todayDeclared.toFixed(1)} L
@@ -209,10 +209,10 @@ export default function BMCDashboard() {
           </Card>
         </View>
 
-        {/* Assigned Feeder Booths */}
+        {/* Assigned Feeder Societies */}
         <Card style={styles.sectionCard}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Assigned Feeder Booths ({assignedBooths.length})
+            Assigned Feeder Societies ({assignedBooths.length})
           </Text>
 
           {assignedBooths.map((b) => {

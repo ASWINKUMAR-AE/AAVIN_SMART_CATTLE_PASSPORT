@@ -134,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   /**
-   * Real production logout: cleans tokens, revokes session, clears state
+   * Revokes the backend session and clears local authentication and collections.
    */
   const logout = async () => {
     try {

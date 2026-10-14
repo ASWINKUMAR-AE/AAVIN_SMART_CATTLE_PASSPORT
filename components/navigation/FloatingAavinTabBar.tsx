@@ -63,7 +63,7 @@ const ROUTE_META_MAP: Record<
     fallbackLabel: 'Profile',
   },
 
-  // Booth Staff
+  // Society Staff
   farmers: {
     outline: 'people-outline',
     filled: 'people',
@@ -201,10 +201,25 @@ export function FloatingAavinTabBar({
   // Active index among visible tabs
   const activeRoute = state.routes[state.index];
   const activeRouteIndex = visibleRoutes.findIndex((route: any) => route.key === activeRoute?.key);
-  const cowDetailsTabIndex = activeRoute?.name === 'cow-details'
-    ? visibleRoutes.findIndex((route: any) => ['cows', 'cattle-registry'].includes(route.name))
+
+  // Map subroutes to their corresponding parent tab
+  const SUBROUTE_PARENT_MAP: Record<string, string[]> = {
+    'cow-details': ['cows', 'cattle-registry'],
+    'milk-entry': ['milk-history', 'record-milk'],
+    'bmc-analytics': ['bmc-monitoring'],
+    'society-analytics': ['bmc-monitoring'],
+  };
+
+  const parentTabNames = SUBROUTE_PARENT_MAP[activeRoute?.name];
+  const parentTabIndex = parentTabNames
+    ? visibleRoutes.findIndex((route: any) => parentTabNames.includes(route.name))
     : -1;
-  const activeVisibleIndex = Math.max(0, activeRouteIndex >= 0 ? activeRouteIndex : cowDetailsTabIndex);
+
+  const activeVisibleIndex = activeRouteIndex >= 0
+    ? activeRouteIndex
+    : parentTabIndex >= 0
+    ? parentTabIndex
+    : 0;
 
   const horizontalMargin = 16;
 
@@ -228,15 +243,14 @@ export function FloatingAavinTabBar({
     return null;
   }
 
-  const bottomOffset = Math.max(insets.bottom, 12);
+  const bottomPadding = Math.max(insets.bottom, 12);
 
   return (
     <View
       style={[
         styles.outerContainer,
         {
-          bottom: bottomOffset,
-          marginHorizontal: horizontalMargin,
+          paddingBottom: bottomPadding,
         },
       ]}
       pointerEvents="box-none"
@@ -275,7 +289,9 @@ export function FloatingAavinTabBar({
                 canPreventDefault: true,
               });
 
-              if (!isFocused && !event.defaultPrevented) {
+              const isDirectlyActive = activeRoute?.name === route.name;
+
+              if ((!isFocused || !isDirectlyActive) && !event.defaultPrevented) {
                 navigation.navigate(route.name);
               }
             };
@@ -333,29 +349,35 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    bottom: 0,
     zIndex: 999,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   barWrapper: {
-    width: '100%',
+    width: '92%',
+    maxWidth: 520,
+    alignSelf: 'center',
     position: 'relative',
     backgroundColor: AAVIN_COLORS.white,
-    borderRadius: 24,
-    // Shadow styling matching dairy/clean executive aesthetic
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     ...Platform.select({
       ios: {
         shadowColor: AAVIN_COLORS.navy,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
+        shadowOpacity: 0.15,
         shadowRadius: 16,
       },
       android: {
-        elevation: 10,
+        elevation: 12,
       },
       default: {
-        boxShadow: '0px 6px 18px rgba(18, 52, 81, 0.12)',
-        transition: 'box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+        boxShadow: '0px 6px 24px rgba(18, 52, 81, 0.14)',
       },
     }),
   },
@@ -382,6 +404,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: '100%',
     zIndex: 10,
+    borderRadius: 50,
+    overflow: 'hidden',
   },
   tabItem: {
     flex: 1,
@@ -389,8 +413,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    marginHorizontal: 3,
-    borderRadius: 18,
+    marginHorizontal: 2,
+    borderRadius: 50,
+    paddingVertical: 4,
   },
   tabItemFocused: {
     backgroundColor: AAVIN_COLORS.skyBlueLight,

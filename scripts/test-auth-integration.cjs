@@ -30,7 +30,7 @@ function authHarness() {
   const saved = new Map();
   const effects = [];
   const states = [];
-  const cache = { farmers: [], societies: [], cows: [] };
+  const cache = { farmers: [], societies: [], cows: [], collections: [], notifications: [] };
   const calls=[];
   let post = async () => { throw new Error('No mock response'); };
   let get = async () => { throw new Error('No mock response'); };
@@ -56,13 +56,14 @@ function authHarness() {
     '../services/api':secure,
     '../constants/Config':{Config:{STORAGE_KEYS:keys}},
     '../services/accountMapping':mapping,
-    '../store/AavinStoreContext':{useAavinStore:()=>({isLoading:false,cacheFarmer:(f,cows)=>{cache.farmers.push(f);if(cows)cache.cows.push(...cows);},cacheSociety:s=>cache.societies.push(s)})},
+    '../store/AavinStoreContext':{useAavinStore:()=>({isLoading:false,setCollectionData:(records,notifications)=>{cache.collections=records;cache.notifications=notifications;},cacheFarmer:(f,cows)=>{cache.farmers.push(f);if(cows)cache.cows.push(...cows);},cacheSociety:s=>cache.societies.push(s)})},
   });
   const value=AuthProvider({children:null}).props.value;
   return {value,saved,effects,states,cache,calls,setPost:f=>{post=f;},setGet:f=>{get=f;}};
 }
-function storeHarness() {
+function storeHarness(savedState) {
   const states = [];
+  const effects = [];
   let persisted;
   const react = {
     createContext: () => ({Provider: 'Provider'}),
@@ -72,15 +73,19 @@ function storeHarness() {
       states.push(initial);
       return [initial, update => {states[index] = typeof update === 'function' ? update(states[index]) : update;}];
     },
-    useCallback: fn => fn, useEffect: () => {}, useContext: () => {},
+    useCallback: fn => fn, useEffect: effect => effects.push(effect), useContext: () => {},
   };
   const {AavinStoreProvider} = load('store/AavinStoreContext.tsx', {
     react,
-    '@react-native-async-storage/async-storage': {setItem: async (_key,json) => {persisted = JSON.parse(json);}},
+    '@react-native-async-storage/async-storage': {
+      getItem: async key => key.endsWith('_v2') && savedState ? JSON.stringify(savedState) : null,
+      setItem: async (_key,json) => {persisted = JSON.parse(json);},
+    },
     '../data/seedData': new Proxy({}, {get: (_target,key) => key === 'SEED_UNION' ? {} : []}),
     '../services/workflowApi': {WorkflowApi: {}},
+    '../services/milkCollectionsApi': {indiaDate: () => '2026-10-14', daysBefore: () => '2026-10-07'},
   });
-  return {value: AavinStoreProvider({children: null}).props.value, state: () => states[0], persisted: () => persisted};
+  return {value: AavinStoreProvider({children: null}).props.value, state: () => states[0], persisted: () => persisted, effects};
 }
 
 (async () => {
@@ -101,7 +106,7 @@ function storeHarness() {
     assert.equal((await h.value.login('9842000001','wrong')).success,false);
     assert.equal(h.states[0],null);
     assert.equal(h.saved.has('access'),false);
-    await assert.rejects(h.value.loginAsDemoUser('demo'));
+    assert.equal(h.value.loginAsDemoUser, undefined);
   }
   const empty=authHarness();
   assert.equal((await empty.value.login('9842000001','')).success,false);
@@ -166,6 +171,19 @@ function storeHarness() {
   assert.equal(store.state().cows.length, 2);
   assert.ok(store.state().cows.some(cow=>cow.id==='other-cow'));
   assert.ok(store.state().cows.some(cow=>cow.id==='legacy-local-cow'));
+
+  // The merged v3 migration preserves cattle while discarding unconfirmed collections.
+  const migrated = storeHarness({...store.state(),
+    booths:[{id:'society-uuid',name:'Melur Co-op Booth'}],
+    milkRecords:[{id:'local-only-record'}], notifications:[{id:'local-only-notification'}],
+  });
+  migrated.effects[0]();
+  for (let i=0;i<20;i++) await Promise.resolve();
+  assert.equal(migrated.state().cows.length, store.state().cows.length);
+  assert.equal(migrated.state().booths[0].name, 'Melur Co-op Society');
+  assert.equal(migrated.state().milkRecords.length, 0);
+  assert.equal(migrated.state().notifications.length, 0);
+  assert.equal(migrated.persisted().cows.length, store.state().cows.length);
 
   // Exercise the actual Axios refresh interceptor with isolated transport/storage.
   let interceptor, refreshCalls = 0, refreshedRequests = [];

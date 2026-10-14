@@ -36,7 +36,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   const roleMeta: Record<UserRole, { label: string; icon: string; color: string; desc: string }> = {
     farmer: { label: 'Farmer', icon: '👨‍🌾', color: '#16A34A', desc: 'Own cows, view supply & receipts' },
-    booth: { label: 'Booth Staff', icon: '🏢', color: '#0072BC', desc: 'Record milk, generate digital dispatch receipts' },
+    booth: { label: 'Society Staff', icon: '🏢', color: '#0072BC', desc: 'Record milk, generate digital dispatch receipts' },
     bmc: { label: 'BMC Staff', icon: '❄️', color: '#0284C7', desc: 'Receive deliveries, record measurements, flag mismatches' },
     union: { label: 'Union Admin', icon: '🏛️', color: '#7C3AED', desc: 'District overview, audit discrepancies & receipts' },
     veterinary: { label: 'Veterinarian', icon: '🩺', color: '#EA580C', desc: 'Clinical records & medicine withdrawal alerts' },
@@ -107,6 +107,40 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
 
   const currentMeta = activeRole ? roleMeta[activeRole] : roleMeta.farmer;
 
+  const handleBackPress = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      switch (activeRole) {
+        case 'farmer':
+          router.replace('/(farmer)' as any);
+          break;
+        case 'booth':
+          router.replace('/(booth)' as any);
+          break;
+        case 'bmc':
+          router.replace('/(bmc)' as any);
+          break;
+        case 'union':
+          router.replace('/(union)' as any);
+          break;
+        case 'veterinary':
+          router.replace('/(veterinary)' as any);
+          break;
+        case 'admin':
+          router.replace('/(admin)' as any);
+          break;
+        default:
+          router.replace('/');
+          break;
+      }
+    }
+  };
+
   return (
     <>
       <View style={[styles.container, isScrolled && styles.containerScrolled]}>
@@ -157,7 +191,7 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
         {/* User Info Bar */}
         <View style={styles.userBar}>
           {showBack && (
-            <Pressable onPress={onBack || (() => router.back())} style={styles.backBtn}>
+            <Pressable onPress={handleBackPress} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </Pressable>
           )}

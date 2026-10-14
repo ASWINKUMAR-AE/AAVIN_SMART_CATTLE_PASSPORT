@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import { BoothTabBar as FloatingAavinTabBar } from '../../components/booth/BoothTabBar';
+import { TAB_BAR_CONTENT_INSET } from '../../components/navigation/curvedNavPath';
 
 export default function BoothLayout() {
   const { colors } = useTheme();
@@ -14,6 +15,7 @@ export default function BoothLayout() {
         headerTintColor: colors.primary,
         headerTitleStyle: { color: colors.text, fontWeight: '700' },
         headerShown: false,
+        sceneStyle: { paddingBottom: TAB_BAR_CONTENT_INSET, backgroundColor: colors.background },
       }}
     >
       {/* 1. Home */}
@@ -73,7 +75,7 @@ export default function BoothLayout() {
         name="receipt-preview"
         options={{
           href: null,
-          title: 'Digital Booth Receipt',
+          title: 'Digital Society Receipt',
           headerShown: false,
         }}
       />

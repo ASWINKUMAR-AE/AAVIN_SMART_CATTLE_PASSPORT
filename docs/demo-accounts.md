@@ -9,6 +9,7 @@ Default password for all seeded accounts: **`Password@123`**
 | **Farmer (Owner 2)** | `farmer_selvi` | `9842000003` | M. Selvi | Navinipatti. Owns Cow 1003 (Review range) and Cow 1004 (Sindhi Cross) |
 | **Veterinary Doctor** | `vet_anand` | `9842000004` | Dr. R. Anand BVSc | Prescribe medicines, calculate withdrawal periods, examine health, manage clinical appointments |
 | **Collection Operator** | `operator_kannan` | `9842000005` | P. Kannan | Melur CC in-charge. Scan QR, input analyzer fat/SNF, trigger Deterministic Milk Safety Twin, generate receipts |
+| **Booth Officer (Booth 2)** | `booth_muthu` | `9842000011` | S. Muthu | Navinipatti Booth #2. Farmer milk intake, cattle verification, stage 2 dispatch receipts |
 | **Tanker Transport Vendor** | `vendor_kumar` | `9842000006` | V. Kumar | Milk logistics tanker. Scan batches, confirm pickup/dispatch, record transit temps, report discrepancies |
 
 ### 1-Tap Quick Login

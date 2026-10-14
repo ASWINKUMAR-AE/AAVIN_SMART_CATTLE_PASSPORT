@@ -56,7 +56,7 @@ export default function BoothDashboard() {
     <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={booth.name}
-        subtitle={`Booth: ${boothDisplayName} • Linked to BMC: ${assignedBmc.name}`}
+        subtitle={`Society: ${boothDisplayName} • Linked to BMC: ${assignedBmc.name}`}
       />
 
       <ScrollView 
@@ -65,7 +65,7 @@ export default function BoothDashboard() {
       >
         {!summary && <Text style={{ color: colors.textSecondary }}>{loading ? 'Loading collections…' : 'Collections unavailable. Pull down to retry.'}</Text>}
         {error && <Text style={{ color: colors.hold }}>{error}</Text>}
-        {/* Discrepancy Alert for Booth Staff */}
+        {/* Discrepancy Alert for Society Staff */}
         {boothDiscrepancies.length > 0 && (
           <View style={[styles.discrepancyBanner, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
             <Ionicons name="alert-circle" size={24} color="#DC2626" />

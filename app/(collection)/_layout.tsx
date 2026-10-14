@@ -15,9 +15,16 @@ export default function CollectionLayout() {
         headerTitleStyle: { color: colors.text, fontWeight: '700' },
         tabBarStyle: {
           backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          borderRadius: 50,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginHorizontal: 16,
+          marginBottom: Platform.OS === 'ios' ? 24 : 12,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          height: 64,
+          paddingBottom: 8,
           paddingTop: 8,
         },
         tabBarActiveTintColor: colors.primary,
@@ -43,8 +50,8 @@ export default function CollectionLayout() {
       <Tabs.Screen
         name="booth-ledger"
         options={{
-          title: 'Booth Ledger',
-          headerTitle: 'Village Booth Digital Ledger',
+          title: 'Society Ledger',
+          headerTitle: 'Village Society Digital Ledger',
           tabBarIcon: ({ color, size }) => <Ionicons name="book-outline" size={size} color={color} />,
         }}
       />

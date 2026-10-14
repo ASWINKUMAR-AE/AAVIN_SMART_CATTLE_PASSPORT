@@ -218,11 +218,11 @@ export default function RegisterFarmerScreen() {
       });
       const created = mapFarmer(account);
       cacheFarmer(created, mapCows(account));
-      const boothName = booths.find(b => b.id === assignedBoothId)?.name || 'Booth Center';
+      const societyName = booths.find(b => b.id === assignedBoothId)?.name || 'Society';
 
       Alert.alert(
         'Farmer & Cattle Enrolled Successfully!',
-        `Booth operator successfully enrolled farmer ${created.name} (${created.farmerIdCode}) and ${cowEntries.length} cattle passports with 12-digit Pashu Aadhaar RFID tags under ${boothName}.`,
+        `Society staff successfully enrolled farmer ${created.name} (${created.farmerIdCode}) and ${cowEntries.length} cattle passports with 12-digit Pashu Aadhaar RFID tags under ${societyName}.`,
         [
           {
             text: 'Return to Farmers Directory',
@@ -261,7 +261,7 @@ export default function RegisterFarmerScreen() {
     >
       <DemoHeader
         title="New Farmer & Cattle Enrollment"
-        subtitle={`Booth Operator Intake • ${booths.find(b => b.id === assignedBoothId)?.name || 'Booth Center'}`}
+        subtitle={`Society Staff Intake • ${booths.find(b => b.id === assignedBoothId)?.name || 'Society'}`}
         showBack
       />
 
@@ -271,7 +271,7 @@ export default function RegisterFarmerScreen() {
           <Ionicons name="shield-checkmark" size={20} color="#1D4ED8" style={{ marginTop: 2 }} />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={[Typography.subhead, { color: '#1E40AF', fontWeight: '800' }]}>
-              Booth Operator Member Registration
+              Society Staff Member Registration
             </Text>
             <Text style={[Typography.caption2, { color: '#1E3A8A', marginTop: 2, lineHeight: 16 }]}>
               Enter producer details and slide through the cattle passport cards to register 12-digit Pashu Aadhaar tags, breed, and milk capacity.
@@ -607,7 +607,7 @@ export default function RegisterFarmerScreen() {
           )}
         </Card>
 
-        {/* 3. Location & Booth Assignment Card */}
+        {/* 3. Location & Society Assignment Card */}
         <Card style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <View style={[styles.sectionIconBadge, { backgroundColor: '#E0F2FE' }]}>
@@ -645,7 +645,7 @@ export default function RegisterFarmerScreen() {
           />
 
           <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginBottom: 8, marginTop: 4 }]}>
-            Assigned Collection Booth Center *
+            Assigned Collection Society *
           </Text>
           <View style={styles.boothPickerRow}>
             {booths.map((b) => {
