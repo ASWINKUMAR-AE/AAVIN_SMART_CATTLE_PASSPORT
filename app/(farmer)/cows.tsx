@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -14,6 +15,7 @@ export default function FarmerCowsScreen() {
   const { user } = useAuth();
   const { cows } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const farmerId = user?.associatedId || 'FARMER001';
@@ -38,8 +40,8 @@ export default function FarmerCowsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Smart Cattle Passport"
-        subtitle={`${myCows.length} Cows Registered in Aavin Dairy Twin`}
+        title={t('farmer.smartCattlePassport', 'Smart Cattle Passport')}
+        subtitle={t('farmer.cowsRegisteredInTwin', { count: myCows.length }, `${myCows.length} Cows Registered in Aavin Dairy Twin`)}
         showBack
       />
 
@@ -49,7 +51,7 @@ export default function FarmerCowsScreen() {
           <View style={[styles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
             <TextInput
-              placeholder="Search by Cow Name, 12-digit Tag ID, Breed..."
+              placeholder={t('farmer.searchCowsPlaceholder', 'Search by Cow Name, 12-digit Tag ID, Breed...')}
               placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -65,28 +67,36 @@ export default function FarmerCowsScreen() {
 
         {/* Health Filter Chips */}
         <View style={styles.chipsRow}>
-          {(['all', 'healthy', 'under_treatment'] as const).map(f => (
-            <Pressable
-              key={f}
-              onPress={() => setHealthFilter(f)}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: healthFilter === f ? colors.primary : colors.background,
-                  borderColor: healthFilter === f ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <Text
+          {(['all', 'healthy', 'under_treatment'] as const).map(f => {
+            const filterLabel = f === 'all'
+              ? t('farmer.allCows', 'All Cows')
+              : f === 'healthy'
+              ? t('farmer.healthyOnly', 'Healthy Only')
+              : t('farmer.underTreatmentWarning', 'Under Treatment / Warning');
+
+            return (
+              <Pressable
+                key={f}
+                onPress={() => setHealthFilter(f)}
                 style={[
-                  styles.chipText,
-                  { color: healthFilter === f ? '#FFFFFF' : colors.textSecondary },
+                  styles.chip,
+                  {
+                    backgroundColor: healthFilter === f ? colors.primary : colors.background,
+                    borderColor: healthFilter === f ? colors.primary : colors.border,
+                  },
                 ]}
               >
-                {f === 'all' ? 'All Cows' : f === 'healthy' ? 'Healthy Only' : 'Under Treatment / Warning'}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.chipText,
+                    { color: healthFilter === f ? '#FFFFFF' : colors.textSecondary },
+                  ]}
+                >
+                  {filterLabel}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -96,13 +106,23 @@ export default function FarmerCowsScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Cows Found"
-            message="No registered cattle match your search criteria."
+            title={t('farmer.noCowsFound', 'No Cows Found')}
+            message={t('farmer.noCowsFoundMsg', 'No registered cattle match your search criteria.')}
             icon="paw-outline"
           />
         }
         renderItem={({ item }) => {
           const hasWithdrawal = item.activeWithdrawal?.hasActiveWithdrawal;
+          const statusText = item.verificationStatus === 'verified'
+            ? t('statuses.verified', 'VERIFIED').toUpperCase()
+            : t('statuses.pending', 'PENDING').toUpperCase();
+
+          const genderText = item.sex === 'female' ? t('farmer.cow', 'Cow') : t('farmer.bull', 'Bull');
+          const monthsText = t('farmer.months', 'Months');
+
+          const lactationText = t(`statuses.${item.lactationStage}`, item.lactationStage).toUpperCase();
+          const healthText = t(`statuses.${item.healthStatus}`, item.healthStatus.replace('_', ' ')).toUpperCase();
+
           return (
             <Pressable 
               onPress={() => router.push(`/(farmer)/cow-details?cowId=${item.id}` as any)}
@@ -121,7 +141,7 @@ export default function FarmerCowsScreen() {
                       </Text>
                       <View style={[styles.statusBadge, { backgroundColor: item.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
                         <Text style={[styles.statusBadgeText, { color: item.verificationStatus === 'verified' ? '#15803D' : '#B45309' }]}>
-                          {item.verificationStatus.toUpperCase()}
+                          {statusText}
                         </Text>
                       </View>
                     </View>
@@ -129,11 +149,11 @@ export default function FarmerCowsScreen() {
                     {/* 12-Digit Tag Badge */}
                     <View style={styles.tagBadge}>
                       <Ionicons name="pricetag" size={12} color="#0072BC" />
-                      <Text style={styles.tagText}>Tag: {item.tagId}</Text>
+                      <Text style={styles.tagText}>{t('farmer.tagNumberShort', { tagId: item.tagId }, `Tag: ${item.tagId}`)}</Text>
                     </View>
 
                     <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
-                      {item.breed} • {item.sex === 'female' ? 'Cow' : 'Bull'} • {item.approxAgeMonths} Months
+                      {item.breed} • {genderText} • {item.approxAgeMonths} {monthsText}
                     </Text>
                   </View>
                 </View>
@@ -144,10 +164,10 @@ export default function FarmerCowsScreen() {
                     <Ionicons name="warning" size={16} color="#DC2626" />
                     <View style={{ flex: 1, marginLeft: 8 }}>
                       <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800' }]}>
-                        ACTIVE MEDICINE WITHDRAWAL
+                        {t('farmer.activeMedicineWithdrawal', 'ACTIVE MEDICINE WITHDRAWAL')}
                       </Text>
                       <Text style={[Typography.caption2, { color: '#991B1B' }]}>
-                        {item.activeWithdrawal?.medicineName} (Ends: {item.activeWithdrawal?.withdrawalEndDate})
+                        {item.activeWithdrawal?.medicineName} ({t('farmer.ends', 'Ends')}: {item.activeWithdrawal?.withdrawalEndDate})
                       </Text>
                     </View>
                   </View>
@@ -156,25 +176,25 @@ export default function FarmerCowsScreen() {
                 {/* Metrics Row */}
                 <View style={[styles.metricsRow, { borderTopColor: colors.border }]}>
                   <View style={styles.metricItem}>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Daily Yield</Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('farmer.dailyYield', 'Daily Yield')}</Text>
                     <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
                       {item.dailyMilkYield.toFixed(1)} L/day
                     </Text>
                   </View>
 
                   <View style={styles.metricItem}>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Lactation</Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('farmer.lactation', 'Lactation')}</Text>
                     <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                      {item.lactationStage.toUpperCase()}
+                      {lactationText}
                     </Text>
                   </View>
 
                   <View style={styles.metricItem}>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Health Status</Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('farmer.healthStatus', 'Health Status')}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                       <View style={[styles.healthDot, { backgroundColor: item.healthStatus === 'healthy' ? '#16A34A' : '#DC2626' }]} />
                       <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700', marginLeft: 4 }]}>
-                        {item.healthStatus.replace('_', ' ').toUpperCase()}
+                        {healthText}
                       </Text>
                     </View>
                   </View>

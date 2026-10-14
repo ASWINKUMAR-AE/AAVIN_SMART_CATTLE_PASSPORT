@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, FlatList, Pressable, BackHandler } from 'react-
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -18,6 +19,7 @@ import { VerticalComparisonBarChart } from '../../components/analytics/VerticalC
 export default function BMCMonitoringScreen() {
   const { bmcs, booths, bmcReceipts, discrepancyCases, bmcDeliveries } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const handleBackToHome = () => {
@@ -51,10 +53,10 @@ export default function BMCMonitoringScreen() {
         <View style={styles.bannerHeaderRow}>
           <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
             <Text style={[Typography.title2, { color: colors.text, fontWeight: '900' }]}>
-              District Production Comparison
+              {t('union.monitoring.productionComparison', 'District Production Comparison')}
             </Text>
             <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-              Ranked milk volume comparison. Tap any BMC for society breakdown.
+              {t('union.monitoring.productionComparisonDesc', 'Ranked milk volume comparison. Tap any BMC for society breakdown.')}
             </Text>
           </View>
           <View style={[styles.statsBadge, { backgroundColor: colors.primaryLight }]}>
@@ -81,7 +83,7 @@ export default function BMCMonitoringScreen() {
                     { color: isActive ? '#FFFFFF' : colors.textSecondary },
                   ]}
                 >
-                  {PERIOD_LABELS[periodKey].title}
+                  {t(`analytics.periods.${periodKey}`, PERIOD_LABELS[periodKey].title)}
                 </Text>
               </Pressable>
             );
@@ -95,7 +97,7 @@ export default function BMCMonitoringScreen() {
             rank: idx + 1,
             title: bmcItem.bmcName,
             code: bmcItem.code,
-            subtitle: `In-Charge: ${bmcItem.managerName} • ${bmcItem.location}`,
+            subtitle: `${t('union.inCharge', 'In-Charge')}: ${bmcItem.managerName} • ${bmcItem.location}`,
             comparison: bmcItem.metrics[comparisonPeriod],
             onPress: () => router.push({ pathname: '/(union)/bmc-analytics' as any, params: { bmcId: bmcItem.bmcId } }),
           }))}
@@ -107,7 +109,7 @@ export default function BMCMonitoringScreen() {
       <View style={styles.sectionDividerRow}>
         <Ionicons name="snow" size={18} color={colors.primary} />
         <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-          BMC Facility Infrastructure ({bmcs.length})
+          {t('union.monitoring.facilitiesHeader', { count: bmcs.length }, `BMC Facility Infrastructure (${bmcs.length})`)}
         </Text>
       </View>
     </View>
@@ -116,8 +118,8 @@ export default function BMCMonitoringScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="BMC Facility Monitoring"
-        subtitle="District Bulk Milk Cooling Infrastructure"
+        title={t('union.monitoring.title', 'BMC Facility Monitoring')}
+        subtitle={t('union.monitoring.subtitle', 'District Bulk Milk Cooling Infrastructure')}
         showBack
         onBack={handleBackToHome}
       />
@@ -131,7 +133,6 @@ export default function BMCMonitoringScreen() {
           const bmcBooths = booths.filter(b => b.assignedBmcId === item.id);
           const deliveries = bmcDeliveries.filter(d => d.bmcId === item.id);
           const totalReceived = deliveries.reduce((sum, d) => sum + (d.measuredReceivedQuantity || 0), 0);
-          const latestReceipt = bmcReceipts.find(r => r.bmcId === item.id);
           const openCases = discrepancyCases.filter(c => c.bmcId === item.id && (c.status === 'open' || c.status === 'under_investigation'));
 
           const utilization = Math.min((totalReceived / item.capacityLitres) * 100, 100);
@@ -147,7 +148,7 @@ export default function BMCMonitoringScreen() {
                     {item.name?.replace(/cooling booth/gi, 'Bulk Milk Cooling Centre').replace(/booth/gi, 'Society')}
                   </Text>
                   <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-                    Code: {item.code} • {item.location} • In-Charge: {item.managerName}
+                    {t('union.monitoring.codeLocationInCharge', { code: item.code, location: item.location, manager: item.managerName }, `Code: ${item.code} • ${item.location} • In-Charge: ${item.managerName}`)}
                   </Text>
                 </View>
               </View>
@@ -156,10 +157,10 @@ export default function BMCMonitoringScreen() {
               <View style={styles.capacitySection}>
                 <View style={styles.capLabelRow}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>
-                    Daily Cooling Load: {totalReceived.toFixed(1)} L / {item.capacityLitres.toLocaleString()} L
+                    {t('union.monitoring.dailyCoolingLoad', { received: totalReceived.toFixed(1), capacity: item.capacityLitres.toLocaleString() }, `Daily Cooling Load: ${totalReceived.toFixed(1)} L / ${item.capacityLitres.toLocaleString()} L`)}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', flexShrink: 0 }]}>
-                    {utilization.toFixed(1)}% Capacity
+                    {t('union.monitoring.capacityPercent', { percent: utilization.toFixed(1) }, `${utilization.toFixed(1)}% Capacity`)}
                   </Text>
                 </View>
                 <View style={styles.barTrack}>
@@ -170,11 +171,11 @@ export default function BMCMonitoringScreen() {
               {/* Feeder Societies Table */}
               <View style={[styles.boothSection, { borderTopColor: colors.border }]}>
                 <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800', marginBottom: 8 }]}>
-                  Feeder Societies ({bmcBooths.length})
+                  {t('union.monitoring.feederSocieties', { count: bmcBooths.length }, `Feeder Societies (${bmcBooths.length})`)}
                 </Text>
                 {bmcBooths.length === 0 ? (
                   <Text style={[Typography.caption2, { color: colors.textMuted, fontStyle: 'italic' }]}>
-                    No linked feeder societies
+                    {t('union.monitoring.noLinkedSocieties', 'No linked feeder societies')}
                   </Text>
                 ) : (
                   <View style={styles.boothList}>
@@ -205,7 +206,7 @@ export default function BMCMonitoringScreen() {
                         <View style={styles.boothMetaRow}>
                           <Ionicons name="person-outline" size={12} color={colors.textSecondary} />
                           <Text style={[Typography.caption2, { color: colors.textSecondary, flex: 1, minWidth: 0, marginLeft: 4 }]}>
-                            In-Charge: {b.operatorName} {b.phone ? `• ${b.phone}` : ''}
+                            {t('union.monitoring.inCharge', { name: b.operatorName }, `In-Charge: ${b.operatorName}`)} {b.phone ? `• ${b.phone}` : ''}
                           </Text>
                         </View>
                       </Pressable>
@@ -218,7 +219,9 @@ export default function BMCMonitoringScreen() {
               <View style={[styles.footerRow, { borderTopColor: colors.border }]}>
                 <View style={[styles.statusPill, { backgroundColor: openCases.length > 0 ? '#FEE2E2' : '#DCFCE7' }]}>
                   <Text style={[styles.statusPillText, { color: openCases.length > 0 ? '#DC2626' : '#15803D' }]}>
-                    {openCases.length > 0 ? `${openCases.length} Discrepancies Open` : 'Balanced'}
+                    {openCases.length > 0 
+                      ? t('union.monitoring.openDiscrepancies', { count: openCases.length }, `${openCases.length} Discrepancies Open`)
+                      : t('union.monitoring.balanced', 'Balanced')}
                   </Text>
                 </View>
 
@@ -229,13 +232,13 @@ export default function BMCMonitoringScreen() {
                   >
                     <Ionicons name="stats-chart" size={12} color={colors.primary} style={{ marginRight: 4 }} />
                     <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                      Analytics
+                      {t('union.monitoring.analytics', 'Analytics')}
                     </Text>
                   </Pressable>
 
                   <Pressable onPress={() => router.push('/(union)/receipt-review' as any)} hitSlop={8}>
                     <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700' }]}>
-                      Receipts →
+                      {t('union.monitoring.receiptsLink', 'Receipts →')}
                     </Text>
                   </Pressable>
                 </View>

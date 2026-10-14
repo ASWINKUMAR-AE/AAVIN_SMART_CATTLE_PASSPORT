@@ -10,8 +10,10 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function BoothProfileScreen() {
+  const { t } = useTranslation();
   const { booths, bmcs, farmers, milkRecords, boothReceipts, cows } = useAavinStore();
   const { user, logout } = useAuth();
   const { colors, isDark } = useTheme();
@@ -84,8 +86,8 @@ export default function BoothProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Society Operator Profile"
-        subtitle={`Staff Identity & Analytics • ${booth.name}`}
+        title={t('booth.societyProfileTitle', 'Society Operator Profile')}
+        subtitle={t('booth.societyProfileSubtitle', { booth: booth.name }, `Staff Identity & Analytics • ${booth.name}`)}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -472,7 +474,7 @@ export default function BoothProfileScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                Farmers Directory & KYC
+                {t('booth.farmersDirectoryTitle', 'Farmers Directory & KYC')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                 View and edit registered dairy producers
@@ -490,7 +492,7 @@ export default function BoothProfileScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                Sent Dispatch Receipts Ledger
+                {t('booth.sentReceiptsTitle', 'Sent Dispatch Receipts Ledger')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                 BMC transit track and ultrasonic weight matching
@@ -502,7 +504,7 @@ export default function BoothProfileScreen() {
 
         {/* 7. Sign Out / Session Button */}
         <Button
-          title="Sign Out of Society Operator Account"
+          title={t('booth.signOutBooth', 'Sign Out of Society Operator Account')}
           variant="destructive"
           icon="log-out-outline"
           onPress={handleLogout}

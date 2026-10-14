@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { Ionicons } from '@expo/vector-icons';
 import { PeriodComparison, formatLitres } from '../../services/bmcAnalyticsService';
@@ -30,6 +31,7 @@ export const VerticalComparisonBarChart: React.FC<VerticalComparisonBarChartProp
   chartTitle,
 }) => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   // Selected or hovered item ID (defaults to first/top-ranked item)
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -165,7 +167,7 @@ export const VerticalComparisonBarChart: React.FC<VerticalComparisonBarChartProp
                   style={[styles.openBtn, { backgroundColor: colors.primary }]}
                   accessibilityLabel={`Open details for ${activeItem.title}`}
                 >
-                  <Text style={styles.openBtnText}>Open</Text>
+                  <Text style={styles.openBtnText}>{t('analytics.chart.open', 'Open')}</Text>
                   <Ionicons name="arrow-forward" size={12} color="#FFFFFF" style={{ marginLeft: 2 }} />
                 </Pressable>
               )}
@@ -179,11 +181,11 @@ export const VerticalComparisonBarChart: React.FC<VerticalComparisonBarChartProp
         <View style={styles.legendLeft}>
           <Ionicons name="information-circle-outline" size={14} color={colors.primary} />
           <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 4 }]}>
-            <Text style={{ fontWeight: '700', color: colors.text }}>Single tap:</Text> Details • <Text style={{ fontWeight: '700', color: colors.primary }}>Double tap:</Text> Open
+            <Text style={{ fontWeight: '700', color: colors.text }}>{t('analytics.chart.singleTap', 'Single tap:')}</Text> {t('analytics.chart.details', 'Details')} • <Text style={{ fontWeight: '700', color: colors.primary }}>{t('analytics.chart.doubleTap', 'Double tap:')}</Text> {t('analytics.chart.open', 'Open')}
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-          Peak: {formatLitres(maxVolume)}
+          {t('analytics.chart.peak', { val: formatLitres(maxVolume) }, `Peak: ${formatLitres(maxVolume)}`)}
         </Text>
       </View>
 

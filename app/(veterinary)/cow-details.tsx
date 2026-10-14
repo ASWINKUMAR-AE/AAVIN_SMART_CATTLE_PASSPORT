@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, Image, Pressable, Modal, TextInput,
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -14,6 +15,7 @@ export default function VetCowDetailsScreen() {
   const cowId = (params.cowId as string) || (params.id as string) || 'COW002';
   const { cows, addMedicalRecord } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const cow = cows.find(c => c.id === cowId || c.tagId === cowId) || cows[1] || cows[0];
@@ -29,7 +31,10 @@ export default function VetCowDetailsScreen() {
 
   const handleSaveMedicalRecord = () => {
     if (!diagnosis.trim()) {
-      Alert.alert('Required Field', 'Please enter a diagnosis or clinical assessment.');
+      Alert.alert(
+        t('veterinary.details.requiredField', 'Required Field'),
+        t('veterinary.details.enterDiagnosisPrompt', 'Please enter a diagnosis or clinical assessment.')
+      );
       return;
     }
 
@@ -48,7 +53,10 @@ export default function VetCowDetailsScreen() {
     setDiagnosis('');
     setSymptoms('');
     setRecommendations('');
-    Alert.alert('Success', 'Clinical examination record added to Veterinary Health Passport.');
+    Alert.alert(
+      t('common.success', 'Success'),
+      t('veterinary.details.examSavedSuccess', 'Clinical examination record added to Veterinary Health Passport.')
+    );
   };
 
   const hasWithdrawal = cow?.activeWithdrawal?.hasActiveWithdrawal;
@@ -57,7 +65,7 @@ export default function VetCowDetailsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={cow.name}
-        subtitle={`Veterinary Surveillance • Tag #${cow.tagId}`}
+        subtitle={t('veterinary.details.surveillanceTag', 'Veterinary Surveillance • Tag #{tagId}', { tagId: cow.tagId })}
         showBack
       />
 
@@ -81,7 +89,10 @@ export default function VetCowDetailsScreen() {
                 {cow.breed}
               </Text>
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2 }]}>
-                Owner: {cow.farmerName} ({cow.farmerId})
+                {t('veterinary.common.ownerInfo', 'Owner: {name} ({id})', {
+                  name: cow.farmerName,
+                  id: cow.farmerId
+                })}
               </Text>
               <View style={[styles.verifBadge, { backgroundColor: cow.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
                 <Ionicons 
@@ -90,7 +101,9 @@ export default function VetCowDetailsScreen() {
                   color={cow.verificationStatus === 'verified' ? '#15803D' : '#B45309'} 
                 />
                 <Text style={[styles.verifText, { color: cow.verificationStatus === 'verified' ? '#15803D' : '#B45309' }]}>
-                  {cow.verificationStatus === 'verified' ? 'Verified Cattle Passport' : 'Pending Verification'}
+                  {cow.verificationStatus === 'verified' 
+                    ? t('veterinary.details.verifiedPassport', 'Verified Cattle Passport') 
+                    : t('veterinary.details.pendingVerification', 'Pending Verification')}
                 </Text>
               </View>
             </View>
@@ -103,16 +116,19 @@ export default function VetCowDetailsScreen() {
                 <Ionicons name="warning" size={24} color="#DC2626" />
                 <View style={{ marginLeft: 10, flex: 1 }}>
                   <Text style={[Typography.headline, { color: '#B91C1C', fontWeight: '900' }]}>
-                    ⚠️ ACTIVE MEDICINE WITHDRAWAL
+                    {t('veterinary.details.activeWithdrawalTitle', '⚠️ ACTIVE MEDICINE WITHDRAWAL')}
                   </Text>
                   <Text style={[Typography.subhead, { color: '#7F1D1D', fontWeight: '700', marginTop: 2 }]}>
-                    Drug: {cow.activeWithdrawal?.medicineName}
+                    {t('veterinary.details.drugLabel', 'Drug: {medicine}', { medicine: cow.activeWithdrawal?.medicineName || '' })}
                   </Text>
                   <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                    Clinical Reason: {cow.activeWithdrawal?.reason}
+                    {t('veterinary.details.reasonLabel', 'Clinical Reason: {reason}', { reason: cow.activeWithdrawal?.reason || '' })}
                   </Text>
                   <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800', marginTop: 4 }]}>
-                    Withholding End Date: {cow.activeWithdrawal?.withdrawalEndDate} ({cow.activeWithdrawal?.daysRemaining} days remaining)
+                    {t('veterinary.details.withholdingEndDateLabel', 'Withholding End Date: {date} ({days} days remaining)', {
+                      date: cow.activeWithdrawal?.withdrawalEndDate || '',
+                      days: cow.activeWithdrawal?.daysRemaining || 0
+                    })}
                   </Text>
                 </View>
               </View>
@@ -122,13 +138,13 @@ export default function VetCowDetailsScreen() {
           {/* Quick Actions for Vet */}
           <View style={styles.actionRow}>
             <Button
-              title="Prescribe Treatment"
+              title={t('veterinary.details.prescribeTreatment', 'Prescribe Treatment')}
               size="sm"
               onPress={() => router.push('/(veterinary)/treatment-entry')}
               style={{ flex: 1 }}
             />
             <Button
-              title="Add Examination"
+              title={t('veterinary.details.addExamination', 'Add Examination')}
               variant="secondary"
               size="sm"
               onPress={() => setModalVisible(true)}
@@ -139,21 +155,29 @@ export default function VetCowDetailsScreen() {
           {/* Quick Stats Grid */}
           <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
             <View style={styles.statCol}>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Daily Yield</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                {t('veterinary.details.dailyYield', 'Daily Yield')}
+              </Text>
               <Text style={[styles.statValue, { color: colors.text }]}>{cow.dailyMilkYield.toFixed(1)} L</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Lactation</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                {t('veterinary.details.lactation', 'Lactation')}
+              </Text>
               <Text style={[styles.statValue, { color: colors.text }]}>{cow.lactationStage.toUpperCase()}</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Age</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                {t('veterinary.details.age', 'Age')}
+              </Text>
               <Text style={[styles.statValue, { color: colors.text }]}>{cow.approxAgeMonths} Mo</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Health</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                {t('veterinary.details.health', 'Health')}
+              </Text>
               <Text style={[styles.statValue, { color: cow.healthStatus === 'healthy' ? '#16A34A' : '#DC2626' }]}>
-                {cow.healthStatus === 'healthy' ? 'Healthy' : 'Hold'}
+                {cow.healthStatus === 'healthy' ? t('statuses.healthy', 'Healthy') : t('veterinary.details.hold', 'Hold')}
               </Text>
             </View>
           </View>
@@ -163,11 +187,11 @@ export default function VetCowDetailsScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
           <View style={styles.tabsContainer}>
             {[
-              { key: 'profile', label: 'Overview', icon: 'information-circle' },
-              { key: 'medical', label: `Clinical (${cow.medicalHistory.length})`, icon: 'fitness' },
-              { key: 'vaccines', label: `Vaccines (${cow.vaccinationHistory.length})`, icon: 'shield-checkmark' },
-              { key: 'treatments', label: `Treatments (${cow.treatmentRecords.length})`, icon: 'medkit' },
-              { key: 'breeding', label: `Breeding (${cow.inseminationHistory.length})`, icon: 'heart' },
+              { key: 'profile', label: t('veterinary.details.tabOverview', 'Overview'), icon: 'information-circle' },
+              { key: 'medical', label: t('veterinary.details.tabClinical', 'Clinical ({count})', { count: cow.medicalHistory.length }), icon: 'fitness' },
+              { key: 'vaccines', label: t('veterinary.details.tabVaccines', 'Vaccines ({count})', { count: cow.vaccinationHistory.length }), icon: 'shield-checkmark' },
+              { key: 'treatments', label: t('veterinary.details.tabTreatments', 'Treatments ({count})', { count: cow.treatmentRecords.length }), icon: 'medkit' },
+              { key: 'breeding', label: t('veterinary.details.tabBreeding', 'Breeding ({count})', { count: cow.inseminationHistory.length }), icon: 'heart' },
             ].map((tab) => (
               <Pressable
                 key={tab.key}
@@ -195,23 +219,31 @@ export default function VetCowDetailsScreen() {
         {activeTab === 'profile' && (
           <Card style={styles.tabContentCard}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-              Animal Identification & Pedigree
+              {t('veterinary.details.pedigreeTitle', 'Animal Identification & Pedigree')}
             </Text>
 
             <View style={styles.specRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>12-Digit Tag Number:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
+                {t('veterinary.details.tagNumberLabel', '12-Digit Tag Number:')}
+              </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>{cow.tagId}</Text>
             </View>
             <View style={styles.specRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Date of Birth:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
+                {t('veterinary.details.dobLabel', 'Date of Birth:')}
+              </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.dateOfBirth}</Text>
             </View>
             <View style={styles.specRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Gender:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
+                {t('veterinary.details.genderLabel', 'Gender:')}
+              </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{cow.sex.toUpperCase()}</Text>
             </View>
             <View style={styles.specRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Physical Marks:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>
+                {t('veterinary.details.physicalMarksLabel', 'Physical Marks:')}
+              </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600', flex: 1, textAlign: 'right' }]}>
                 {cow.identificationMarks}
               </Text>
@@ -223,12 +255,12 @@ export default function VetCowDetailsScreen() {
         {activeTab === 'medical' && (
           <Card style={styles.tabContentCard}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-              Clinical Examinations Log
+              {t('veterinary.details.clinicalLogTitle', 'Clinical Examinations Log')}
             </Text>
 
             {cow.medicalHistory.length === 0 ? (
               <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
-                No prior clinical examinations recorded.
+                {t('veterinary.details.noExamsRecorded', 'No prior clinical examinations recorded.')}
               </Text>
             ) : (
               cow.medicalHistory.map((m) => (
@@ -240,13 +272,17 @@ export default function VetCowDetailsScreen() {
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{m.date}</Text>
                   </View>
                   <Text style={[Typography.caption1, { color: colors.text, marginTop: 4 }]}>
-                    Symptoms: {m.symptoms}
+                    {t('veterinary.details.symptomsLabel', 'Symptoms: {symptoms}', { symptoms: m.symptoms })}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                    Temp: {m.bodyTemperatureC}°C • Heart Rate: {m.heartRateBpm} bpm • Rumen: {m.rumenMotility}
+                    {t('veterinary.details.vitalsSummary', 'Temp: {temp}°C • Heart Rate: {hr} bpm • Rumen: {rumen}', {
+                      temp: m.bodyTemperatureC ?? 38.6,
+                      hr: m.heartRateBpm ?? 68,
+                      rumen: m.rumenMotility ?? 'Normal'
+                    })}
                   </Text>
                   <Text style={[Typography.caption1, { color: '#047857', fontWeight: '600', marginTop: 4 }]}>
-                    Recommendations: {m.recommendations}
+                    {t('veterinary.details.recommendationsLabel', 'Recommendations: {rec}', { rec: m.recommendations })}
                   </Text>
                 </View>
               ))
@@ -258,12 +294,12 @@ export default function VetCowDetailsScreen() {
         {activeTab === 'vaccines' && (
           <Card style={styles.tabContentCard}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-              Vaccination Records
+              {t('veterinary.details.vaccinationTitle', 'Vaccination Records')}
             </Text>
 
             {cow.vaccinationHistory.length === 0 ? (
               <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
-                No vaccination entries logged yet.
+                {t('veterinary.details.noVaccinesRecorded', 'No vaccination entries logged yet.')}
               </Text>
             ) : (
               cow.vaccinationHistory.map((v) => (
@@ -275,10 +311,13 @@ export default function VetCowDetailsScreen() {
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{v.date}</Text>
                   </View>
                   <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
-                    Batch: {v.batchNumber} • Administered by: {v.administeredBy}
+                    {t('veterinary.details.vaccineBatchAdmin', 'Batch: {batch} • Administered by: {by}', {
+                      batch: v.batchNumber,
+                      by: v.administeredBy
+                    })}
                   </Text>
                   <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
-                    Next Due Date: {v.nextDueDate}
+                    {t('veterinary.details.nextDueDate', 'Next Due Date: {date}', { date: v.nextDueDate })}
                   </Text>
                 </View>
               ))
@@ -290,30 +329,36 @@ export default function VetCowDetailsScreen() {
         {activeTab === 'treatments' && (
           <Card style={styles.tabContentCard}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-              Prescribed Treatments & Drug Withdrawals
+              {t('veterinary.details.treatmentsTitle', 'Prescribed Treatments & Drug Withdrawals')}
             </Text>
 
             {cow.treatmentRecords.length === 0 ? (
               <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
-                No treatments on record.
+                {t('veterinary.details.noTreatmentsRecorded', 'No treatments on record.')}
               </Text>
             ) : (
-              cow.treatmentRecords.map((t) => (
-                <View key={t.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
+              cow.treatmentRecords.map((tRec) => (
+                <View key={tRec.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
                   <View style={styles.historyItemHeader}>
                     <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800' }]}>
-                      💊 {t.medicineName}
+                      💊 {tRec.medicineName}
                     </Text>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t.date}</Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{tRec.date}</Text>
                   </View>
                   <Text style={[Typography.caption1, { color: colors.text, marginTop: 2 }]}>
-                    Dosage: {t.dosage} ({t.route})
+                    {t('veterinary.details.dosageRoute', 'Dosage: {dosage} ({route})', {
+                      dosage: tRec.dosage,
+                      route: tRec.route
+                    })}
                   </Text>
                   <Text style={[Typography.caption1, { color: '#991B1B', fontWeight: '700', marginTop: 4 }]}>
-                    Withdrawal Period: {t.withdrawalPeriodDays} Days (Withhold until {t.withdrawalEndDate})
+                    {t('veterinary.details.withdrawalUntil', 'Withdrawal Period: {days} Days (Withhold until {date})', {
+                      days: tRec.withdrawalPeriodDays,
+                      date: tRec.withdrawalEndDate
+                    })}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                    Reason: {t.reason}
+                    {t('veterinary.details.treatmentReason', 'Reason: {reason}', { reason: tRec.reason })}
                   </Text>
                 </View>
               ))
@@ -325,27 +370,32 @@ export default function VetCowDetailsScreen() {
         {activeTab === 'breeding' && (
           <Card style={styles.tabContentCard}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-              Artificial Insemination & Breeding History
+              {t('veterinary.details.breedingTitle', 'Artificial Insemination & Breeding History')}
             </Text>
 
             {cow.inseminationHistory.length === 0 ? (
               <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
-                No insemination records logged.
+                {t('veterinary.details.noBreedingRecorded', 'No insemination records logged.')}
               </Text>
             ) : (
               cow.inseminationHistory.map((ins) => (
                 <View key={ins.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
                   <View style={styles.historyItemHeader}>
                     <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                      Semen Bull: {ins.bullId}
+                      {t('veterinary.details.semenBull', 'Semen Bull: {id}', { id: ins.bullId })}
                     </Text>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{ins.date}</Text>
                   </View>
                   <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2 }]}>
-                    Breed: {ins.breed} • AI Tech: {ins.technicianName}
+                    {t('veterinary.details.breedTech', 'Breed: {breed} • AI Tech: {tech}', {
+                      breed: ins.breed,
+                      tech: ins.technicianName
+                    })}
                   </Text>
                   <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700', marginTop: 4 }]}>
-                    Status: {ins.pregnancyStatus.replace('_', ' ').toUpperCase()}
+                    {t('veterinary.details.pregnancyStatus', 'Status: {status}', {
+                      status: ins.pregnancyStatus.replace('_', ' ').toUpperCase()
+                    })}
                   </Text>
                 </View>
               ))
@@ -364,7 +414,9 @@ export default function VetCowDetailsScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
           <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
-              <Text style={[Typography.title2, { color: colors.text }]}>Add Clinical Examination</Text>
+              <Text style={[Typography.title2, { color: colors.text }]}>
+                {t('veterinary.details.modalTitle', 'Add Clinical Examination')}
+              </Text>
               <Pressable onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </Pressable>
@@ -372,10 +424,10 @@ export default function VetCowDetailsScreen() {
 
             <ScrollView>
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>
-                Diagnosis / Primary Finding *
+                {t('veterinary.details.modalDiagnosisLabel', 'Diagnosis / Primary Finding *')}
               </Text>
               <TextInput
-                placeholder="e.g. Udder examination, mastitis follow-up"
+                placeholder={t('veterinary.details.modalDiagnosisPlaceholder', 'e.g. Udder examination, mastitis follow-up')}
                 placeholderTextColor={colors.textMuted}
                 value={diagnosis}
                 onChangeText={setDiagnosis}
@@ -383,10 +435,10 @@ export default function VetCowDetailsScreen() {
               />
 
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
-                Symptoms Observed
+                {t('veterinary.details.modalSymptomsLabel', 'Symptoms Observed')}
               </Text>
               <TextInput
-                placeholder="e.g. Swelling reduced, clotted milk absent"
+                placeholder={t('veterinary.details.modalSymptomsPlaceholder', 'e.g. Swelling reduced, clotted milk absent')}
                 placeholderTextColor={colors.textMuted}
                 value={symptoms}
                 onChangeText={setSymptoms}
@@ -394,7 +446,7 @@ export default function VetCowDetailsScreen() {
               />
 
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
-                Body Temperature (°C)
+                {t('veterinary.details.modalTempLabel', 'Body Temperature (°C)')}
               </Text>
               <TextInput
                 placeholder="38.6"
@@ -406,10 +458,10 @@ export default function VetCowDetailsScreen() {
               />
 
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>
-                Recommendations
+                {t('veterinary.details.modalRecommendationsLabel', 'Recommendations')}
               </Text>
               <TextInput
-                placeholder="e.g. Continue antibiotic until withdrawal period expires"
+                placeholder={t('veterinary.details.modalRecommendationsPlaceholder', 'e.g. Continue antibiotic until withdrawal period expires')}
                 placeholderTextColor={colors.textMuted}
                 value={recommendations}
                 onChangeText={setRecommendations}
@@ -417,7 +469,7 @@ export default function VetCowDetailsScreen() {
               />
 
               <Button
-                title="Save Examination to Passport"
+                title={t('veterinary.details.modalSubmitBtn', 'Save Examination to Passport')}
                 onPress={handleSaveMedicalRecord}
                 style={{ marginTop: 18 }}
               />

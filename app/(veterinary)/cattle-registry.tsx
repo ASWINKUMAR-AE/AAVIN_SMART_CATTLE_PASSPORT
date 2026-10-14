@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, FlatList, Pressable, TextInput } from 'react-na
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -12,6 +13,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 export default function CattleRegistryScreen() {
   const { cows } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,8 +36,8 @@ export default function CattleRegistryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="District Cattle Registry"
-        subtitle={`${cows.length} Bovines in Veterinary Surveillance Grid`}
+        title={t('veterinary.registry.title', 'District Cattle Registry')}
+        subtitle={t('veterinary.registry.subtitle', '{count} Bovines in Veterinary Surveillance Grid', { count: cows.length })}
         showBack
       />
 
@@ -43,7 +45,7 @@ export default function CattleRegistryScreen() {
         <View style={[styles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
           <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
           <TextInput
-            placeholder="Search by Tag ID, Name, Farmer, Breed..."
+            placeholder={t('veterinary.registry.searchPlaceholder', 'Search by Tag ID, Name, Farmer, Breed...')}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -70,7 +72,11 @@ export default function CattleRegistryScreen() {
                   { color: filter === f ? '#FFFFFF' : colors.textSecondary },
                 ]}
               >
-                {f === 'all' ? 'All Herds' : f === 'under_treatment' ? '⚠️ Under Treatment / Hold' : 'Healthy Only'}
+                {f === 'all' 
+                  ? t('veterinary.registry.filterAll', 'All Herds') 
+                  : f === 'under_treatment' 
+                  ? t('veterinary.registry.filterUnderTreatment', '⚠️ Under Treatment / Hold') 
+                  : t('veterinary.registry.filterHealthy', 'Healthy Only')}
               </Text>
             </Pressable>
           ))}
@@ -83,8 +89,8 @@ export default function CattleRegistryScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Cattle Found"
-            message="No registered cows match your criteria."
+            title={t('veterinary.registry.noCattleTitle', 'No Cattle Found')}
+            message={t('veterinary.registry.noCattleMsg', 'No registered cows match your criteria.')}
             icon="paw-outline"
           />
         }
@@ -102,13 +108,16 @@ export default function CattleRegistryScreen() {
                       Tag #{item.tagId} • {item.breed}
                     </Text>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                      Owner: {item.farmerName} ({item.farmerId})
+                      {t('veterinary.common.ownerInfo', 'Owner: {name} ({id})', {
+                        name: item.farmerName,
+                        id: item.farmerId
+                      })}
                     </Text>
                   </View>
 
                   <View style={[styles.badge, { backgroundColor: item.healthStatus === 'healthy' ? '#DCFCE7' : '#FEE2E2' }]}>
                     <Text style={[styles.badgeText, { color: item.healthStatus === 'healthy' ? '#15803D' : '#DC2626' }]}>
-                      {item.healthStatus.replace('_', ' ').toUpperCase()}
+                      {t('statuses.' + item.healthStatus, item.healthStatus.replace('_', ' ').toUpperCase())}
                     </Text>
                   </View>
                 </View>
@@ -118,10 +127,15 @@ export default function CattleRegistryScreen() {
                     <Ionicons name="warning" size={16} color="#DC2626" />
                     <View style={{ marginLeft: 8, flex: 1 }}>
                       <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800' }]}>
-                        WITHDRAWAL ACTIVE: {item.activeWithdrawal?.medicineName}
+                        {t('veterinary.registry.withdrawalActiveMedicine', 'WITHDRAWAL ACTIVE: {medicine}', {
+                          medicine: item.activeWithdrawal?.medicineName || ''
+                        })}
                       </Text>
                       <Text style={[Typography.caption2, { color: '#991B1B' }]}>
-                        Ends: {item.activeWithdrawal?.withdrawalEndDate} ({item.activeWithdrawal?.daysRemaining} days left)
+                        {t('veterinary.registry.endsDaysLeft', 'Ends: {endDate} ({days} days left)', {
+                          endDate: item.activeWithdrawal?.withdrawalEndDate || '',
+                          days: item.activeWithdrawal?.daysRemaining || 0
+                        })}
                       </Text>
                     </View>
                   </View>
@@ -129,10 +143,14 @@ export default function CattleRegistryScreen() {
 
                 <View style={[styles.metaRow, { borderTopColor: colors.border }]}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    History: {item.medicalHistory.length} Exams • {item.treatmentRecords.length} Treatments • {item.vaccinationHistory.length} Vaccines
+                    {t('veterinary.registry.historySummary', 'History: {exams} Exams • {treatments} Treatments • {vaccines} Vaccines', {
+                      exams: item.medicalHistory.length,
+                      treatments: item.treatmentRecords.length,
+                      vaccines: item.vaccinationHistory.length
+                    })}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
-                    Open Passport →
+                    {t('veterinary.registry.openPassport', 'Open Passport →')}
                   </Text>
                 </View>
               </Card>

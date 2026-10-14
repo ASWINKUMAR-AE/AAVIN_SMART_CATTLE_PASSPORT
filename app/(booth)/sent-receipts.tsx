@@ -11,8 +11,10 @@ import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { BoothReceipt } from '../../types/aavin';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function SentReceiptsScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { boothReceipts, bmcDeliveries, booths, discrepancyCases } = useAavinStore();
   const { colors, isDark } = useTheme();
@@ -96,8 +98,8 @@ export default function SentReceiptsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Sent Dispatch Receipts"
-        subtitle={`BMC Transit & Reconciliation Ledger • ${booth.name}`}
+        title={t('booth.sentReceiptsTitle', 'Sent Dispatch Receipts')}
+        subtitle={t('booth.sentReceiptsSubtitle', { booth: booth.name }, `BMC Transit & Reconciliation Ledger • ${booth.name}`)}
         showBack
       />
 
@@ -106,7 +108,7 @@ export default function SentReceiptsScreen() {
         <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: colors.border }]}>
           <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
           <TextInput
-            placeholder="Search Receipt ID, Destination BMC, Date..."
+            placeholder={t('booth.searchReceiptsPlaceholder', 'Search Receipt ID, Destination BMC, Date...')}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -120,7 +122,7 @@ export default function SentReceiptsScreen() {
         </View>
 
         <Button
-          title="+ New Receipt"
+          title={t('booth.plusNewEntry', '+ New Receipt')}
           size="sm"
           onPress={() => router.push('/(booth)/review-collection')}
         />
@@ -130,9 +132,9 @@ export default function SentReceiptsScreen() {
       <View style={[styles.kpiContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={styles.kpiRow}>
           <View style={[styles.kpiTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>TOTAL DISPATCHED</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>{t('booth.todayTotal', 'TOTAL DISPATCHED')}</Text>
             <Text style={[styles.kpiNumber, { color: colors.primary }]}>
-              {totalDispatchedLitres.toFixed(1)} <Text style={{ fontSize: 13 }}>L</Text>
+              {totalDispatchedLitres.toFixed(1)} <Text style={{ fontSize: 13 }}>{t('booth.litres', 'L')}</Text>
             </Text>
             <Text style={[Typography.caption2, { color: colors.textMuted }]}>{myReceipts.length} Dispatch Receipts</Text>
           </View>
@@ -140,7 +142,7 @@ export default function SentReceiptsScreen() {
           <View style={[styles.kpiTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
             <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>BMC RECONCILED</Text>
             <Text style={[styles.kpiNumber, { color: '#16A34A' }]}>
-              {matchedCount} <Text style={{ fontSize: 13 }}>Matched</Text>
+              {matchedCount} <Text style={{ fontSize: 13 }}>{t('bmc.matchConfirmed', 'Matched')}</Text>
             </Text>
             <Text style={[Typography.caption2, { color: '#16A34A' }]}>✓ Verified Weight</Text>
           </View>
@@ -168,7 +170,7 @@ export default function SentReceiptsScreen() {
             ]}
           >
             <Text style={[styles.filterChipText, { color: selectedFilter === 'all' ? '#FFFFFF' : colors.textSecondary }]}>
-              All ({myReceipts.length})
+              {t('common.all', 'All')} ({myReceipts.length})
             </Text>
           </Pressable>
 
@@ -182,7 +184,7 @@ export default function SentReceiptsScreen() {
             ]}
           >
             <Text style={[styles.filterChipText, { color: selectedFilter === 'pending' ? '#FFFFFF' : colors.textSecondary }]}>
-              In Transit ({pendingCount})
+              {t('statuses.sent_to_bmc', 'In Transit')} ({pendingCount})
             </Text>
           </Pressable>
 
@@ -196,7 +198,7 @@ export default function SentReceiptsScreen() {
             ]}
           >
             <Text style={[styles.filterChipText, { color: selectedFilter === 'matched' ? '#FFFFFF' : colors.textSecondary }]}>
-              Matched ({matchedCount})
+              {t('bmc.matchConfirmed', 'Matched')} ({matchedCount})
             </Text>
           </Pressable>
 
@@ -211,7 +213,7 @@ export default function SentReceiptsScreen() {
               ]}
             >
               <Text style={[styles.filterChipText, { color: selectedFilter === 'mismatch' ? '#FFFFFF' : '#DC2626' }]}>
-                Variance ({mismatchCount})
+                {t('bmc.difference', 'Variance')} ({mismatchCount})
               </Text>
             </Pressable>
           )}
@@ -225,7 +227,7 @@ export default function SentReceiptsScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Dispatch Receipts"
+            title={t('booth.dispatchReceiptsTitle', 'No Dispatch Receipts')}
             message={searchQuery ? `No receipts match "${searchQuery}".` : 'No dispatch receipts found under this filter.'}
             icon="paper-plane-outline"
           />
@@ -283,9 +285,9 @@ export default function SentReceiptsScreen() {
                 </View>
 
                 <View style={styles.volumeRightBox}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Dispatched</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('bmc.declaredLitres', 'Dispatched')}</Text>
                   <Text style={[styles.volumeLargeNum, { color: colors.primary }]}>
-                    {item.dispatchQuantity.toFixed(1)} <Text style={{ fontSize: 13, fontWeight: '700' }}>L</Text>
+                    {item.dispatchQuantity.toFixed(1)} <Text style={{ fontSize: 13, fontWeight: '700' }}>{t('booth.litres', 'L')}</Text>
                   </Text>
                 </View>
               </View>
@@ -293,7 +295,7 @@ export default function SentReceiptsScreen() {
               {/* Bottom Action Row with "More View" Button */}
               <View style={[styles.cardBottomRow, { borderTopColor: colors.border }]}>
                 <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '600', flex: 1 }]}>
-                  👨‍🌾 {item.totalFarmersCount} Farmers • 🥛 {item.totalRecordsCount} Batches
+                  👨‍🌾 {item.totalFarmersCount} {t('farmer.farmers', 'Farmers')} • 🥛 {item.totalRecordsCount} Batches
                 </Text>
 
                 <Pressable
@@ -301,7 +303,7 @@ export default function SentReceiptsScreen() {
                   onPress={() => setSelectedReceiptForModal(item)}
                 >
                   <Ionicons name="eye-outline" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
-                  <Text style={styles.moreViewBtnText}>More View</Text>
+                  <Text style={styles.moreViewBtnText}>{t('common.view', 'More View')}</Text>
                 </Pressable>
               </View>
             </Card>

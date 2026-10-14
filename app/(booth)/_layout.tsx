@@ -1,11 +1,13 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { FloatingAavinTabBar } from '../../components/navigation/FloatingAavinTabBar';
 import { TAB_BAR_CONTENT_INSET } from '../../components/navigation/curvedNavPath';
 
 export default function BoothLayout() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -22,7 +24,7 @@ export default function BoothLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('nav.home', 'Home'),
           headerShown: false,
         }}
       />
@@ -31,7 +33,7 @@ export default function BoothLayout() {
       <Tabs.Screen
         name="farmers"
         options={{
-          title: 'Farmers',
+          title: t('nav.farmers', 'Farmers'),
           headerShown: false,
         }}
       />
@@ -40,7 +42,7 @@ export default function BoothLayout() {
       <Tabs.Screen
         name="record-milk"
         options={{
-          title: 'Record Milk',
+          title: t('nav.recordMilk', 'Record Milk'),
           headerShown: false,
         }}
       />
@@ -49,7 +51,7 @@ export default function BoothLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('nav.profile', 'Profile'),
           headerShown: false,
         }}
       />

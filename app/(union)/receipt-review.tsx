@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -16,6 +17,7 @@ export default function UnionReceiptReviewScreen() {
   const { user } = useAuth();
   const { bmcReceipts, bmcDeliveries, reviewBmcReceipt } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const handleBackToHome = () => {
@@ -44,7 +46,10 @@ export default function UnionReceiptReviewScreen() {
     if (!selectedReceipt) return;
 
     if (!reviewNotes.trim()) {
-      Alert.alert('Notes Required', 'Please enter executive review findings or directives.');
+      Alert.alert(
+        t('union.receiptReview.notesRequiredTitle', 'Notes Required'),
+        t('union.receiptReview.notesRequiredMsg', 'Please enter executive review findings or directives.')
+      );
       return;
     }
 
@@ -56,13 +61,17 @@ export default function UnionReceiptReviewScreen() {
         user?.fullName || 'Dr. S. Sundaram (General Manager)'
       );
 
+      const savedId = selectedReceipt.id;
       setSelectedReceipt(null);
       Alert.alert(
-        'Executive Review Saved',
-        `Receipt #${selectedReceipt.id} marked as 'Reviewed by Union' with executive directives. Audit history preserved.`
+        t('union.receiptReview.reviewSavedTitle', 'Executive Review Saved'),
+        t('union.receiptReview.reviewSavedMsg', { id: savedId }, `Receipt #${savedId} marked as 'Reviewed by Union' with executive directives. Audit history preserved.`)
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not save review.');
+      Alert.alert(
+        t('common.error', 'Error'),
+        err.message || t('union.receiptReview.saveError', 'Could not save review.')
+      );
     } finally {
       setReviewing(false);
     }
@@ -71,8 +80,8 @@ export default function UnionReceiptReviewScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
-        title="BMC Daily Receipts Review"
-        subtitle="Executive Audit & Reconciliation • Madurai District"
+        title={t('union.receiptReview.title', 'BMC Daily Receipts Review')}
+        subtitle={t('union.receiptReview.subtitle', 'Executive Audit & Reconciliation • Madurai District')}
         showBack
         onBack={handleBackToHome}
       />
@@ -83,13 +92,12 @@ export default function UnionReceiptReviewScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No BMC Receipts"
-            message="No daily collection receipts have been submitted by BMC centers yet."
+            title={t('union.receiptReview.emptyTitle', 'No BMC Receipts')}
+            message={t('union.receiptReview.emptyDesc', 'No daily collection receipts have been submitted by BMC centers yet.')}
             icon="document-text-outline"
           />
         }
         renderItem={({ item }) => {
-          const isPending = item.status === 'sent_to_union';
           const isReviewed = item.status === 'reviewed_by_union';
           const linkedDeliveries = bmcDeliveries.filter(d => item.includedDeliveryIds.includes(d.id));
 
@@ -101,13 +109,15 @@ export default function UnionReceiptReviewScreen() {
                     {item.id}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    BMC: {item.bmcName} • Date: {item.collectionDate}
+                    {t('union.receiptReview.bmcDate', { name: item.bmcName, date: item.collectionDate }, `BMC: ${item.bmcName} • Date: ${item.collectionDate}`)}
                   </Text>
                 </View>
 
                 <View style={[styles.statusBadge, { backgroundColor: isReviewed ? '#DCFCE7' : '#FEF3C7', flexShrink: 0 }]}>
                   <Text style={[styles.statusText, { color: isReviewed ? '#15803D' : '#B45309' }]}>
-                    {isReviewed ? 'REVIEWED & AUDITED' : 'PENDING REVIEW'}
+                    {isReviewed 
+                      ? t('union.receiptReview.reviewedAudited', 'REVIEWED & AUDITED') 
+                      : t('union.receiptReview.pendingReview', 'PENDING REVIEW')}
                   </Text>
                 </View>
               </View>
@@ -115,14 +125,18 @@ export default function UnionReceiptReviewScreen() {
               {/* Volume Comparison Table */}
               <View style={[styles.volumeGrid, { borderTopColor: colors.border }]}>
                 <View style={styles.volItem}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Declared by Societies</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                    {t('union.receiptReview.declaredBySocieties', 'Declared by Societies')}
+                  </Text>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>
                     {item.totalDeclaredQuantity.toFixed(1)} L
                   </Text>
                 </View>
 
                 <View style={styles.volItem}>
-                  <Text style={[Typography.caption2, { color: colors.primary }]}>Received at BMC</Text>
+                  <Text style={[Typography.caption2, { color: colors.primary }]}>
+                    {t('union.receiptReview.receivedAtBmc', 'Received at BMC')}
+                  </Text>
                   <Text style={[Typography.title2, { color: colors.primary, fontWeight: '900' }]}>
                     {item.totalReceivedQuantity.toFixed(1)} L
                   </Text>
@@ -130,7 +144,7 @@ export default function UnionReceiptReviewScreen() {
 
                 <View style={styles.volItem}>
                   <Text style={[Typography.caption2, { color: item.netDifference > 0 ? '#DC2626' : '#16A34A' }]}>
-                    Net Variance
+                    {t('union.receiptReview.netVariance', 'Net Variance')}
                   </Text>
                   <Text
                     style={[
@@ -149,7 +163,7 @@ export default function UnionReceiptReviewScreen() {
               {/* Linked Feeder Deliveries list preview */}
               <View style={styles.linkedSection}>
                 <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', marginBottom: 6 }]}>
-                  LINKED FEEDER DELIVERIES ({linkedDeliveries.length})
+                  {t('union.receiptReview.linkedDeliveries', { count: linkedDeliveries.length }, `LINKED FEEDER DELIVERIES (${linkedDeliveries.length})`)}
                 </Text>
                 {linkedDeliveries.map((d) => (
                   <View key={d.id} style={styles.deliveryCard}>
@@ -171,7 +185,7 @@ export default function UnionReceiptReviewScreen() {
                       </Text>
                     </View>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                      Declared: {d.declaredDispatchQuantity}L | Measured: {d.measuredReceivedQuantity || 'Pending'}L
+                      {t('union.receiptReview.declaredMeasured', { declared: d.declaredDispatchQuantity, measured: d.measuredReceivedQuantity || 'Pending' }, `Declared: ${d.declaredDispatchQuantity}L | Measured: ${d.measuredReceivedQuantity || 'Pending'}L`)}
                     </Text>
                   </View>
                 ))}
@@ -180,17 +194,19 @@ export default function UnionReceiptReviewScreen() {
               {item.unionReviewNotes && (
                 <View style={[styles.reviewNotesBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
                   <Text style={[Typography.caption1, { color: '#166534', fontWeight: '800' }]}>
-                    GM DIRECTIVE: {item.unionReviewNotes}
+                    {t('union.receiptReview.gmDirectivePrefix', { notes: item.unionReviewNotes }, `GM DIRECTIVE: ${item.unionReviewNotes}`)}
                   </Text>
                   <Text style={[Typography.caption2, { color: '#15803D', marginTop: 2 }]}>
-                    Reviewed by: {item.reviewedBy || 'General Manager'} on {item.reviewedAt?.split('T')[0]}
+                    {t('union.receiptReview.reviewedByOn', { by: item.reviewedBy || 'General Manager', date: item.reviewedAt?.split('T')[0] || '' }, `Reviewed by: ${item.reviewedBy || 'General Manager'} on ${item.reviewedAt?.split('T')[0]}`)}
                   </Text>
                 </View>
               )}
 
               {/* Action */}
               <Button
-                title={isReviewed ? "Update Directives / Notes" : "Audit & Review BMC Receipt"}
+                title={isReviewed 
+                  ? t('union.receiptReview.updateDirectives', 'Update Directives / Notes') 
+                  : t('union.receiptReview.auditReviewReceipt', 'Audit & Review BMC Receipt')}
                 variant={isReviewed ? "outline" : "primary"}
                 onPress={() => handleOpenReview(item)}
                 style={{ marginTop: 12 }}
@@ -208,20 +224,20 @@ export default function UnionReceiptReviewScreen() {
               <View style={styles.modalHeader}>
                 <View>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '900' }]}>
-                    Review BMC Receipt #{selectedReceipt.id}
+                    {t('union.receiptReview.reviewReceiptTitle', { id: selectedReceipt.id }, `Review BMC Receipt #${selectedReceipt.id}`)}
                   </Text>
                   <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-                    {selectedReceipt.bmcName} • Net Received: {selectedReceipt.totalReceivedQuantity} L
+                    {t('union.receiptReview.netReceivedSub', { name: selectedReceipt.bmcName, qty: selectedReceipt.totalReceivedQuantity }, `${selectedReceipt.bmcName} • Net Received: ${selectedReceipt.totalReceivedQuantity} L`)}
                   </Text>
                 </View>
                 <Pressable onPress={() => setSelectedReceipt(null)}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
               </View>
 
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>
-                Executive Directives / Findings *
+                {t('union.receiptReview.directivesFindingsLabel', 'Executive Directives / Findings *')}
               </Text>
               <TextInput
-                placeholder="e.g. Approved for central dairy plant transfer. Investigation case DISC-101 referred for tanker seal inspection."
+                placeholder={t('union.receiptReview.directivesPlaceholder', 'e.g. Approved for central dairy plant transfer. Investigation case DISC-101 referred for tanker seal inspection.')}
                 placeholderTextColor={colors.textMuted}
                 value={reviewNotes}
                 onChangeText={setReviewNotes}
@@ -231,7 +247,9 @@ export default function UnionReceiptReviewScreen() {
               />
 
               <Button
-                title={reviewing ? "Saving..." : "Confirm Review & Record Audit Entry"}
+                title={reviewing 
+                  ? t('common.loading', 'Saving...') 
+                  : t('union.receiptReview.confirmAuditBtn', 'Confirm Review & Record Audit Entry')}
                 size="lg"
                 loading={reviewing}
                 onPress={handleSaveReview}

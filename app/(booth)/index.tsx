@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -23,6 +24,7 @@ export default function BoothDashboard() {
     discrepancyCases 
   } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -51,7 +53,7 @@ export default function BoothDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={booth.name}
-        subtitle={`Society #${booth.code} • Linked to BMC: ${assignedBmc.name}`}
+        subtitle={t('booth.societySubtitle', { code: booth.code, bmc: assignedBmc.name }, `Society #${booth.code} • Linked to BMC: ${assignedBmc.name}`)}
       />
 
       <ScrollView 
@@ -64,10 +66,10 @@ export default function BoothDashboard() {
             <Ionicons name="alert-circle" size={24} color="#DC2626" />
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={[Typography.headline, { color: '#B91C1C', fontWeight: '800' }]}>
-                ⚠️ ACTIVE BMC TRANSIT DISCREPANCY
+                {t('booth.discrepancyBannerTitle', '⚠️ ACTIVE BMC TRANSIT DISCREPANCY')}
               </Text>
               <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                Case #{boothDiscrepancies[0].id}: {boothDiscrepancies[0].differenceLitres} L variance reported at {assignedBmc.name}.
+                {t('booth.discrepancyBannerMsg', { id: boothDiscrepancies[0].id, litres: boothDiscrepancies[0].differenceLitres, bmc: assignedBmc.name }, `Case #${boothDiscrepancies[0].id}: ${boothDiscrepancies[0].differenceLitres} L variance reported at ${assignedBmc.name}.`)}
               </Text>
             </View>
           </View>
@@ -84,17 +86,17 @@ export default function BoothDashboard() {
           <View style={styles.darkOverlayLayer}>
             <View style={styles.heroCardHeaderRow}>
               <View style={styles.heroHeaderPill}>
-                <Text style={styles.heroHeaderPillText}>Society #{booth.code} ›</Text>
+                <Text style={styles.heroHeaderPillText}>{t('booth.societyTag', { code: booth.code }, `Society #${booth.code} ›`)}</Text>
               </View>
               <View style={[styles.heroStatusBadge, { backgroundColor: todayReceipt ? '#16A34A' : '#D97706' }]}>
                 <Text style={styles.heroStatusBadgeText}>
-                  {todayReceipt ? '✓ DISPATCH READY' : 'CLOSURE PENDING'}
+                  {todayReceipt ? t('booth.dispatchReady', '✓ DISPATCH READY') : t('booth.closurePending', 'CLOSURE PENDING')}
                 </Text>
               </View>
             </View>
 
             <Text style={styles.heroBalanceNumber}>
-              {stats.eligibleReceiptTotal.toFixed(2)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
+              {stats.eligibleReceiptTotal.toFixed(2)} <Text style={{ fontSize: 20, fontWeight: '600' }}>{t('booth.litres', 'Litres')}</Text>
             </Text>
 
             <View style={styles.heroSubRow}>
@@ -102,7 +104,7 @@ export default function BoothDashboard() {
                 <Text style={styles.growthPillText}>+4.2% ↑</Text>
               </View>
               <Text style={styles.heroSubText}>
-                Farmer: {stats.farmerWiseTotal.toFixed(1)} L • Route: {stats.vendorCombinedTotal.toFixed(1)} L
+                {t('booth.heroSubText', { farmer: stats.farmerWiseTotal.toFixed(1), route: stats.vendorCombinedTotal.toFixed(1) }, `Farmer: ${stats.farmerWiseTotal.toFixed(1)} L • Route: ${stats.vendorCombinedTotal.toFixed(1)} L`)}
               </Text>
             </View>
           </View>
@@ -119,10 +121,10 @@ export default function BoothDashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                Farmers Directory & KYC
+                {t('booth.farmersDirectoryTitle', 'Farmers Directory & KYC')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                {assignedFarmers.length} Assigned • Tap to Edit Data
+                {t('booth.assignedEditData', { count: assignedFarmers.length }, `${assignedFarmers.length} Assigned • Tap to Edit Data`)}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -137,10 +139,10 @@ export default function BoothDashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                Send Dispatch Receipts
+                {t('booth.sendDispatchReceiptsTitle', 'Send Dispatch Receipts')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                {todayReceipt ? `Waybill #${todayReceipt.id} • ${todayReceipt.dispatchQuantity.toFixed(1)} L` : 'Audit Batch & Transmit to BMC'}
+                {todayReceipt ? t('booth.waybillSub', { id: todayReceipt.id, qty: todayReceipt.dispatchQuantity.toFixed(1) }, `Waybill #${todayReceipt.id} • ${todayReceipt.dispatchQuantity.toFixed(1)} L`) : t('booth.auditBatchSub', 'Audit Batch & Transmit to BMC')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -151,18 +153,18 @@ export default function BoothDashboard() {
         <Card style={styles.entriesCard}>
           <View style={styles.entriesHeader}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-              Today's Entries ({todayRecords.length})
+              {t('booth.todaysEntriesCount', { count: todayRecords.length }, `Today's Entries (${todayRecords.length})`)}
             </Text>
             <Pressable onPress={() => router.push('/(booth)/record-milk')}>
               <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700' }]}>
-                + New Entry
+                {t('booth.plusNewEntry', '+ New Entry')}
               </Text>
             </Pressable>
           </View>
 
           {todayRecords.length === 0 ? (
             <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
-              No milk entries recorded today yet.
+              {t('booth.noEntriesToday', 'No milk entries recorded today yet.')}
             </Text>
           ) : (
             todayRecords.map((r) => (
@@ -177,13 +179,13 @@ export default function BoothDashboard() {
 
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                    {r.farmerName || `${r.vendorName || 'Combined Vendor'}`}
+                    {r.farmerName || `${r.vendorName || t('booth.vendorCombined', 'Vendor Combined')}`}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    {r.measurementMethod === 'farmer_wise' ? 'Direct Farmer Measurement' : 'Vendor Combined (Individual N/A)'}
+                    {r.measurementMethod === 'farmer_wise' ? t('booth.directFarmerMeasurement', 'Direct Farmer Measurement') : t('booth.vendorCombinedDesc', 'Vendor Combined (Individual N/A)')}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    {r.session.toUpperCase()} • Recorded by: {r.createdBy}
+                    {t(`farmer.sessions.${r.session}`, r.session).toUpperCase()} • {t('booth.recordedBy', { name: r.createdBy }, `Recorded by: ${r.createdBy}`)}
                   </Text>
                 </View>
 

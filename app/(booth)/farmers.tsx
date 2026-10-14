@@ -24,11 +24,13 @@ import { TextField } from '../../components/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Farmer, Cow } from '../../types/aavin';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function BoothFarmersScreen() {
   const { user } = useAuth();
   const { farmers, booths, cows, verifyFarmer, updateFarmer, addFarmer } = useAavinStore();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const boothId = user?.associatedId || 'BOOTH001';
@@ -433,8 +435,8 @@ export default function BoothFarmersScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Farmers Directory"
-        subtitle={`${assignedCount} Member Farmers • ${booth.name}`}
+        title={t('booth.farmersDirectory', 'Farmers Directory')}
+        subtitle={t('booth.farmersDirectorySubtitle', { count: assignedCount, booth: booth.name }, `${assignedCount} Member Farmers • ${booth.name}`)}
         showBack
       />
 
@@ -443,7 +445,7 @@ export default function BoothFarmersScreen() {
         <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: colors.border }]}>
           <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
           <TextInput
-            placeholder="Search Name, Farmer ID, Phone, Village..."
+            placeholder={t('booth.searchFarmersPlaceholder', 'Search Name, Farmer ID, Phone, Village...')}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -457,7 +459,7 @@ export default function BoothFarmersScreen() {
         </View>
 
         <Button
-          title="+ Register Farmer"
+          title={t('booth.registerFarmerBtn', '+ Register Farmer')}
           size="sm"
           onPress={handleOpenRegisterModal}
         />
@@ -479,7 +481,7 @@ export default function BoothFarmersScreen() {
               styles.filterChipText,
               { color: filterScope === 'assigned' ? '#FFFFFF' : colors.textSecondary }
             ]}>
-              This Society ({assignedCount})
+              {t('booth.thisSocietyCount', { count: assignedCount }, `This Society (${assignedCount})`)}
             </Text>
           </Pressable>
 
@@ -496,7 +498,7 @@ export default function BoothFarmersScreen() {
               styles.filterChipText,
               { color: filterScope === 'all' ? '#FFFFFF' : colors.textSecondary }
             ]}>
-              All Network ({farmers.length})
+              {t('booth.allNetworkCount', { count: farmers.length }, `All Network (${farmers.length})`)}
             </Text>
           </Pressable>
         </View>
@@ -515,7 +517,7 @@ export default function BoothFarmersScreen() {
               color={statusFilter === 'verified' ? '#16A34A' : statusFilter === 'pending' ? '#D97706' : colors.textSecondary} 
             />
             <Text style={[styles.statusChipText, { color: colors.textSecondary }]}>
-              {statusFilter === 'all' ? 'All Status' : statusFilter === 'verified' ? 'Verified Only' : 'Pending Only'}
+              {statusFilter === 'all' ? t('booth.allStatus', 'All Status') : statusFilter === 'verified' ? t('booth.verifiedOnly', 'Verified Only') : t('booth.pendingOnly', 'Pending Only')}
             </Text>
           </Pressable>
         </View>
@@ -528,8 +530,8 @@ export default function BoothFarmersScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Farmers Found"
-            message={searchQuery ? `No farmers match "${searchQuery}".` : 'No farmers available under selected filters.'}
+            title={t('booth.noFarmersFound', 'No Farmers Found')}
+            message={searchQuery ? t('booth.noFarmersMatchSearch', { query: searchQuery }, `No farmers match "${searchQuery}".`) : t('booth.noFarmersFilter', 'No farmers available under selected filters.')}
             icon="people-outline"
           />
         }
@@ -592,7 +594,7 @@ export default function BoothFarmersScreen() {
                     color={isVerified ? '#15803D' : '#B45309'} 
                   />
                   <Text style={[styles.statusPillText, { color: isVerified ? '#15803D' : '#B45309' }]}>
-                    {isVerified ? 'VERIFIED' : 'PENDING'}
+                    {isVerified ? t('common.verified', 'VERIFIED') : t('common.pending', 'PENDING')}
                   </Text>
                 </Pressable>
               </View>
@@ -603,11 +605,11 @@ export default function BoothFarmersScreen() {
                   <View style={styles.metricIconRow}>
                     <Text style={{ fontSize: 16 }}>🐄</Text>
                     <Text style={[styles.metricValue, { color: colors.text }]}>
-                      {farmerCows.length} <Text style={{ fontSize: 11, fontWeight: '600' }}>Cows</Text>
+                      {farmerCows.length} <Text style={{ fontSize: 11, fontWeight: '600' }}>{t('farmer.cows', 'Cows')}</Text>
                     </Text>
                   </View>
                   <Text style={[styles.metricLabel, { color: cowsWithHold.length > 0 ? '#DC2626' : colors.textSecondary }]}>
-                    {cowsWithHold.length > 0 ? '⚠️ Withdrawal Hold' : 'Registered Cattle'}
+                    {cowsWithHold.length > 0 ? t('booth.withdrawalHoldAlert', '⚠️ Withdrawal Hold') : t('booth.registeredCattle', 'Registered Cattle')}
                   </Text>
                 </View>
 
@@ -627,11 +629,11 @@ export default function BoothFarmersScreen() {
                   <View style={styles.metricIconRow}>
                     <Text style={{ fontSize: 16 }}>🏦</Text>
                     <Text style={[styles.metricValue, { color: item.bankName ? '#16A34A' : '#D97706' }]}>
-                      {item.bankName ? 'Linked' : 'Pending'}
+                      {item.bankName ? t('booth.linked', 'Linked') : t('booth.pending', 'Pending')}
                     </Text>
                   </View>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]} numberOfLines={1}>
-                    DBT Bank Account
+                    {t('booth.dbtBankAccount', 'DBT Bank Account')}
                   </Text>
                 </View>
               </View>
@@ -645,7 +647,7 @@ export default function BoothFarmersScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
-                      RESIDENTIAL ADDRESS & SOCIETY
+                      {t('booth.addressAndSociety', 'RESIDENTIAL ADDRESS & SOCIETY')}
                     </Text>
                     <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', marginTop: 1 }]}>
                       {item.address}, {item.village} • {assignedBoothObj?.name || item.assignedBoothId}
@@ -660,7 +662,7 @@ export default function BoothFarmersScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
-                      REGISTERED CATTLE PASSPORT ({farmerCows.length})
+                      {t('booth.registeredCattlePassport', { count: farmerCows.length }, `REGISTERED CATTLE PASSPORT (${farmerCows.length})`)}
                     </Text>
                     {farmerCows.length > 0 ? (
                       <View style={styles.cowsPillRow}>
@@ -686,7 +688,7 @@ export default function BoothFarmersScreen() {
                       </View>
                     ) : (
                       <Text style={[Typography.caption1, { color: colors.textMuted, marginTop: 1 }]}>
-                        No cows registered under digital passport yet.
+                        {t('booth.noCowsRegistered', 'No cows registered under digital passport yet.')}
                       </Text>
                     )}
                   </View>
@@ -699,10 +701,10 @@ export default function BoothFarmersScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
-                      DBT DIRECT BENEFIT TRANSFER ACCOUNT
+                      {t('booth.dbtAccountHeader', 'DBT DIRECT BENEFIT TRANSFER ACCOUNT')}
                     </Text>
                     <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', marginTop: 1 }]}>
-                      {item.bankName || 'Canara Bank'} • A/C: {item.bankAccountNumber ? `•••• •••• ${item.bankAccountNumber.slice(-4)}` : 'Linked'} • IFSC: {item.bankIfsc || 'CNRB0001092'}
+                      {item.bankName || 'Canara Bank'} • A/C: {item.bankAccountNumber ? `•••• •••• ${item.bankAccountNumber.slice(-4)}` : t('booth.linked', 'Linked')} • IFSC: {item.bankIfsc || 'CNRB0001092'}
                     </Text>
                     {item.upiId ? (
                       <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
@@ -721,7 +723,7 @@ export default function BoothFarmersScreen() {
                 >
                   <Ionicons name="water" size={14} color="#FFFFFF" />
                   <Text style={styles.recordMilkBtnText}>
-                    + Record Milk
+                    {t('booth.plusRecordMilk', '+ Record Milk')}
                   </Text>
                 </Pressable>
 
@@ -731,7 +733,7 @@ export default function BoothFarmersScreen() {
                 >
                   <Ionicons name="create-outline" size={14} color={colors.primary} />
                   <Text style={[styles.editFarmerBtnText, { color: colors.primary }]}>
-                    Edit Details
+                    {t('booth.editDetails', 'Edit Details')}
                   </Text>
                 </Pressable>
 
@@ -751,7 +753,7 @@ export default function BoothFarmersScreen() {
                     color={isVerified ? '#DC2626' : '#16A34A'} 
                   />
                   <Text style={[styles.kycToggleBtnText, { color: isVerified ? '#DC2626' : '#16A34A' }]}>
-                    {isVerified ? 'Flag' : 'Verify'}
+                    {isVerified ? t('booth.flagKyc', 'Flag') : t('booth.verifyKyc', 'Verify')}
                   </Text>
                 </Pressable>
               </View>
@@ -1231,14 +1233,14 @@ export default function BoothFarmersScreen() {
             {/* Modal Footer */}
             <View style={[styles.modalFooter, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
               <Button
-                title="Cancel"
+                title={t('common.cancel', 'Cancel')}
                 variant="outline"
                 size="md"
                 onPress={handleCloseModal}
                 style={{ flex: 1 }}
               />
               <Button
-                title={isSaving ? "Saving..." : "Save Changes"}
+                title={isSaving ? t('booth.savingBtn', 'Saving...') : t('common.save', 'Save Changes')}
                 size="md"
                 onPress={handleSaveFarmer}
                 loading={isSaving}
@@ -1690,13 +1692,13 @@ export default function BoothFarmersScreen() {
             {/* Modal Footer */}
             <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
               <Button
-                title="Cancel"
+                title={t('common.cancel', 'Cancel')}
                 variant="outline"
                 onPress={handleCloseRegisterModal}
                 style={{ flex: 1 }}
               />
               <Button
-                title={`Enroll (${regCows.length} Cows)`}
+                title={`${t('booth.registerFarmerCompleteBtn', 'Enroll')} (${regCows.length})`}
                 onPress={handleSaveNewFarmer}
                 loading={isRegistering}
                 style={{ flex: 1.4 }}

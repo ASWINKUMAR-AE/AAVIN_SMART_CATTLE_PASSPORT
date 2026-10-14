@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -16,6 +17,7 @@ export default function BMCReceiveMilkScreen() {
   const { user } = useAuth();
   const { bmcDeliveries, bmcs, receiveBmcDelivery, union } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const bmcId = user?.associatedId || 'BMC001';
@@ -39,7 +41,7 @@ export default function BMCReceiveMilkScreen() {
 
     const qty = parseFloat(measuredQty);
     if (isNaN(qty) || qty <= 0) {
-      Alert.alert('Invalid Volume', 'Please enter a valid measured milk volume in litres.');
+      Alert.alert(t('bmc.invalidVolumeTitle'), t('bmc.invalidVolumeDesc'));
       return;
     }
 
@@ -56,27 +58,35 @@ export default function BMCReceiveMilkScreen() {
 
       if (result.isMismatch) {
         Alert.alert(
-          '⚠️ QUANTITY MISMATCH DETECTED!',
-          `Declared by Society: ${targetDelivery.declaredDispatchQuantity.toFixed(2)} L\nMeasured by BMC: ${qty.toFixed(2)} L\nVariance: ${result.difference.toFixed(2)} L (${((Math.abs(result.difference) / targetDelivery.declaredDispatchQuantity) * 100).toFixed(1)}%)\n\n• Delivery flagged as 'Mismatch - Investigation Required'\n• Formal Discrepancy Case automatically opened\n• High-priority notifications dispatched to BMC and Union Management!`,
+          t('bmc.mismatchDetectedAlert'),
+          t('bmc.mismatchAlertBody', {
+            declared: targetDelivery.declaredDispatchQuantity.toFixed(2),
+            measured: qty.toFixed(2),
+            diff: result.difference.toFixed(2),
+            percent: ((Math.abs(result.difference) / targetDelivery.declaredDispatchQuantity) * 100).toFixed(1)
+          }),
           [
             {
-              text: 'Open Investigation Case',
+              text: t('bmc.openInvestigationCase'),
               onPress: () => router.push('/(bmc)/investigations'),
             },
             {
-              text: 'OK',
+              text: t('common.done'),
             },
           ]
         );
       } else {
         Alert.alert(
-          'Delivery Confirmed & Balanced!',
-          `Recorded ${qty.toFixed(2)} Litres from ${targetDelivery.boothName}. Matched with declared receipt quantity without variance. Dispatch receipt confirmed.`,
-          [{ text: 'OK' }]
+          t('bmc.deliveryConfirmedAlert'),
+          t('bmc.deliveryConfirmedBody', {
+            qty: qty.toFixed(2),
+            booth: targetDelivery.boothName
+          }),
+          [{ text: t('common.done') }]
         );
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not record measurement.');
+      Alert.alert(t('common.error'), err.message || t('bmc.couldNotRecord'));
     } finally {
       setSubmitting(false);
     }
@@ -85,8 +95,8 @@ export default function BMCReceiveMilkScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Receive Milk Deliveries"
-        subtitle={`Intake Flow Meter Station • ${bmc.name}`}
+        title={t('bmc.receiveDeliveriesTitle')}
+        subtitle={t('bmc.intakeStationSubtitle', { bmcName: bmc.name })}
         showBack
       />
 
@@ -94,7 +104,10 @@ export default function BMCReceiveMilkScreen() {
       <View style={[styles.thresholdStrip, { backgroundColor: colors.primaryLight }]}>
         <Ionicons name="information-circle" size={16} color={colors.primary} style={{ marginRight: 6 }} />
         <Text style={[Typography.caption2, { color: colors.primary, flex: 1 }]}>
-          Variance Threshold: ±{union.mismatchThresholdLitres.toFixed(1)} L (or {union.mismatchThresholdPercent}%). Mismatches automatically open an investigation audit case.
+          {t('bmc.varianceThresholdStrip', {
+            litres: union.mismatchThresholdLitres.toFixed(1),
+            percent: union.mismatchThresholdPercent
+          })}
         </Text>
       </View>
 
@@ -104,8 +117,8 @@ export default function BMCReceiveMilkScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Feeder Deliveries"
-            message="No society dispatches have arrived for measurement."
+            title={t('bmc.noFeederDeliveries')}
+            message={t('bmc.noFeederDeliveriesDesc')}
             icon="cube-outline"
           />
         }
@@ -113,12 +126,11 @@ export default function BMCReceiveMilkScreen() {
           const isPending = item.status === 'pending_arrival';
           const isMismatch = item.status === 'mismatch_investigation';
           const isMatched = item.status === 'matched';
-          const isResolved = item.status === 'resolved';
 
           const getStatusMeta = () => {
-            if (isPending) return { label: 'AWAITING MEASUREMENT', bg: '#E0F2FE', color: '#0284C7' };
-            if (isMismatch) return { label: 'MISMATCH - INVESTIGATION REQUIRED', bg: '#FEF2F2', color: '#DC2626' };
-            if (isMatched) return { label: 'MATCHED & CONFIRMED', bg: '#DCFCE7', color: '#15803D' };
+            if (isPending) return { label: t('bmc.awaitingMeasurementCaps'), bg: '#E0F2FE', color: '#0284C7' };
+            if (isMismatch) return { label: t('bmc.mismatchInvestigationCaps'), bg: '#FEF2F2', color: '#DC2626' };
+            if (isMatched) return { label: t('bmc.matchedConfirmedCaps'), bg: '#DCFCE7', color: '#15803D' };
             return { label: item.status.toUpperCase(), bg: '#F3E8FF', color: '#7E22CE' };
           };
 
@@ -132,7 +144,7 @@ export default function BMCReceiveMilkScreen() {
                     {item.boothName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Receipt #{item.boothReceiptId} • Dispatched {item.dispatchTime}
+                    {t('bmc.receiptDispatched', { receiptId: item.boothReceiptId, time: item.dispatchTime })}
                   </Text>
                 </View>
 
@@ -144,29 +156,29 @@ export default function BMCReceiveMilkScreen() {
               {/* Quantities Side-by-Side Comparison */}
               <View style={[styles.compareGrid, { borderTopColor: colors.border }]}>
                 <View style={styles.compareCol}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Society Declared</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('bmc.societyDeclared')}</Text>
                   <Text style={[Typography.title2, { color: colors.primary, fontWeight: '900' }]}>
                     {item.declaredDispatchQuantity.toFixed(1)} L
                   </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>Original Dispatch Slip</Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>{t('bmc.originalDispatchSlip')}</Text>
                 </View>
 
                 <View style={styles.vDivider} />
 
                 <View style={styles.compareCol}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>BMC Measured</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('bmc.bmcMeasured')}</Text>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '900' }]}>
-                    {item.measuredReceivedQuantity !== undefined ? `${item.measuredReceivedQuantity.toFixed(1)} L` : 'Pending'}
+                    {item.measuredReceivedQuantity !== undefined ? `${item.measuredReceivedQuantity.toFixed(1)} L` : t('bmc.pending')}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    {item.receivedBy || 'Awaiting Entry'}
+                    {item.receivedBy || t('bmc.awaitingEntry')}
                   </Text>
                 </View>
 
                 <View style={styles.vDivider} />
 
                 <View style={styles.compareCol}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Difference</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('bmc.difference')}</Text>
                   <Text 
                     style={[
                       Typography.title2, 
@@ -179,7 +191,7 @@ export default function BMCReceiveMilkScreen() {
                     {item.difference !== undefined ? `${item.difference > 0 ? '-' : ''}${Math.abs(item.difference).toFixed(1)} L` : '-'}
                   </Text>
                   <Text style={[Typography.caption2, { color: (item.difference || 0) > 0 ? '#DC2626' : colors.textMuted }]}>
-                    {item.difference !== undefined ? (item.difference > 0 ? 'Shortfall' : 'Balanced') : 'Unmeasured'}
+                    {item.difference !== undefined ? (item.difference > 0 ? t('bmc.shortfall') : t('bmc.balancedState')) : t('bmc.unmeasured')}
                   </Text>
                 </View>
               </View>
@@ -188,14 +200,14 @@ export default function BMCReceiveMilkScreen() {
               <View style={styles.cardActions}>
                 {isPending ? (
                   <Button
-                    title="Confirm Milk Received"
+                    title={t('bmc.confirmMilkReceived')}
                     onPress={() => handleOpenReceiveModal(item)}
                     style={{ flex: 1 }}
                   />
                 ) : (
                   <View style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
                     <Button
-                      title="Re-Measure / Edit"
+                      title={t('bmc.remeasureEdit')}
                       variant="outline"
                       size="sm"
                       onPress={() => handleOpenReceiveModal(item)}
@@ -203,7 +215,7 @@ export default function BMCReceiveMilkScreen() {
                     />
                     {isMismatch && (
                       <Button
-                        title="View Investigation"
+                        title={t('bmc.viewInvestigation')}
                         variant="destructive"
                         size="sm"
                         onPress={() => router.push('/(bmc)/investigations')}
@@ -231,7 +243,7 @@ export default function BMCReceiveMilkScreen() {
               <View style={styles.modalHeader}>
                 <View>
                   <Text style={[Typography.title2, { color: colors.text, fontWeight: '900' }]}>
-                    Confirm Milk Received
+                    {t('bmc.confirmMilkReceived')}
                   </Text>
                   <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
                     {selectedDelivery.boothName} (Receipt #{selectedDelivery.boothReceiptId})
@@ -244,21 +256,21 @@ export default function BMCReceiveMilkScreen() {
 
               <View style={[styles.declaredBox, { backgroundColor: colors.primaryLight }]}>
                 <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                  SOCIETY DECLARED DISPATCH QUANTITY
+                  {t('bmc.societyDeclaredDispatchQty')}
                 </Text>
                 <Text style={[styles.declaredNum, { color: colors.primary }]}>
-                  {selectedDelivery.declaredDispatchQuantity.toFixed(2)} Litres
+                  {selectedDelivery.declaredDispatchQuantity.toFixed(2)} {t('common.litres')}
                 </Text>
                 <Text style={[Typography.caption2, { color: colors.primary }]}>
-                  Preserved in audit record. Cannot be overwritten.
+                  {t('bmc.preservedAuditNote')}
                 </Text>
               </View>
 
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginTop: 14, marginBottom: 4 }]}>
-                Actual BMC Flow Meter / Dipstick Measured Quantity (Litres) *
+                {t('bmc.actualMeasuredPrompt')}
               </Text>
               <TextInput
-                placeholder="Enter measured litres e.g. 970.0 (or 1000.0)"
+                placeholder={t('bmc.enterMeasuredPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={measuredQty}
                 onChangeText={setMeasuredQty}
@@ -281,12 +293,12 @@ export default function BMCReceiveMilkScreen() {
                       />
                       <View style={{ marginLeft: 8, flex: 1 }}>
                         <Text style={[Typography.subhead, { color: isDiff ? '#B91C1C' : '#166534', fontWeight: '800' }]}>
-                          Calculated Difference: {diff.toFixed(2)} Litres
+                          {t('bmc.calculatedDifference', { diff: diff.toFixed(2) })}
                         </Text>
                         <Text style={[Typography.caption2, { color: isDiff ? '#991B1B' : '#166534' }]}>
                           {isDiff 
-                            ? `⚠️ Variance exceeds threshold (±${union.mismatchThresholdLitres}L). Will open Discrepancy Case & alert Union!` 
-                            : '✓ Balanced intake. Delivery will be confirmed.'}
+                            ? t('bmc.varianceExceedsAlert', { threshold: union.mismatchThresholdLitres.toString() })
+                            : t('bmc.balancedIntakeSuccess')}
                         </Text>
                       </View>
                     </View>
@@ -296,7 +308,7 @@ export default function BMCReceiveMilkScreen() {
               })()}
 
               <Button
-                title={submitting ? "Saving Measurement..." : "Confirm & Save Measurement"}
+                title={submitting ? t('bmc.savingMeasurement') : t('bmc.confirmSaveMeasurement')}
                 size="lg"
                 loading={submitting}
                 onPress={handleConfirmMeasurement}

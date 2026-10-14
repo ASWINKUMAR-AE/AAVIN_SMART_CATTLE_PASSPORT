@@ -28,6 +28,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Button } from '../../components/ui/Button';
@@ -49,6 +50,7 @@ export default function UnionDashboard() {
     reviewBmcReceipt,
   } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -104,7 +106,7 @@ export default function UnionDashboard() {
       prevMonthLitres: 440.0,
       changePercent: -29.5,
       isLowest: true,
-      reason: 'Lowest volume in district • 6 cows in dry lactation period',
+      reason: t('union.lowestVolumeReason', 'Lowest volume in district • 6 cows in dry lactation period'),
     },
     {
       id: 'BOOTH002',
@@ -117,7 +119,7 @@ export default function UnionDashboard() {
       prevMonthLitres: 790.0,
       changePercent: -13.9,
       isLowest: false,
-      reason: 'Seasonal drop in evening yield • Prompt payout needed',
+      reason: t('union.seasonalDropReason', 'Seasonal drop in evening yield • Prompt payout needed'),
     },
     {
       id: 'BOOTH001',
@@ -130,7 +132,7 @@ export default function UnionDashboard() {
       prevMonthLitres: 1150.0,
       changePercent: 11.3,
       isLowest: false,
-      reason: 'Top producer • High crossbred yield & 100% farmer attendance',
+      reason: t('union.topProducerReason', 'Top producer • High crossbred yield & 100% farmer attendance'),
     },
   ];
 
@@ -141,11 +143,11 @@ export default function UnionDashboard() {
 
   // 5 Days for Productivity Trend matching reference Mon..Fri with real milk inflow data
   const daysData = [
-    { day: 'Mon', activeTime: '738.5 L', pauseTime: '₹29.9k Income', inflow: 738.5, loss: 1.5, fat: 4.3, snf: 8.5, blueY: 52, pinkY: 88 },
-    { day: 'Tue', activeTime: '765.0 L', pauseTime: '₹30.9k Income', inflow: 765.0, loss: 0.0, fat: 4.4, snf: 8.5, blueY: 34, pinkY: 92 },
-    { day: 'Wed', activeTime: `${todayLitres.toFixed(0)} L Inflow`, pauseTime: `₹${(todayIncomeRevenue / 1000).toFixed(1)}k Income`, inflow: todayLitres, loss: netTransitDiscrepancy, fat: 4.4, snf: 8.6, blueY: 38, pinkY: 80 },
-    { day: 'Thu', activeTime: '754.0 L', pauseTime: '₹30.5k Income', inflow: 754.0, loss: 1.0, fat: 4.2, snf: 8.6, blueY: 60, pinkY: 72 },
-    { day: 'Fri', activeTime: '808.0 L', pauseTime: '₹32.7k Income', inflow: 808.0, loss: 2.0, fat: 4.3, snf: 8.5, blueY: 46, pinkY: 76 },
+    { day: 'Mon', dayKey: 'Mon', activeL: '738.5', incomeK: '29.9', inflow: 738.5, loss: 1.5, fat: 4.3, snf: 8.5, blueY: 52, pinkY: 88 },
+    { day: 'Tue', dayKey: 'Tue', activeL: '765.0', incomeK: '30.9', inflow: 765.0, loss: 0.0, fat: 4.4, snf: 8.5, blueY: 34, pinkY: 92 },
+    { day: 'Wed', dayKey: 'Wed', activeL: todayLitres.toFixed(0), incomeK: (todayIncomeRevenue / 1000).toFixed(1), inflow: todayLitres, loss: netTransitDiscrepancy, fat: 4.4, snf: 8.6, blueY: 38, pinkY: 80 },
+    { day: 'Thu', dayKey: 'Thu', activeL: '754.0', incomeK: '30.5', inflow: 754.0, loss: 1.0, fat: 4.2, snf: 8.6, blueY: 60, pinkY: 72 },
+    { day: 'Fri', dayKey: 'Fri', activeL: '808.0', incomeK: '32.7', inflow: 808.0, loss: 2.0, fat: 4.3, snf: 8.5, blueY: 46, pinkY: 76 },
   ];
 
   const currentTrendPoint = daysData[selectedDayIdx] || daysData[2];
@@ -158,7 +160,10 @@ export default function UnionDashboard() {
   // Dispatch Directive Action Handler
   const handleDispatchDirective = () => {
     if (!directiveText.trim()) {
-      Alert.alert('Directive Required', 'Please enter specific audit instructions or investigation directives.');
+      Alert.alert(
+        t('union.directiveRequiredTitle', 'Directive Required'),
+        t('union.directiveRequiredMsg', 'Please enter specific audit instructions or investigation directives.')
+      );
       return;
     }
 
@@ -175,8 +180,17 @@ export default function UnionDashboard() {
     }
 
     Alert.alert(
-      'Directive Dispatched',
-      `Executive Directive issued to ${targetBmc?.name || 'BMC'}.\n\nCategory: ${directiveCategory}\nPriority: ${directivePriority}\nAuthorized by: ${user?.fullName || 'General Manager'}`
+      t('union.directiveDispatchedTitle', 'Directive Dispatched'),
+      t(
+        'union.directiveDispatchedMsg',
+        {
+          bmc: targetBmc?.name || 'BMC',
+          category: directiveCategory,
+          priority: directivePriority,
+          author: user?.fullName || 'General Manager',
+        },
+        `Executive Directive issued to ${targetBmc?.name || 'BMC'}.\n\nCategory: ${directiveCategory}\nPriority: ${directivePriority}\nAuthorized by: ${user?.fullName || 'General Manager'}`
+      )
     );
 
     setDirectiveText('');
@@ -189,14 +203,17 @@ export default function UnionDashboard() {
     try {
       reviewBmcReceipt(
         selectedReceiptId,
-        signOffNotes.trim() || 'Approved and audited by Union General Manager.',
+        signOffNotes.trim() || t('union.approvedAuditedGm', 'Approved and audited by Union General Manager.'),
         user?.fullName || 'Dr. S. Sundaram (General Manager)'
       );
-      Alert.alert('Sign-Off Recorded', `Receipt #${selectedReceiptId} successfully signed off and ledger reconciled.`);
+      Alert.alert(
+        t('union.signOffRecordedTitle', 'Sign-Off Recorded'),
+        t('union.signOffRecordedMsg', { id: selectedReceiptId }, `Receipt #${selectedReceiptId} successfully signed off and ledger reconciled.`)
+      );
       setShowSignOffModal(false);
       setSignOffNotes('');
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not sign off receipt.');
+      Alert.alert(t('common.error', 'Error'), err.message || t('union.signOffError', 'Could not sign off receipt.'));
     }
   };
 
@@ -243,12 +260,20 @@ export default function UnionDashboard() {
   const totalDeliveries = bmcDeliveries.length > 0 ? bmcDeliveries.length : 12;
   const verifiedDeliveries = Math.max(0, totalDeliveries - stats.activeDiscrepanciesCount);
 
+  const filterTabs = [
+    { key: 'Overview', label: t('union.filterOverview', 'Overview') },
+    { key: 'Booths & Low Yield', label: t('union.filterBooths', 'Booths & Low Yield') },
+    { key: 'MCP Chilling', label: t('union.filterMcp', 'MCP Chilling') },
+    { key: 'Herd & Cows', label: t('union.filterHerd', 'Herd & Cows') },
+    { key: 'Payments', label: t('union.filterPayments', 'Payments') },
+  ] as const;
+
   return (
     <View style={styles.outerContainer}>
       {/* Retain DemoHeader (Layout Header is completely preserved) */}
       <DemoHeader
-        title="Aavin Union Headquarters"
-        subtitle={`${union.name} • Madurai District Co-op`}
+        title={t('union.title', 'Aavin Union Headquarters')}
+        subtitle={t('union.subtitle', { name: union.name }, `${union.name} • Madurai District Co-op`)}
       />
 
       <ScrollView
@@ -266,9 +291,9 @@ export default function UnionDashboard() {
           {/* TOP SECTION: Sub-header with Title, Nav Filter Tabs & "+ New Directive" CTA */}
           <View style={[styles.sectionTitleRow, isMobile && styles.mobileSectionTitleRow]}>
             <View style={styles.titleTextContainer}>
-              <Text style={styles.dashboardMainTitle}>Union Operations & Analytics</Text>
+              <Text style={styles.dashboardMainTitle}>{t('union.operationsAnalytics', 'Union Operations & Analytics')}</Text>
               <Text style={styles.dashboardSubtitle}>
-                Madurai Co-operative Milk Producers' Union • Real-time Procurement Income & Herd Audit
+                {t('union.operationsSubtitle', "Madurai Co-operative Milk Producers' Union • Real-time Procurement Income & Herd Audit")}
               </Text>
             </View>
 
@@ -276,16 +301,16 @@ export default function UnionDashboard() {
               {/* Filter Tabs */}
               {!isMobile && (
                 <View style={styles.filterPillsGroup}>
-                  {(['Overview', 'Booths & Low Yield', 'MCP Chilling', 'Herd & Cows', 'Payments'] as const).map((tab) => {
-                    const isActive = activeTabFilter === tab;
+                  {filterTabs.map((tab) => {
+                    const isActive = activeTabFilter === tab.key;
                     return (
                       <Pressable
-                        key={tab}
-                        onPress={() => setActiveTabFilter(tab)}
+                        key={tab.key}
+                        onPress={() => setActiveTabFilter(tab.key as any)}
                         style={[styles.filterPill, isActive && styles.filterPillActive]}
                       >
                         <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
-                          {tab}
+                          {tab.label}
                         </Text>
                       </Pressable>
                     );
@@ -299,7 +324,7 @@ export default function UnionDashboard() {
                 onPress={() => setShowDirectiveModal(true)}
               >
                 <Ionicons name="add" size={17} color="#FFFFFF" />
-                <Text style={styles.newTaskBtnText}>New Directive</Text>
+                <Text style={styles.newTaskBtnText}>{t('union.newDirective', 'New Directive')}</Text>
               </Pressable>
             </View>
           </View>
@@ -313,10 +338,10 @@ export default function UnionDashboard() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.alertNoticeTitle}>
-                    EXECUTIVE AUDIT REQUIRED: {stats.activeDiscrepanciesCount} Discrepancy Case(s)
+                    {t('union.executiveAuditRequired', { count: stats.activeDiscrepanciesCount }, `EXECUTIVE AUDIT REQUIRED: ${stats.activeDiscrepanciesCount} Discrepancy Case(s)`)}
                   </Text>
                   <Text style={styles.alertNoticeDesc}>
-                    {stats.pendingReceiptsCount} BMC daily receipt(s) awaiting GM sign-off • Net shrinkage: {netTransitDiscrepancy.toFixed(1)} L.
+                    {t('union.pendingReceiptsDesc', { count: stats.pendingReceiptsCount, shrinkage: netTransitDiscrepancy.toFixed(1) }, `${stats.pendingReceiptsCount} BMC daily receipt(s) awaiting GM sign-off • Net shrinkage: ${netTransitDiscrepancy.toFixed(1)} L.`)}
                   </Text>
                 </View>
               </View>
@@ -336,7 +361,7 @@ export default function UnionDashboard() {
                     }}
                   >
                     <Ionicons name="checkmark-done" size={13} color="#15803D" />
-                    <Text style={styles.signOffBtnMiniText}>Sign-Off</Text>
+                    <Text style={styles.signOffBtnMiniText}>{t('union.signOff', 'Sign-Off')}</Text>
                   </Pressable>
                 )}
 
@@ -344,7 +369,7 @@ export default function UnionDashboard() {
                   style={styles.alertNoticeActionBtn}
                   onPress={() => router.push('/(union)/discrepancies' as any)}
                 >
-                  <Text style={styles.alertNoticeActionText}>Audit Cases</Text>
+                  <Text style={styles.alertNoticeActionText}>{t('union.auditCases', 'Audit Cases')}</Text>
                   <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
                 </Pressable>
               </View>
@@ -371,7 +396,7 @@ export default function UnionDashboard() {
                 </Pressable>
               </View>
 
-              <Text style={styles.cardKpiLabel} numberOfLines={1}>Active Societies</Text>
+              <Text style={styles.cardKpiLabel} numberOfLines={1}>{t('union.activeSocieties', 'Active Societies')}</Text>
 
               <View style={styles.statValueWithTrendRow}>
                 <Text style={[styles.cardBigNumber, isDesktop && styles.desktopCardBigNumber]}>
@@ -386,10 +411,10 @@ export default function UnionDashboard() {
               <View style={[styles.cardFooterRow, isDesktop && styles.desktopCardFooterRow]}>
                 <View style={styles.dynamicLabelRow}>
                   <Ionicons name="infinite-outline" size={isDesktop ? 15 : 12} color="#94A3B8" />
-                  <Text style={styles.dynamicLabelText} numberOfLines={1}>District Network</Text>
+                  <Text style={styles.dynamicLabelText} numberOfLines={1}>{t('union.districtNetwork', 'District Network')}</Text>
                 </View>
                 <View style={styles.periodPill}>
-                  <Text style={styles.periodPillText}>Online</Text>
+                  <Text style={styles.periodPillText}>{t('union.online', 'Online')}</Text>
                 </View>
               </View>
             </View>
@@ -408,7 +433,7 @@ export default function UnionDashboard() {
                 </Pressable>
               </View>
 
-              <Text style={styles.cardKpiLabel} numberOfLines={1}>Today's Value</Text>
+              <Text style={styles.cardKpiLabel} numberOfLines={1}>{t('union.todaysValue', "Today's Value")}</Text>
 
               <View style={styles.statValueWithTrendRow}>
                 <Text style={[styles.cardBigNumber, isDesktop && styles.desktopCardBigNumber]}>
@@ -423,10 +448,12 @@ export default function UnionDashboard() {
               <View style={[styles.cardFooterRow, isDesktop && styles.desktopCardFooterRow]}>
                 <View style={styles.dynamicLabelRow}>
                   <Ionicons name="infinite-outline" size={isDesktop ? 15 : 12} color="#94A3B8" />
-                  <Text style={styles.dynamicLabelText} numberOfLines={1}>@₹{procurementRatePerLitre}/L</Text>
+                  <Text style={styles.dynamicLabelText} numberOfLines={1}>
+                    {t('union.ratePerLitre', { rate: procurementRatePerLitre }, `@₹${procurementRatePerLitre}/L`)}
+                  </Text>
                 </View>
                 <View style={styles.periodPill}>
-                  <Text style={styles.periodPillText}>Today</Text>
+                  <Text style={styles.periodPillText}>{t('union.today', 'Today')}</Text>
                 </View>
               </View>
             </View>
@@ -445,7 +472,7 @@ export default function UnionDashboard() {
                 </Pressable>
               </View>
 
-              <Text style={styles.cardKpiLabel} numberOfLines={1}>Low-Yield Booth</Text>
+              <Text style={styles.cardKpiLabel} numberOfLines={1}>{t('union.lowYieldBooth', 'Low-Yield Booth')}</Text>
 
               <View style={styles.statValueWithTrendRow}>
                 <Text style={[styles.cardBigNumber, isDesktop && styles.desktopCardBigNumber, { color: '#DC2626' }]}>
@@ -459,7 +486,7 @@ export default function UnionDashboard() {
               </View>
 
               <View style={[styles.cardFooterRow, isDesktop && styles.desktopCardFooterRow]}>
-                <Text style={styles.manageCustText} numberOfLines={1}>vs Prev Month</Text>
+                <Text style={styles.manageCustText} numberOfLines={1}>{t('union.vsPrevMonth', 'vs Prev Month')}</Text>
                 <View style={styles.avatarCluster}>
                   <Pressable 
                     style={styles.avatarAddBtn}
@@ -492,16 +519,16 @@ export default function UnionDashboard() {
                   <View style={styles.incomeBadgeIcon}>
                     <Ionicons name="cash" size={18} color="#16A34A" />
                   </View>
-                  <Text style={styles.analyticsTitle}>Today's Milk Procurement & Income Analysis</Text>
+                  <Text style={styles.analyticsTitle}>{t('union.incomeAnalysisTitle', "Today's Milk Procurement & Income Analysis")}</Text>
                 </View>
                 <Text style={styles.analyticsSubtitle}>
-                  Realized District Value based on {todayLitres.toFixed(1)} L Intake @ ₹{procurementRatePerLitre.toFixed(2)}/L Aavin Tariff
+                  {t('union.incomeAnalysisSubtitle', { litres: todayLitres.toFixed(1), rate: procurementRatePerLitre.toFixed(2) }, `Realized District Value based on ${todayLitres.toFixed(1)} L Intake @ ₹${procurementRatePerLitre.toFixed(2)}/L Aavin Tariff`)}
                 </Text>
               </View>
 
               <View style={styles.incomeStatBadge}>
                 <Text style={styles.incomeStatBadgeText}>₹{todayIncomeRevenue.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeStatBadgeSub}>Gross Procurement Value</Text>
+                <Text style={styles.incomeStatBadgeSub}>{t('union.grossProcurementValue', 'Gross Procurement Value')}</Text>
               </View>
             </View>
 
@@ -511,33 +538,33 @@ export default function UnionDashboard() {
               <View style={[styles.incomeBoxItem, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
                 <View style={styles.incomeBoxTop}>
                   <Ionicons name="people" size={16} color="#16A34A" />
-                  <Text style={[styles.incomeBoxTag, { color: '#15803D' }]}>85% Share</Text>
+                  <Text style={[styles.incomeBoxTag, { color: '#15803D' }]}>{t('union.farmerShareTag', '85% Share')}</Text>
                 </View>
                 <Text style={styles.incomeBoxValue}>₹{farmerPayoutShare.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeBoxLabel}>Direct Farmer DBT Payout</Text>
-                <Text style={styles.incomeBoxSub}>Direct credit to Canara / SBI accounts</Text>
+                <Text style={styles.incomeBoxLabel}>{t('union.farmerPayoutTitle', 'Direct Farmer DBT Payout')}</Text>
+                <Text style={styles.incomeBoxSub}>{t('union.farmerPayoutSub', 'Direct credit to Canara / SBI accounts')}</Text>
               </View>
 
               {/* Box 2: Tanker Logistics (10%) */}
               <View style={[styles.incomeBoxItem, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
                 <View style={styles.incomeBoxTop}>
                   <Ionicons name="bus" size={16} color="#2563EB" />
-                  <Text style={[styles.incomeBoxTag, { color: '#1D4ED8' }]}>10% Share</Text>
+                  <Text style={[styles.incomeBoxTag, { color: '#1D4ED8' }]}>{t('union.logisticsShareTag', '10% Share')}</Text>
                 </View>
                 <Text style={styles.incomeBoxValue}>₹{logisticsShare.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeBoxLabel}>Insulated Tanker Logistics</Text>
-                <Text style={styles.incomeBoxSub}>Transit allowance & chill transport</Text>
+                <Text style={styles.incomeBoxLabel}>{t('union.logisticsTitle', 'Insulated Tanker Logistics')}</Text>
+                <Text style={styles.incomeBoxSub}>{t('union.logisticsSub', 'Transit allowance & chill transport')}</Text>
               </View>
 
               {/* Box 3: Society Handling Commission (5%) */}
               <View style={[styles.incomeBoxItem, { backgroundColor: '#FAF5FF', borderColor: '#E9D5FF' }]}>
                 <View style={styles.incomeBoxTop}>
                   <Ionicons name="business" size={16} color="#9333EA" />
-                  <Text style={[styles.incomeBoxTag, { color: '#7E22CE' }]}>5% Share</Text>
+                  <Text style={[styles.incomeBoxTag, { color: '#7E22CE' }]}>{t('union.societyShareTag', '5% Share')}</Text>
                 </View>
                 <Text style={styles.incomeBoxValue}>₹{societyIncentiveShare.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeBoxLabel}>DCS Handling Commission</Text>
-                <Text style={styles.incomeBoxSub}>Booth operator testing allowance</Text>
+                <Text style={styles.incomeBoxLabel}>{t('union.societyCommissionTitle', 'DCS Handling Commission')}</Text>
+                <Text style={styles.incomeBoxSub}>{t('union.societyCommissionSub', 'Booth operator testing allowance')}</Text>
               </View>
             </View>
           </View>
@@ -550,15 +577,15 @@ export default function UnionDashboard() {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="trending-down" size={20} color="#DC2626" />
-                  <Text style={styles.analyticsTitle}>Booth Low-Yield Analysis vs Previous Month</Text>
+                  <Text style={styles.analyticsTitle}>{t('union.lowYieldTitle', 'Booth Low-Yield Analysis vs Previous Month')}</Text>
                 </View>
                 <Text style={styles.analyticsSubtitle}>
-                  Comparative volume deficit audit identifying collection centers below benchmark
+                  {t('union.lowYieldSubtitle', 'Comparative volume deficit audit identifying collection centers below benchmark')}
                 </Text>
               </View>
 
               <View style={styles.lowYieldAlertBadge}>
-                <Text style={styles.lowYieldAlertBadgeText}>1 Deficit Alert</Text>
+                <Text style={styles.lowYieldAlertBadgeText}>{t('union.deficitAlertBadge', { count: 1 }, '1 Deficit Alert')}</Text>
               </View>
             </View>
 
@@ -567,10 +594,15 @@ export default function UnionDashboard() {
               <Ionicons name="alert-circle" size={24} color="#DC2626" />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.lowYieldWarningTitle}>
-                  LOWEST PRODUCING BOOTH: {lowestBooth.name}
+                  {t('union.lowestProducingBooth', { name: lowestBooth.name }, `LOWEST PRODUCING BOOTH: ${lowestBooth.name}`)}
                 </Text>
                 <Text style={styles.lowYieldWarningDesc}>
-                  Supplied only <Text style={{ fontWeight: '800' }}>{lowestBooth.currentMonthLitres} L</Text> this month vs <Text style={{ fontWeight: '800' }}>{lowestBooth.prevMonthLitres} L</Text> last month ({lowestBooth.changePercent}% Drop). Reason: {lowestBooth.reason}.
+                  {t('union.lowestProducingDesc', {
+                    current: lowestBooth.currentMonthLitres,
+                    prev: lowestBooth.prevMonthLitres,
+                    percent: lowestBooth.changePercent,
+                    reason: lowestBooth.reason,
+                  }, `Supplied only ${lowestBooth.currentMonthLitres} L this month vs ${lowestBooth.prevMonthLitres} L last month (${lowestBooth.changePercent}% Drop). Reason: ${lowestBooth.reason}.`)}
                 </Text>
               </View>
 
@@ -578,11 +610,11 @@ export default function UnionDashboard() {
                 style={styles.lowYieldInquiryBtn}
                 onPress={() => {
                   setDirectiveCategory('Low Yield Inquiry');
-                  setDirectiveText(`Executive Inquiry for ${lowestBooth.name}: Explain volume drop of ${lowestBooth.changePercent}% compared to previous month average.`);
+                  setDirectiveText(t('union.executiveInquiryText', { name: lowestBooth.name, percent: lowestBooth.changePercent }, `Executive Inquiry for ${lowestBooth.name}: Explain volume drop of ${lowestBooth.changePercent}% compared to previous month average.`));
                   setShowDirectiveModal(true);
                 }}
               >
-                <Text style={styles.lowYieldInquiryBtnText}>Issue Inquiry</Text>
+                <Text style={styles.lowYieldInquiryBtnText}>{t('union.issueInquiry', 'Issue Inquiry')}</Text>
               </Pressable>
             </View>
 
@@ -601,7 +633,7 @@ export default function UnionDashboard() {
                       <View style={{ flex: 1, marginLeft: 10 }}>
                         <Text style={styles.boothCompareName}>{b.name}</Text>
                         <Text style={styles.boothCompareSub}>
-                          Operator: {b.operator} • In-Charge: {b.assignedBmc}
+                          {t('union.operator', 'Operator')}: {b.operator} • {t('union.inCharge', 'In-Charge')}: {b.assignedBmc}
                         </Text>
                       </View>
                     </View>
@@ -609,7 +641,7 @@ export default function UnionDashboard() {
                     {/* Volume Comparison Meters */}
                     <View style={styles.boothCompareMeters}>
                       <View style={styles.meterCol}>
-                        <Text style={styles.meterLabel}>This Month</Text>
+                        <Text style={styles.meterLabel}>{t('union.thisMonth', 'This Month')}</Text>
                         <Text style={[styles.meterValue, { color: isNegative ? '#DC2626' : '#0F172A' }]}>
                           {b.currentMonthLitres.toFixed(1)} L
                         </Text>
@@ -618,7 +650,7 @@ export default function UnionDashboard() {
                       <View style={styles.meterDivider} />
 
                       <View style={styles.meterCol}>
-                        <Text style={styles.meterLabel}>Prev Month</Text>
+                        <Text style={styles.meterLabel}>{t('union.prevMonth', 'Prev Month')}</Text>
                         <Text style={styles.meterValue}>{b.prevMonthLitres.toFixed(1)} L</Text>
                       </View>
 
@@ -645,14 +677,14 @@ export default function UnionDashboard() {
           <View style={[styles.cognifyCard, styles.fullAccessContainer]}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.analyticsTitle}>District Executive Access Hub</Text>
+                <Text style={styles.analyticsTitle}>{t('union.executiveAccessHub', 'District Executive Access Hub')}</Text>
                 <Text style={styles.analyticsSubtitle}>
-                  Full administrative command for Booths, MCP Coolers, Farmers, Cattle Herd & DBT Payments
+                  {t('union.executiveAccessSubtitle', 'Full administrative command for Booths, MCP Coolers, Farmers, Cattle Herd & DBT Payments')}
                 </Text>
               </View>
               <View style={styles.fullAccessRolePill}>
                 <Ionicons name="shield-checkmark" size={13} color="#7C3AED" />
-                <Text style={styles.fullAccessRoleText}>GM High Privilege</Text>
+                <Text style={styles.fullAccessRoleText}>{t('union.gmHighPrivilege', 'GM High Privilege')}</Text>
               </View>
             </View>
 
@@ -665,11 +697,11 @@ export default function UnionDashboard() {
                 <View style={[styles.accessTileIcon, { backgroundColor: '#E0F2FE' }]}>
                   <Ionicons name="storefront" size={22} color="#0284C7" />
                 </View>
-                <Text style={styles.accessTileTitle}>Village Booths</Text>
-                <Text style={styles.accessTileStat}>{booths.length} Societies</Text>
-                <Text style={styles.accessTileDesc}>Record milk, sessions, dispatch manifests</Text>
+                <Text style={styles.accessTileTitle}>{t('union.villageBooths', 'Village Booths')}</Text>
+                <Text style={styles.accessTileStat}>{t('union.societiesCount', { count: booths.length }, `${booths.length} Societies`)}</Text>
+                <Text style={styles.accessTileDesc}>{t('union.boothsTileDesc', 'Record milk, sessions, dispatch manifests')}</Text>
                 <View style={styles.accessTileLinkRow}>
-                  <Text style={styles.accessTileLinkText}>Manage Booths</Text>
+                  <Text style={styles.accessTileLinkText}>{t('union.manageBooths', 'Manage Booths')}</Text>
                   <Ionicons name="arrow-forward" size={13} color="#0284C7" />
                 </View>
               </Pressable>
@@ -682,11 +714,11 @@ export default function UnionDashboard() {
                 <View style={[styles.accessTileIcon, { backgroundColor: '#DCFCE7' }]}>
                   <Ionicons name="snow" size={22} color="#16A34A" />
                 </View>
-                <Text style={styles.accessTileTitle}>MCP Chilling Hubs</Text>
-                <Text style={styles.accessTileStat}>{bmcs.length} Bulk Coolers</Text>
-                <Text style={styles.accessTileDesc}>3.8°C temperature telemetry, flow meters</Text>
+                <Text style={styles.accessTileTitle}>{t('union.mcpChillingHubs', 'MCP Chilling Hubs')}</Text>
+                <Text style={styles.accessTileStat}>{t('union.bulkCoolersCount', { count: bmcs.length }, `${bmcs.length} Bulk Coolers`)}</Text>
+                <Text style={styles.accessTileDesc}>{t('union.mcpTileDesc', '3.8°C temperature telemetry, flow meters')}</Text>
                 <View style={styles.accessTileLinkRow}>
-                  <Text style={[styles.accessTileLinkText, { color: '#16A34A' }]}>Inspect MCPs</Text>
+                  <Text style={[styles.accessTileLinkText, { color: '#16A34A' }]}>{t('union.inspectMcps', 'Inspect MCPs')}</Text>
                   <Ionicons name="arrow-forward" size={13} color="#16A34A" />
                 </View>
               </Pressable>
@@ -699,13 +731,16 @@ export default function UnionDashboard() {
                 <View style={[styles.accessTileIcon, { backgroundColor: '#FDF2F8' }]}>
                   <Ionicons name="heart" size={22} color="#EC4899" />
                 </View>
-                <Text style={styles.accessTileTitle}>Herd & Pashu Aadhaar</Text>
-                <Text style={styles.accessTileStat}>{cows.length} Tagged Cows</Text>
+                <Text style={styles.accessTileTitle}>{t('union.herdPashuAadhaar', 'Herd & Pashu Aadhaar')}</Text>
+                <Text style={styles.accessTileStat}>{t('union.taggedCowsCount', { count: cows.length }, `${cows.length} Tagged Cows`)}</Text>
                 <Text style={styles.accessTileDesc}>
-                  {farmers.length} Farmers • {quarantineCowsCount > 0 ? `${quarantineCowsCount} in withdrawal` : 'Zero hold'}
+                  {t('union.herdTileDesc', {
+                    farmers: farmers.length,
+                    withdrawal: quarantineCowsCount > 0 ? t('union.inWithdrawal', { count: quarantineCowsCount }, `${quarantineCowsCount} in withdrawal`) : t('union.zeroHold', 'Zero hold'),
+                  }, `${farmers.length} Farmers • ${quarantineCowsCount > 0 ? `${quarantineCowsCount} in withdrawal` : 'Zero hold'}`)}
                 </Text>
                 <View style={styles.accessTileLinkRow}>
-                  <Text style={[styles.accessTileLinkText, { color: '#EC4899' }]}>View Herd</Text>
+                  <Text style={[styles.accessTileLinkText, { color: '#EC4899' }]}>{t('union.viewHerd', 'View Herd')}</Text>
                   <Ionicons name="arrow-forward" size={13} color="#EC4899" />
                 </View>
               </Pressable>
@@ -718,11 +753,13 @@ export default function UnionDashboard() {
                 <View style={[styles.accessTileIcon, { backgroundColor: '#FAF5FF' }]}>
                   <Ionicons name="wallet" size={22} color="#9333EA" />
                 </View>
-                <Text style={styles.accessTileTitle}>DBT Payments</Text>
-                <Text style={styles.accessTileStat}>₹{(todayIncomeRevenue / 1000).toFixed(1)}k Today</Text>
-                <Text style={styles.accessTileDesc}>Bank account IFSC, milk supply credit passbook</Text>
+                <Text style={styles.accessTileTitle}>{t('union.dbtPayments', 'DBT Payments')}</Text>
+                <Text style={styles.accessTileStat}>
+                  {t('union.todayAmount', { amount: `₹${(todayIncomeRevenue / 1000).toFixed(1)}k` }, `₹${(todayIncomeRevenue / 1000).toFixed(1)}k Today`)}
+                </Text>
+                <Text style={styles.accessTileDesc}>{t('union.paymentsTileDesc', 'Bank account IFSC, milk supply credit passbook')}</Text>
                 <View style={styles.accessTileLinkRow}>
-                  <Text style={[styles.accessTileLinkText, { color: '#9333EA' }]}>Review Payments</Text>
+                  <Text style={[styles.accessTileLinkText, { color: '#9333EA' }]}>{t('union.reviewPayments', 'Review Payments')}</Text>
                   <Ionicons name="arrow-forward" size={13} color="#9333EA" />
                 </View>
               </Pressable>
@@ -738,10 +775,10 @@ export default function UnionDashboard() {
             <View style={[styles.cognifyCard, styles.analyticsCardItem]}>
               <View style={styles.analyticsHeaderRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.analyticsTitle}>Transit Yield Retention</Text>
+                  <Text style={styles.analyticsTitle}>{t('union.transitRetentionTitle', 'Transit Yield Retention')}</Text>
                   <Text style={styles.taskProgressBigNum}>{retentionPercent.toFixed(1)}%</Text>
                   <Text style={styles.analyticsSubtitle}>
-                    Tolerance ±0.50% • Shrinkage: {netTransitDiscrepancy.toFixed(1)} L
+                    {t('union.toleranceShrinkage', { shrinkage: netTransitDiscrepancy.toFixed(1) }, `Tolerance ±0.50% • Shrinkage: ${netTransitDiscrepancy.toFixed(1)} L`)}
                   </Text>
                 </View>
 
@@ -751,7 +788,7 @@ export default function UnionDashboard() {
                       <Ionicons name="water" size={13} color="#EC4899" />
                     </View>
                     <View>
-                      <Text style={styles.categoryNameText}>Avg FAT</Text>
+                      <Text style={styles.categoryNameText}>{t('union.avgFat', 'Avg FAT')}</Text>
                       <Text style={styles.categoryPercentText}>4.35%</Text>
                     </View>
                   </View>
@@ -761,7 +798,7 @@ export default function UnionDashboard() {
                       <Ionicons name="analytics" size={13} color="#3B82F6" />
                     </View>
                     <View>
-                      <Text style={styles.categoryNameText}>Avg SNF</Text>
+                      <Text style={styles.categoryNameText}>{t('union.avgSnf', 'Avg SNF')}</Text>
                       <Text style={styles.categoryPercentText}>8.52%</Text>
                     </View>
                   </View>
@@ -771,7 +808,7 @@ export default function UnionDashboard() {
                       <Ionicons name="thermometer" size={13} color="#22C55E" />
                     </View>
                     <View>
-                      <Text style={styles.categoryNameText}>Chilling</Text>
+                      <Text style={styles.categoryNameText}>{t('union.chilling', 'Chilling')}</Text>
                       <Text style={styles.categoryPercentText}>3.8°C</Text>
                     </View>
                   </View>
@@ -831,7 +868,7 @@ export default function UnionDashboard() {
             {/* CARD 5: BATCH DELIVERY RECONCILIATION */}
             <View style={[styles.cognifyCard, styles.analyticsCardItem]}>
               <View style={styles.analyticsHeaderRow}>
-                <Text style={styles.analyticsTitle}>Batch Reconciliation</Text>
+                <Text style={styles.analyticsTitle}>{t('union.batchReconciliation', 'Batch Reconciliation')}</Text>
                 
                 <View style={styles.sumPercentTogglePill}>
                   <Pressable
@@ -895,7 +932,7 @@ export default function UnionDashboard() {
                     {totalDeliveries}
                   </SvgText>
                   <SvgText x="120" y="89" fill="#94A3B8" fontSize="11" fontWeight="600" textAnchor="middle">
-                    batches
+                    {t('union.batches', 'batches')}
                   </SvgText>
 
                   <G transform="translate(36, 12)">
@@ -910,7 +947,7 @@ export default function UnionDashboard() {
 
               <View style={styles.statusBarsContainer}>
                 <View style={styles.statusBarRow}>
-                  <Text style={styles.statusBarLabel}>Balanced</Text>
+                  <Text style={styles.statusBarLabel}>{t('union.balanced', 'Balanced')}</Text>
                   <View style={styles.statusBarTrack}>
                     <Svg width="100%" height={10} viewBox="0 0 160 10">
                       {renderHatchPattern('compHatch', 82, 10, 5, '#16A34A', '#22C55E', 5)}
@@ -922,7 +959,7 @@ export default function UnionDashboard() {
                 </View>
 
                 <View style={styles.statusBarRow}>
-                  <Text style={styles.statusBarLabel}>Discrepant</Text>
+                  <Text style={styles.statusBarLabel}>{t('union.discrepant', 'Discrepant')}</Text>
                   <View style={styles.statusBarTrack}>
                     <Svg width="100%" height={10} viewBox="0 0 160 10">
                       {renderHatchPattern('progHatch', 28, 10, 5, '#DB2777', '#EC4899', 5)}
@@ -934,14 +971,14 @@ export default function UnionDashboard() {
                 </View>
 
                 <View style={styles.statusBarRow}>
-                  <Text style={styles.statusBarLabel}>Pending GM</Text>
+                  <Text style={styles.statusBarLabel}>{t('union.pendingGm', 'Pending GM')}</Text>
                   <View style={styles.statusBarTrack}>
                     <Svg width="100%" height={10} viewBox="0 0 160 10">
                       {renderHatchPattern('upcHatch', 52, 10, 5, '#2563EB', '#3B82F6', 5)}
                     </Svg>
                   </View>
                   <Text style={styles.statusBarCount}>
-                    {statusMode === 'sum' ? `${stats.pendingReceiptsCount}/${bmcReceipts.length || 1}` : 'Pending'}
+                    {statusMode === 'sum' ? `${stats.pendingReceiptsCount}/${bmcReceipts.length || 1}` : t('statuses.pending', 'Pending')}
                   </Text>
                 </View>
               </View>
@@ -950,14 +987,14 @@ export default function UnionDashboard() {
             {/* CARD 6: PRODUCTIVITY & INFLOW TREND */}
             <View style={[styles.cognifyCard, styles.analyticsCardItem]}>
               <View style={styles.analyticsHeaderRow}>
-                <Text style={styles.analyticsTitle}>District Inflow & Revenue</Text>
+                <Text style={styles.analyticsTitle}>{t('union.districtInflowRevenue', 'District Inflow & Revenue')}</Text>
 
                 <Pressable
                   onPress={() => setTrendRange(trendRange === 'Daily' ? 'Weekly' : 'Daily')}
                   style={styles.dailyDropdownPill}
                 >
                   <Ionicons name="calendar-outline" size={13} color="#64748B" />
-                  <Text style={styles.dailyDropdownText}>{trendRange}</Text>
+                  <Text style={styles.dailyDropdownText}>{t(`analytics.periods.${trendRange.toLowerCase()}`, trendRange)}</Text>
                   <Ionicons name="chevron-down" size={12} color="#64748B" />
                 </Pressable>
               </View>
@@ -965,11 +1002,15 @@ export default function UnionDashboard() {
               <View style={styles.trendTooltipsHeaderRow}>
                 <View style={styles.activeTimePill}>
                   <View style={styles.blueDot} />
-                  <Text style={styles.activeTimePillText}>{currentTrendPoint.activeTime}</Text>
+                  <Text style={styles.activeTimePillText}>
+                    {t('union.inflowLabel', { litres: currentTrendPoint.activeL }, `${currentTrendPoint.activeL} L Inflow`)}
+                  </Text>
                 </View>
                 <View style={styles.pauseTimePill}>
                   <View style={styles.pinkDot} />
-                  <Text style={styles.pauseTimePillText}>{currentTrendPoint.pauseTime}</Text>
+                  <Text style={styles.pauseTimePillText}>
+                    {t('union.incomeLabel', { income: currentTrendPoint.incomeK }, `₹${currentTrendPoint.incomeK}k Income`)}
+                  </Text>
                 </View>
               </View>
 
@@ -1034,7 +1075,7 @@ export default function UnionDashboard() {
                       style={[styles.daySelectorPill, isSelected && styles.daySelectorPillActive]}
                     >
                       <Text style={[styles.daySelectorPillText, isSelected && styles.daySelectorPillTextActive]}>
-                        {d.day}
+                        {t(`union.days.${d.dayKey}`, d.day)}
                       </Text>
                     </Pressable>
                   );
@@ -1043,7 +1084,7 @@ export default function UnionDashboard() {
 
               <View style={styles.productivityStatsRow}>
                 <View>
-                  <Text style={styles.prodStatLabel}>Total Inflow</Text>
+                  <Text style={styles.prodStatLabel}>{t('union.totalInflow', 'Total Inflow')}</Text>
                   <View style={styles.prodStatNumRow}>
                     <Text style={styles.prodStatValue}>{todayLitres.toFixed(0)} L</Text>
                     <View style={styles.prodTrendGreenPill}>
@@ -1054,12 +1095,12 @@ export default function UnionDashboard() {
                 </View>
 
                 <View>
-                  <Text style={styles.prodStatLabel}>Gross Income</Text>
+                  <Text style={styles.prodStatLabel}>{t('union.grossIncome', 'Gross Income')}</Text>
                   <View style={styles.prodStatNumRow}>
                     <Text style={styles.prodStatValue}>₹{(todayIncomeRevenue / 1000).toFixed(1)}k</Text>
                     <View style={styles.prodTrendGreenPill}>
                       <Ionicons name="shield-checkmark" size={10} color="#16A34A" />
-                      <Text style={styles.prodTrendGreenText}>DBT</Text>
+                      <Text style={styles.prodTrendGreenText}>{t('union.dbt', 'DBT')}</Text>
                     </View>
                   </View>
                 </View>
@@ -1078,9 +1119,9 @@ export default function UnionDashboard() {
                   <Ionicons name="git-network-outline" size={18} color="#0284C7" />
                 </View>
                 <View>
-                  <Text style={styles.chainTitleText}>Supply Chain Stage Reconciliation (Distinct Nodes)</Text>
+                  <Text style={styles.chainTitleText}>{t('union.supplyChainTitle', 'Supply Chain Stage Reconciliation (Distinct Nodes)')}</Text>
                   <Text style={styles.chainSubtitleText}>
-                    Booth declared dispatches and BMC intake measurements represent separate stages of the same milk batch.
+                    {t('union.supplyChainSubtitle', 'Booth declared dispatches and BMC intake measurements represent separate stages of the same milk batch.')}
                   </Text>
                 </View>
               </View>
@@ -1098,7 +1139,7 @@ export default function UnionDashboard() {
                   styles.retentionPillText,
                   { color: netTransitDiscrepancy === 0 ? "#15803D" : "#B45309" }
                 ]}>
-                  {retentionPercent.toFixed(1)}% Yield Retention
+                  {t('union.yieldRetention', { percent: retentionPercent.toFixed(1) }, `${retentionPercent.toFixed(1)}% Yield Retention`)}
                 </Text>
               </View>
             </View>
@@ -1107,13 +1148,13 @@ export default function UnionDashboard() {
               <View style={[styles.pipelineNodeCard, { borderColor: '#BAE6FD', backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#0284C7' }]}>
-                    <Text style={styles.nodeMiniBadgeText}>STAGE 1: BOOTHS</Text>
+                    <Text style={styles.nodeMiniBadgeText}>{t('union.stage1Booths', 'STAGE 1: BOOTHS')}</Text>
                   </View>
                   <Ionicons name="storefront" size={15} color="#0284C7" />
                 </View>
-                <Text style={styles.nodeCardTitle}>Village Booths Dispatched</Text>
+                <Text style={styles.nodeCardTitle}>{t('union.boothsDispatchedTitle', 'Village Booths Dispatched')}</Text>
                 <Text style={styles.nodeCardValue}>{stats.totalBoothDispatched.toFixed(1)} <Text style={styles.nodeCardUnit}>L</Text></Text>
-                <Text style={styles.nodeCardSub}>{booths.length} Assigned Societies</Text>
+                <Text style={styles.nodeCardSub}>{t('union.assignedSocietiesCount', { count: booths.length }, `${booths.length} Assigned Societies`)}</Text>
               </View>
 
               <View style={styles.nodeArrowDivider}>
@@ -1123,13 +1164,13 @@ export default function UnionDashboard() {
               <View style={[styles.pipelineNodeCard, { borderColor: '#BBF7D0', backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#16A34A' }]}>
-                    <Text style={styles.nodeMiniBadgeText}>STAGE 2: BMCS</Text>
+                    <Text style={styles.nodeMiniBadgeText}>{t('union.stage2Bmcs', 'STAGE 2: BMCS')}</Text>
                   </View>
                   <Ionicons name="snow" size={15} color="#16A34A" />
                 </View>
-                <Text style={styles.nodeCardTitle}>BMC Measured Intake</Text>
+                <Text style={styles.nodeCardTitle}>{t('union.bmcMeasuredTitle', 'BMC Measured Intake')}</Text>
                 <Text style={styles.nodeCardValue}>{stats.totalBmcReceived.toFixed(1)} <Text style={styles.nodeCardUnit}>L</Text></Text>
-                <Text style={styles.nodeCardSub}>{bmcs.length} Bulk Coolers</Text>
+                <Text style={styles.nodeCardSub}>{t('union.bulkCoolersCount', { count: bmcs.length }, `${bmcs.length} Bulk Coolers`)}</Text>
               </View>
 
               <View style={styles.nodeArrowDivider}>
@@ -1139,13 +1180,15 @@ export default function UnionDashboard() {
               <View style={[styles.pipelineNodeCard, { borderColor: '#E9D5FF', backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#9333EA' }]}>
-                    <Text style={styles.nodeMiniBadgeText}>STAGE 3: SLIPS</Text>
+                    <Text style={styles.nodeMiniBadgeText}>{t('union.stage3Slips', 'STAGE 3: SLIPS')}</Text>
                   </View>
                   <Ionicons name="document-text" size={15} color="#9333EA" />
                 </View>
-                <Text style={styles.nodeCardTitle}>Reported by BMC Slips</Text>
+                <Text style={styles.nodeCardTitle}>{t('union.reportedSlipsTitle', 'Reported by BMC Slips')}</Text>
                 <Text style={styles.nodeCardValue}>{stats.totalReportedByBmcReceipts.toFixed(1)} <Text style={styles.nodeCardUnit}>L</Text></Text>
-                <Text style={styles.nodeCardSub}>{stats.pendingReceiptsCount > 0 ? `${stats.pendingReceiptsCount} Pending Sign-Off` : '100% Signed'}</Text>
+                <Text style={styles.nodeCardSub}>
+                  {stats.pendingReceiptsCount > 0 ? t('union.pendingSignOffCount', { count: stats.pendingReceiptsCount }, `${stats.pendingReceiptsCount} Pending Sign-Off`) : t('union.allSigned', '100% Signed')}
+                </Text>
               </View>
             </View>
 
@@ -1156,7 +1199,7 @@ export default function UnionDashboard() {
               >
                 <Ionicons name="search" size={15} color="#FFFFFF" />
                 <Text style={styles.inspectDiscrepancyBtnText}>
-                  Audit {netTransitDiscrepancy.toFixed(1)} L Discrepancy Case & Tolerance
+                  {t('union.auditDiscrepancyBtn', { litres: netTransitDiscrepancy.toFixed(1) }, `Audit ${netTransitDiscrepancy.toFixed(1)} L Discrepancy Case & Tolerance`)}
                 </Text>
                 <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
               </Pressable>
@@ -1179,8 +1222,8 @@ export default function UnionDashboard() {
           <View style={styles.modalContentCard}>
             <View style={styles.modalHeaderRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalMainTitle}>Dispatch Executive Directive</Text>
-                <Text style={styles.modalSubTitle}>Aavin Madurai District Milk Union Headquarters</Text>
+                <Text style={styles.modalMainTitle}>{t('union.dispatchDirectiveTitle', 'Dispatch Executive Directive')}</Text>
+                <Text style={styles.modalSubTitle}>{t('union.dispatchDirectiveSubtitle', 'Aavin Madurai District Milk Union Headquarters')}</Text>
               </View>
               <Pressable 
                 onPress={() => setShowDirectiveModal(false)}
@@ -1191,7 +1234,7 @@ export default function UnionDashboard() {
             </View>
 
             <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputFieldLabel}>Target BMC / Unit</Text>
+              <Text style={styles.inputFieldLabel}>{t('union.targetBmcLabel', 'Target BMC / Unit')}</Text>
               <View style={styles.bmcSelectorRow}>
                 {bmcs.map((b) => {
                   const isSel = targetBmcId === b.id;
@@ -1209,10 +1252,16 @@ export default function UnionDashboard() {
                 })}
               </View>
 
-              <Text style={styles.inputFieldLabel}>Directive Category</Text>
+              <Text style={styles.inputFieldLabel}>{t('union.directiveCategoryLabel', 'Directive Category')}</Text>
               <View style={styles.bmcSelectorRow}>
                 {(['Low Yield Inquiry', 'Transit Shrinkage', 'Quality Audit', 'Temperature Breach'] as const).map((cat) => {
                   const isSel = directiveCategory === cat;
+                  const catLabels: Record<typeof cat, string> = {
+                    'Low Yield Inquiry': t('union.lowYieldInquiry', 'Low Yield Inquiry'),
+                    'Transit Shrinkage': t('union.transitShrinkage', 'Transit Shrinkage'),
+                    'Quality Audit': t('union.qualityAudit', 'Quality Audit'),
+                    'Temperature Breach': t('union.temperatureBreach', 'Temperature Breach'),
+                  };
                   return (
                     <Pressable
                       key={cat}
@@ -1220,17 +1269,22 @@ export default function UnionDashboard() {
                       style={[styles.modalSelectorPill, isSel && styles.modalSelectorPillActive]}
                     >
                       <Text style={[styles.modalSelectorPillText, isSel && styles.modalSelectorPillTextActive]}>
-                        {cat}
+                        {catLabels[cat]}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
 
-              <Text style={styles.inputFieldLabel}>Priority Level</Text>
+              <Text style={styles.inputFieldLabel}>{t('union.priorityLevelLabel', 'Priority Level')}</Text>
               <View style={styles.bmcSelectorRow}>
                 {(['Normal', 'High', 'Critical GM Order'] as const).map((p) => {
                   const isSel = directivePriority === p;
+                  const pLabels: Record<typeof p, string> = {
+                    'Normal': t('union.priorityNormal', 'Normal'),
+                    'High': t('union.priorityHigh', 'High'),
+                    'Critical GM Order': t('union.priorityCritical', 'Critical GM Order'),
+                  };
                   return (
                     <Pressable
                       key={p}
@@ -1241,17 +1295,17 @@ export default function UnionDashboard() {
                       ]}
                     >
                       <Text style={[styles.modalSelectorPillText, isSel && styles.modalSelectorPillTextActive]}>
-                        {p}
+                        {pLabels[p]}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
 
-              <Text style={styles.inputFieldLabel}>Executive Instructions & Findings</Text>
+              <Text style={styles.inputFieldLabel}>{t('union.executiveInstructionsLabel', 'Executive Instructions & Findings')}</Text>
               <TextInput
                 style={styles.modalTextInput}
-                placeholder="Enter executive instructions, low yield deficit inquiry, tanker custody seal inspection, or GM order..."
+                placeholder={t('union.directivePlaceholder', 'Enter executive instructions, low yield deficit inquiry, tanker custody seal inspection, or GM order...')}
                 placeholderTextColor="#94A3B8"
                 multiline
                 numberOfLines={4}
@@ -1265,7 +1319,7 @@ export default function UnionDashboard() {
                 style={styles.modalCancelBtn}
                 onPress={() => setShowDirectiveModal(false)}
               >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                <Text style={styles.modalCancelBtnText}>{t('common.cancel', 'Cancel')}</Text>
               </Pressable>
 
               <Pressable
@@ -1273,7 +1327,7 @@ export default function UnionDashboard() {
                 onPress={handleDispatchDirective}
               >
                 <Ionicons name="paper-plane" size={15} color="#FFFFFF" />
-                <Text style={styles.modalSubmitBtnText}>Dispatch Directive</Text>
+                <Text style={styles.modalSubmitBtnText}>{t('union.dispatchDirectiveBtn', 'Dispatch Directive')}</Text>
               </Pressable>
             </View>
           </View>
@@ -1293,8 +1347,8 @@ export default function UnionDashboard() {
           <View style={styles.modalContentCard}>
             <View style={styles.modalHeaderRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalMainTitle}>GM Sign-Off & Seal Receipt</Text>
-                <Text style={styles.modalSubTitle}>Digital Signature for Daily BMC Intake Slip</Text>
+                <Text style={styles.modalMainTitle}>{t('union.signOffModalTitle', 'GM Sign-Off & Seal Receipt')}</Text>
+                <Text style={styles.modalSubTitle}>{t('union.signOffModalSubtitle', 'Digital Signature for Daily BMC Intake Slip')}</Text>
               </View>
               <Pressable 
                 onPress={() => setShowSignOffModal(false)}
@@ -1305,7 +1359,7 @@ export default function UnionDashboard() {
             </View>
 
             <View style={{ marginVertical: 12 }}>
-              <Text style={styles.inputFieldLabel}>Select Pending Slip</Text>
+              <Text style={styles.inputFieldLabel}>{t('union.selectPendingSlip', 'Select Pending Slip')}</Text>
               {bmcReceipts.filter(r => r.status === 'sent_to_union').map((r) => {
                 const isSel = selectedReceiptId === r.id;
                 return (
@@ -1315,8 +1369,12 @@ export default function UnionDashboard() {
                     style={[styles.receiptSelectCard, isSel && styles.receiptSelectCardActive]}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.receiptSelectId, isSel && { color: '#0284C7' }]}>Slip #{r.id}</Text>
-                      <Text style={styles.receiptSelectSub}>BMC: {r.bmcName} • {r.totalReceivedQuantity} L</Text>
+                      <Text style={[styles.receiptSelectId, isSel && { color: '#0284C7' }]}>
+                        {t('union.slipNumber', { id: r.id }, `Slip #${r.id}`)}
+                      </Text>
+                      <Text style={styles.receiptSelectSub}>
+                        {t('union.slipDetails', { name: r.bmcName, qty: r.totalReceivedQuantity }, `BMC: ${r.bmcName} • ${r.totalReceivedQuantity} L`)}
+                      </Text>
                     </View>
                     <Ionicons 
                       name={isSel ? "checkmark-circle" : "ellipse-outline"} 
@@ -1327,10 +1385,10 @@ export default function UnionDashboard() {
                 );
               })}
 
-              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>GM Audit Directives & Notes</Text>
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>{t('union.gmDirectivesLabel', 'GM Audit Directives & Notes')}</Text>
               <TextInput
                 style={styles.modalTextInput}
-                placeholder="Audit findings: milk fat compliant, cooling temperature within 4°C, zero adulteration certified."
+                placeholder={t('union.signOffPlaceholder', 'Audit findings: milk fat compliant, cooling temperature within 4°C, zero adulteration certified.')}
                 placeholderTextColor="#94A3B8"
                 multiline
                 numberOfLines={3}
@@ -1344,7 +1402,7 @@ export default function UnionDashboard() {
                 style={styles.modalCancelBtn}
                 onPress={() => setShowSignOffModal(false)}
               >
-                <Text style={styles.modalCancelBtnText}>Close</Text>
+                <Text style={styles.modalCancelBtnText}>{t('common.close', 'Close')}</Text>
               </Pressable>
 
               <Pressable
@@ -1352,7 +1410,7 @@ export default function UnionDashboard() {
                 onPress={handleQuickSignOff}
               >
                 <Ionicons name="checkmark-done" size={16} color="#FFFFFF" />
-                <Text style={styles.modalSubmitBtnText}>Sign & Reconcile</Text>
+                <Text style={styles.modalSubmitBtnText}>{t('union.signReconcileBtn', 'Sign & Reconcile')}</Text>
               </Pressable>
             </View>
           </View>

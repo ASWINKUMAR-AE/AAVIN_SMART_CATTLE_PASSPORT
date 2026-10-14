@@ -39,7 +39,7 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
 }) => {
   const { user, logout, switchRole } = useAuth();
   const { colors } = useTheme();
-  const { language, toggleLanguage, t } = useTranslation();
+  const { language, toggleLanguage, setLanguage, t } = useTranslation();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -49,6 +49,9 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
 
   const handleRoleSwitch = async (targetRole: UserRole) => {
     await switchRole(targetRole);
+    if (targetRole === 'farmer' || targetRole === 'booth' || targetRole === 'bmc' || targetRole === 'union' || targetRole === 'veterinary') {
+      await setLanguage('en');
+    }
     switch (targetRole) {
       case 'farmer':
         router.replace('/(farmer)');
@@ -95,7 +98,7 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
               <View style={[styles.badge, { backgroundColor: '#DCFCE7' }]}>
                 <Ionicons name="shield-checkmark" size={13} color="#15803D" />
                 <Text style={[styles.badgeText, { color: '#15803D' }]}>
-                  Aavin Authorized Personnel
+                  {t('profile.authorizedPersonnel', 'Aavin Authorized Personnel')}
                 </Text>
               </View>
             </View>
@@ -113,8 +116,8 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
               </View>
             )}
             <View style={styles.row}>
-              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Security Access:</Text>
-              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700' }]}>Level 3 (Operational Twin)</Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>{t('profile.securityAccess', 'Security Access:')}</Text>
+              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700' }]}>{t('profile.level3Twin', 'Level 3 (Operational Twin)')}</Text>
             </View>
           </View>
         </Card>
@@ -123,7 +126,7 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
         {stats && stats.length > 0 && (
           <Card style={styles.card}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-              Operational Summary
+              {t('profile.operationalSummary', 'Operational Summary')}
             </Text>
             <View style={styles.statsGrid}>
               {stats.map((stat, idx) => (
@@ -142,10 +145,10 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
         {/* Quick Demo Role Switcher */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 4 }]}>
-            Quick Role Switcher
+            {t('profile.quickRoleSwitcher', 'Quick Role Switcher')}
           </Text>
           <Text style={[Typography.footnote, { color: colors.textSecondary, marginBottom: 12 }]}>
-            Instant one-tap switch to test role-specific workflows & navigation:
+            {t('profile.quickRoleDesc', 'Instant one-tap switch to test role-specific workflows & navigation:')}
           </Text>
 
           <View style={styles.roleChips}>
@@ -172,7 +175,7 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
                     { color: user?.role === item.role ? '#FFFFFF' : colors.text, fontWeight: '700', marginLeft: 4 },
                   ]}
                 >
-                  {item.label}
+                  {t(`roles.${item.role}`, item.label)}
                 </Text>
               </Pressable>
             ))}

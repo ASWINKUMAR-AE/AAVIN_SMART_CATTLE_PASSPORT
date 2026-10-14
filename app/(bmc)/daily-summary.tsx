@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -21,6 +22,7 @@ export default function BMCDailySummaryScreen() {
     discrepancyCases 
   } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const bmcId = user?.associatedId || 'BMC001';
@@ -43,7 +45,7 @@ export default function BMCDailySummaryScreen() {
 
   const handleGenerateBmcReceipt = () => {
     if (myDeliveries.length === 0) {
-      Alert.alert('No Deliveries', 'No feeder society deliveries exist to generate a receipt.');
+      Alert.alert(t('bmc.noDeliveriesTitle'), t('bmc.noDeliveriesMsg'));
       return;
     }
 
@@ -58,12 +60,12 @@ export default function BMCDailySummaryScreen() {
       );
 
       Alert.alert(
-        'BMC Daily Receipt Created!',
-        `Receipt #${receipt.id} generated for ${receipt.totalReceivedQuantity} L net received volume. Ready to transmit to Union Management.`,
-        [{ text: 'OK' }]
+        t('bmc.bmcReceiptCreated'),
+        t('bmc.bmcReceiptCreatedMsg', { id: receipt.id, qty: receipt.totalReceivedQuantity }),
+        [{ text: t('common.done') }]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not create BMC receipt.');
+      Alert.alert(t('common.error'), err.message || t('bmc.couldNotCreateReceipt'));
     } finally {
       setGenerating(false);
     }
@@ -74,12 +76,12 @@ export default function BMCDailySummaryScreen() {
     try {
       sendBmcReceiptToUnion(receiptId);
       Alert.alert(
-        'Receipt Transmitted to Union!',
-        `BMC Daily Receipt #${receiptId} has been sent to Aavin Madurai Union Management.\n\nUnion GM dashboard is now updated with this pending receipt for executive review.`,
-        [{ text: 'OK' }]
+        t('bmc.receiptSentToUnion'),
+        t('bmc.receiptSentToUnionMsg', { id: receiptId }),
+        [{ text: t('common.done') }]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not send receipt.');
+      Alert.alert(t('common.error'), err.message || t('bmc.couldNotSendReceipt'));
     } finally {
       setTransmitting(false);
     }
@@ -88,8 +90,8 @@ export default function BMCDailySummaryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="BMC Daily Summary & Closure"
-        subtitle={`Audit Reconciliation • Recipient: Aavin Madurai Union`}
+        title={t('bmc.dailySummaryTitle')}
+        subtitle={t('bmc.dailySummarySubtitle')}
         showBack
       />
 
@@ -97,30 +99,30 @@ export default function BMCDailySummaryScreen() {
         {/* Big Net Received Volume Card */}
         <Card style={styles.card}>
           <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-            TOTAL BMC NET INTAKE VOLUME
+            {t('bmc.totalBmcNetIntakeVolume')}
           </Text>
           <Text style={[styles.largeTotal, { color: colors.text }]}>
-            {totalReceived.toFixed(2)} <Text style={{ fontSize: 20 }}>Litres</Text>
+            {totalReceived.toFixed(2)} <Text style={{ fontSize: 20 }}>{t('common.litres')}</Text>
           </Text>
           <Text style={[Typography.footnote, { color: colors.textSecondary }]}>
-            Measured via calibrated flow meters across {myDeliveries.length} feeder societies
+            {t('bmc.measuredAcrossSocieties', { count: myDeliveries.length })}
           </Text>
 
           {/* Reconciliation Table */}
           <View style={[styles.table, { borderTopColor: colors.border }]}>
             <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Feeder Society Dispatches Declared:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>{t('bmc.feederDispatchesDeclared')}</Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>{totalDeclared.toFixed(2)} L</Text>
             </View>
 
             <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Actual Flow Meter Net Received:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>{t('bmc.flowMeterNetReceived')}</Text>
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>{totalReceived.toFixed(2)} L</Text>
             </View>
 
             <View style={styles.tableRow}>
               <Text style={[Typography.subhead, { color: totalVariance > 0 ? '#DC2626' : '#16A34A', fontWeight: '800' }]}>
-                Net Difference / Shortfall:
+                {t('bmc.netDiffShortfall')}
               </Text>
               <Text style={[Typography.headline, { color: totalVariance > 0 ? '#DC2626' : '#16A34A', fontWeight: '900' }]}>
                 {totalVariance > 0 ? `-${totalVariance.toFixed(2)} L` : '0.00 L'}
@@ -128,9 +130,9 @@ export default function BMCDailySummaryScreen() {
             </View>
 
             <View style={styles.tableRow}>
-              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Active Discrepancy Cases:</Text>
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>{t('bmc.activeDiscrepancyCases')}</Text>
               <Text style={[Typography.subhead, { color: openCases.length > 0 ? '#DC2626' : '#16A34A', fontWeight: '800' }]}>
-                {openCases.length} Unresolved
+                {t('bmc.unresolvedCount', { count: openCases.length })}
               </Text>
             </View>
           </View>
@@ -145,29 +147,29 @@ export default function BMCDailySummaryScreen() {
                   {todayBmcReceipt.id}
                 </Text>
                 <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                  Date: {todayBmcReceipt.collectionDate} • Token: {todayBmcReceipt.verificationCode}
+                  {t('bmc.dateToken', { date: todayBmcReceipt.collectionDate, token: todayBmcReceipt.verificationCode })}
                 </Text>
               </View>
 
               <View style={[styles.statusBadge, { backgroundColor: todayBmcReceipt.status === 'sent_to_union' ? '#DCFCE7' : '#FEF3C7' }]}>
                 <Text style={[styles.statusText, { color: todayBmcReceipt.status === 'sent_to_union' ? '#15803D' : '#B45309' }]}>
-                  {todayBmcReceipt.status === 'sent_to_union' ? 'SENT TO UNION' : 'DRAFT'}
+                  {todayBmcReceipt.status === 'sent_to_union' ? t('bmc.sentToUnionCaps') : t('bmc.draftCaps')}
                 </Text>
               </View>
             </View>
 
             <View style={styles.receiptSummary}>
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
-                Net Dispatched Volume: {todayBmcReceipt.totalReceivedQuantity} L
+                {t('bmc.netDispatchedVolume', { qty: todayBmcReceipt.totalReceivedQuantity })}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Feeder Societies Included: {todayBmcReceipt.totalBoothsCount} • Net Variance: {todayBmcReceipt.netDifference} L
+                {t('bmc.feederSocietiesVariance', { count: todayBmcReceipt.totalBoothsCount, variance: todayBmcReceipt.netDifference })}
               </Text>
             </View>
 
             {todayBmcReceipt.status !== 'sent_to_union' ? (
               <Button
-                title={transmitting ? "Sending to Union..." : "Transmitting Receipt to Union Management"}
+                title={transmitting ? t('bmc.sendingToUnion') : t('bmc.transmitReceiptToUnion')}
                 loading={transmitting}
                 onPress={() => handleSendToUnion(todayBmcReceipt.id)}
                 style={{ marginTop: 12 }}
@@ -176,7 +178,7 @@ export default function BMCDailySummaryScreen() {
               <View style={styles.sentNotice}>
                 <Ionicons name="checkmark-done-circle" size={20} color="#16A34A" />
                 <Text style={[Typography.caption1, { color: '#166534', fontWeight: '700', marginLeft: 6 }]}>
-                  Receipt Transmitted. Live on Union Dashboard for GM Review.
+                  {t('bmc.receiptTransmittedLive')}
                 </Text>
               </View>
             )}
@@ -186,7 +188,7 @@ export default function BMCDailySummaryScreen() {
         {/* Feeder Society Deliveries List */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Feeder Society Deliveries Breakdown
+            {t('bmc.feederBreakdown')}
           </Text>
 
           {myDeliveries.map((d) => (
@@ -196,16 +198,16 @@ export default function BMCDailySummaryScreen() {
                   {d.boothName}
                 </Text>
                 <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                  Receipt #{d.boothReceiptId} • Status: {d.status.toUpperCase()}
+                  {t('bmc.receiptStatus', { receiptId: d.boothReceiptId, status: d.status.toUpperCase() })}
                 </Text>
               </View>
 
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
-                  {d.measuredReceivedQuantity !== undefined ? `${d.measuredReceivedQuantity.toFixed(1)} L` : 'Pending'}
+                  {d.measuredReceivedQuantity !== undefined ? `${d.measuredReceivedQuantity.toFixed(1)} L` : t('bmc.pending')}
                 </Text>
                 <Text style={[Typography.caption2, { color: (d.difference || 0) > 0 ? '#DC2626' : colors.textMuted }]}>
-                  {d.difference !== undefined ? (d.difference > 0 ? `-${d.difference} L diff` : 'Balanced') : 'Awaiting arrival'}
+                  {d.difference !== undefined ? (d.difference > 0 ? t('bmc.diffShort', { diff: d.difference }) : t('bmc.balancedState')) : t('bmc.awaitingArrival')}
                 </Text>
               </View>
             </View>
@@ -215,7 +217,7 @@ export default function BMCDailySummaryScreen() {
         {/* Action Button */}
         {!todayBmcReceipt && (
           <Button
-            title={generating ? "Generating BMC Receipt..." : "Generate Daily BMC Receipt"}
+            title={generating ? t('bmc.generatingReceipt') : t('bmc.generateBmcReceipt')}
             size="lg"
             loading={generating}
             onPress={handleGenerateBmcReceipt}

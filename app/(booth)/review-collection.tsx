@@ -9,8 +9,10 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function ReviewDailyCollectionScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { booths, bmcs, farmers, milkRecords, boothReceipts, createBoothReceipt } = useAavinStore();
   const { colors, isDark } = useTheme();
@@ -86,8 +88,8 @@ export default function ReviewDailyCollectionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Dispatch Receipts & Closure"
-        subtitle={`Daily Audit • Destination: ${assignedBmc.name}`}
+        title={t('booth.dispatchReceiptsTitle', 'Dispatch Receipts & Closure')}
+        subtitle={t('booth.dispatchReceiptsSubtitle', { bmc: assignedBmc.name }, `Daily Audit • Destination: ${assignedBmc.name}`)}
         showBack
       />
 
@@ -100,7 +102,7 @@ export default function ReviewDailyCollectionScreen() {
           >
             <Ionicons name="documents-outline" size={16} color={colors.primary} />
             <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800', marginLeft: 6 }]}>
-              Sent Dispatches Ledger
+              {t('booth.viewSentReceipts', 'Sent Dispatches Ledger')}
             </Text>
             <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} style={{ marginLeft: 'auto' }} />
           </Pressable>
@@ -117,7 +119,7 @@ export default function ReviewDailyCollectionScreen() {
                 </View>
                 <View style={{ marginLeft: 10, flex: 1 }}>
                   <Text style={[Typography.caption2, { color: '#15803D', fontWeight: '800', letterSpacing: 0.5 }]}>
-                    TODAY'S DISPATCH RECEIPT
+                    {t('booth.digitalSocietyReceipt', "TODAY'S DISPATCH RECEIPT")}
                   </Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900' }]} numberOfLines={1}>
                     #{existingTodayReceipt.id}
@@ -133,7 +135,7 @@ export default function ReviewDailyCollectionScreen() {
                   style={{ marginRight: 4 }}
                 />
                 <Text style={[styles.statusPillText, { color: existingTodayReceipt.status === 'sent_to_bmc' ? '#15803D' : '#B45309' }]}>
-                  {existingTodayReceipt.status === 'sent_to_bmc' ? 'SENT TO BMC' : 'READY TO SEND'}
+                  {existingTodayReceipt.status === 'sent_to_bmc' ? t('statuses.sent_to_bmc', 'SENT TO BMC') : t('booth.dispatchReady', 'READY TO SEND')}
                 </Text>
               </View>
             </View>
@@ -141,7 +143,7 @@ export default function ReviewDailyCollectionScreen() {
             {/* Metas Row: Dispatched Volume & Receiving BMC */}
             <View style={[styles.existingReceiptMetaRow, { borderTopColor: isDark ? '#334155' : '#BBF7D0' }]}>
               <View style={styles.existingMetaCol}>
-                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Dispatched Volume</Text>
+                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('bmc.declaredLitres', 'Dispatched Volume')}</Text>
                 <Text style={[Typography.headline, { color: colors.primary, fontWeight: '900' }]}>
                   {existingTodayReceipt.dispatchQuantity.toFixed(2)} L
                 </Text>
@@ -150,7 +152,7 @@ export default function ReviewDailyCollectionScreen() {
               <View style={[styles.existingMetaDivider, { backgroundColor: isDark ? '#334155' : '#BBF7D0' }]} />
 
               <View style={[styles.existingMetaCol, { flex: 1.4 }]}>
-                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Receiving BMC Facility</Text>
+                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('booth.dispatchToBmc', 'Receiving BMC Facility')}</Text>
                 <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
                   {existingTodayReceipt.bmcName}
                 </Text>
@@ -158,7 +160,7 @@ export default function ReviewDailyCollectionScreen() {
             </View>
 
             <Button
-              title={existingTodayReceipt.status === 'sent_to_bmc' ? "View Waybill & Transit Tracking" : "Send Receipt to BMC Now ➔"}
+              title={existingTodayReceipt.status === 'sent_to_bmc' ? t('booth.officialDispatchWaybill', 'View Waybill & Transit Tracking') : t('booth.sendReceiptToBmc', 'Send Receipt to BMC Now ➔')}
               size="md"
               icon={existingTodayReceipt.status === 'sent_to_bmc' ? "eye-outline" : "send"}
               onPress={() => router.push(`/(booth)/receipt-preview?receiptId=${existingTodayReceipt.id}` as any)}
@@ -171,21 +173,21 @@ export default function ReviewDailyCollectionScreen() {
         <Card style={styles.card}>
           <View style={styles.batchMetaRow}>
             <View style={styles.sessionPill}>
-              <Text style={styles.sessionPillText}>MORNING BATCH</Text>
+              <Text style={styles.sessionPillText}>{t('farmer.morning', 'MORNING BATCH')}</Text>
             </View>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Date: {todayStr}
+              {t('common.date', 'Date')}: {todayStr}
             </Text>
           </View>
 
           <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', marginTop: 8 }]}>
-            ELIGIBLE QUANTITY FOR BMC DISPATCH
+            {t('booth.todayTotal', 'ELIGIBLE QUANTITY FOR BMC DISPATCH')}
           </Text>
           <View style={styles.qtyRow}>
             <Text style={[styles.bigTotal, { color: colors.text }]}>
               {eligibleReceiptTotal.toFixed(2)}
             </Text>
-            <Text style={[styles.bigTotalUnit, { color: colors.text }]}>Litres</Text>
+            <Text style={[styles.bigTotalUnit, { color: colors.text }]}>{t('booth.litres', 'Litres')}</Text>
           </View>
           <Text style={[Typography.footnote, { color: colors.textSecondary }]}>
             Total Net Milk audited for certified tanker dispatch slip
@@ -204,7 +206,7 @@ export default function ReviewDailyCollectionScreen() {
             <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
               <Ionicons name="person" size={16} color="#15803D" />
               <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
-                Farmer Direct Milk
+                {t('booth.directFarmerMeasurement', 'Farmer Direct Milk')}
               </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
                 {farmerWiseTotal.toFixed(1)} L
@@ -217,7 +219,7 @@ export default function ReviewDailyCollectionScreen() {
             <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
               <Ionicons name="bus" size={16} color="#4F46E5" />
               <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
-                Route Vendor Milk
+                {t('booth.vendorCombined', 'Route Vendor Milk')}
               </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
                 {combinedVendorTotal.toFixed(1)} L
@@ -230,7 +232,7 @@ export default function ReviewDailyCollectionScreen() {
             <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
               <Ionicons name="people" size={16} color="#0284C7" />
               <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
-                Farmer Attendance
+                {t('booth.contributingFarmers', 'Farmer Attendance')}
               </Text>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
                 {uniqueParticipatingFarmerIds.size} / {assignedFarmers.length}
@@ -243,7 +245,7 @@ export default function ReviewDailyCollectionScreen() {
             <View style={[styles.breakdownTile, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
               <Ionicons name="water" size={16} color="#0072BC" />
               <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
-                Receiving BMC
+                {t('booth.dispatchToBmc', 'Receiving BMC')}
               </Text>
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]} numberOfLines={1}>
                 {assignedBmc.name}
@@ -289,11 +291,11 @@ export default function ReviewDailyCollectionScreen() {
         <Card style={styles.card}>
           <View style={styles.transactionsHeader}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-              Eligible Transactions List ({todayRecords.length})
+              {t('booth.todaysEntriesCount', { count: todayRecords.length }, `Eligible Transactions List (${todayRecords.length})`)}
             </Text>
             <Pressable onPress={() => router.push('/(booth)/record-milk')}>
               <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800' }]}>
-                + Add Record
+                {t('booth.plusNewEntry', '+ Add Record')}
               </Text>
             </Pressable>
           </View>
@@ -302,10 +304,10 @@ export default function ReviewDailyCollectionScreen() {
             <View style={styles.noRecordsBox}>
               <Ionicons name="checkmark-done-circle" size={36} color="#10B981" />
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginTop: 8 }]}>
-                All Entries Reconciled
+                {t('booth.receiptSuccess', 'All Entries Reconciled')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary, textAlign: 'center', marginTop: 2 }]}>
-                All today's recorded entries have already been packaged into an official dispatch receipt.
+                {t('booth.noEntriesToday', "All today's recorded entries have already been packaged into an official dispatch receipt.")}
               </Text>
             </View>
           ) : (
@@ -323,7 +325,7 @@ export default function ReviewDailyCollectionScreen() {
                     {i + 1}. {r.farmerName || r.vendorName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    {r.measurementMethod === 'farmer_wise' ? 'Individual Producer' : 'Vendor Consolidated Bulk'} • {r.session}
+                    {r.measurementMethod === 'farmer_wise' ? t('booth.directFarmerMeasurement', 'Individual Producer') : t('booth.vendorCombined', 'Vendor Consolidated Bulk')} • {r.session}
                   </Text>
                 </View>
                 <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800' }]}>
@@ -337,7 +339,7 @@ export default function ReviewDailyCollectionScreen() {
         {/* Generate Receipt CTA */}
         {todayRecords.length > 0 ? (
           <Button
-            title={generating ? "Generating Digital Waybill..." : `Confirm Total (${eligibleReceiptTotal} L) & Send Receipt`}
+            title={generating ? t('booth.generatingReceiptBtn', 'Generating Receipt...') : t('booth.generateDispatchReceiptBtn', 'Generate Digital Dispatch Receipt')}
             size="lg"
             loading={generating}
             onPress={handleGenerateReceipt}
@@ -347,7 +349,7 @@ export default function ReviewDailyCollectionScreen() {
         ) : (
           existingTodayReceipt && (
             <Button
-              title="Open Today's Generated Waybill"
+              title={t('booth.officialDispatchWaybill', "Open Today's Generated Waybill")}
               size="lg"
               onPress={() => router.push(`/(booth)/receipt-preview?receiptId=${existingTodayReceipt.id}` as any)}
               style={{ marginTop: 6 }}
@@ -356,7 +358,7 @@ export default function ReviewDailyCollectionScreen() {
         )}
 
         <Button
-          title="View Sent Dispatches History"
+          title={t('booth.sentReceiptsTitle', 'View Sent Dispatches History')}
           variant="outline"
           onPress={() => router.push('/(booth)/sent-receipts')}
           style={{ marginTop: 8, marginBottom: 28 }}

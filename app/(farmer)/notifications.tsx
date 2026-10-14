@@ -60,7 +60,7 @@ export default function FarmerNotificationsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={t('nav.notifications', 'Notifications')} 
-        subtitle="Live Cattle & Milk Supply Alerts" 
+        subtitle={t('farmer.notificationsSubtitle', 'Live Cattle & Milk Supply Alerts')} 
       />
 
       <View style={[styles.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -70,7 +70,7 @@ export default function FarmerNotificationsScreen() {
             onPress={() => setFilterMode('all')}
           >
             <Text style={[styles.filterTabText, { color: filterMode === 'all' ? colors.primary : colors.textSecondary }]}>
-              All ({roleNotifications.length})
+              {t('farmer.periods.all', 'All')} ({roleNotifications.length})
             </Text>
           </Pressable>
           <Pressable 
@@ -78,7 +78,7 @@ export default function FarmerNotificationsScreen() {
             onPress={() => setFilterMode('unread')}
           >
             <Text style={[styles.filterTabText, { color: filterMode === 'unread' ? colors.primary : colors.textSecondary }]}>
-              Unread ({roleNotifications.filter(n => !n.isRead).length})
+              {t('farmer.unread', 'Unread')} ({roleNotifications.filter(n => !n.isRead).length})
             </Text>
           </Pressable>
         </View>
@@ -87,7 +87,7 @@ export default function FarmerNotificationsScreen() {
           style={styles.markAllBtn}
           onPress={() => markAllNotificationsAsRead()}
         >
-          <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all read</Text>
+          <Text style={[styles.markAllText, { color: colors.primary }]}>{t('farmer.markAllRead', 'Mark all read')}</Text>
         </Pressable>
       </View>
 
@@ -98,8 +98,8 @@ export default function FarmerNotificationsScreen() {
         ListEmptyComponent={
           <EmptyState 
             icon="notifications-off-outline"
-            title="No Notifications"
-            message={filterMode === 'unread' ? "You have read all notifications." : "No alerts or messages for your farmer account."}
+            title={t('farmer.noNotifications', 'No Notifications')}
+            message={filterMode === 'unread' ? t('farmer.allReadMessage', 'You have read all notifications.') : t('farmer.noAlertsMessage', 'No alerts or messages for your farmer account.')}
           />
         }
         renderItem={({ item }) => {
@@ -136,7 +136,7 @@ export default function FarmerNotificationsScreen() {
                   </Text>
                   {item.linkRoute && (
                     <View style={styles.linkIndicator}>
-                      <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>View</Text>
+                      <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>{t('farmer.viewAction', 'View')}</Text>
                       <Ionicons name="chevron-forward" size={12} color={colors.primary} />
                     </View>
                   )}

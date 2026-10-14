@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform, Tex
 import { useAuth } from '../../context/AuthContext';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -19,6 +20,7 @@ export default function AIAssistantScreen() {
   const { user } = useAuth();
   const { cows } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const farmerId = user?.associatedId || 'FARMER001';
   const myCows = cows.filter(c => c.farmerId === farmerId);
@@ -27,7 +29,10 @@ export default function AIAssistantScreen() {
     {
       id: 'init-1',
       sender: 'ai',
-      text: `Vanakkam ${user?.fullName || 'Farmer'}! I am your Aavin Cattle Passport AI Advisor. You have ${myCows.length} registered cows (Kamadhenu & Lakshmi). Ask me about feeding, mastitis care, milk withdrawal guidelines, or Aavin procurement incentives!`,
+      text: t('farmer.aiWelcomeMsg', {
+        name: user?.fullName || 'Farmer',
+        count: myCows.length,
+      }, `Vanakkam ${user?.fullName || 'Farmer'}! I am your Aavin Cattle Passport AI Advisor. You have ${myCows.length} registered cows (Kamadhenu & Lakshmi). Ask me about feeding, mastitis care, milk withdrawal guidelines, or Aavin procurement incentives!`),
     },
   ]);
   const [inputText, setInputText] = useState('');
@@ -81,8 +86,8 @@ export default function AIAssistantScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <DemoHeader
-        title="Aavin Cattle AI Advisor"
-        subtitle="Local Knowledge Engine • Bovine Care & Safety"
+        title={t('farmer.aiAdvisorTitle', 'Aavin Cattle AI Advisor')}
+        subtitle={t('farmer.aiAdvisorSubtitle', 'Local Knowledge Engine • Bovine Care & Safety')}
         showBack
       />
 
@@ -128,7 +133,7 @@ export default function AIAssistantScreen() {
       {/* Input Box */}
       <View style={[styles.inputContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
         <TextInput
-          placeholder="Ask about cattle health, feed, or milk safety..."
+          placeholder={t('farmer.aiInputPlaceholder', 'Ask about cattle health, feed, or milk safety...')}
           placeholderTextColor={colors.textMuted}
           value={inputText}
           onChangeText={setInputText}

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { Card } from '../../components/ui/Card';
 import { DemoHeader } from '../../components/DemoHeader';
@@ -19,6 +20,7 @@ export default function FarmerDashboard() {
     boothReceipts
   } = useAavinStore();
   const { colors } = useTheme();
+  const { t, language } = useTranslation();
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -53,11 +55,13 @@ export default function FarmerDashboard() {
     setTimeout(() => setRefreshing(false), 400);
   };
 
+  const farmerName = user?.fullName || t('farmer.roleLabel', 'Farmer');
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
-        title={`Vanakkam, ${user?.fullName || 'Farmer'}`}
-        subtitle={`${assignedBooth?.name || 'Melur Co-op Society'} • ${farmerCows.length} Cows Registered`}
+        title={t('farmer.greeting', { name: farmerName }, `Vanakkam, ${farmerName}`)}
+        subtitle={`${assignedBooth?.name || 'Melur Co-op Society'} • ${t('farmer.cowsRegisteredCount', { count: farmerCows.length }, `${farmerCows.length} Cows Registered`)}`}
       />
 
       <ScrollView
@@ -71,10 +75,10 @@ export default function FarmerDashboard() {
               <Ionicons name="warning" size={24} color="#DC2626" />
               <View style={{ marginLeft: 10, flex: 1 }}>
                 <Text style={[Typography.headline, { color: '#B91C1C', fontWeight: '800' }]}>
-                  ⚠️ MANDATORY MILK WITHHOLDING NOTICE
+                  ⚠️ {t('farmer.mandatoryWithholdingNotice', 'MANDATORY MILK WITHHOLDING NOTICE')}
                 </Text>
                 <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                  {cowsWithWithdrawal.length} cow(s) under veterinary treatment. Do NOT mix milk!
+                  {t('farmer.mandatoryWithholdingSubtitle', { count: cowsWithWithdrawal.length }, `${cowsWithWithdrawal.length} cow(s) under veterinary treatment. Do NOT mix milk!`)}
                 </Text>
               </View>
             </View>
@@ -87,13 +91,16 @@ export default function FarmerDashboard() {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[Typography.subhead, { color: '#7F1D1D', fontWeight: '700' }]}>
-                    Cow: {c.name} (Tag #{c.tagId})
+                    {t('farmer.cow', 'Cow')}: {c.name} ({t('farmer.tagNumberHash', { tagId: c.tagId }, `Tag #${c.tagId}`)})
                   </Text>
                   <Text style={[Typography.caption2, { color: '#991B1B' }]}>
-                    Medicine: {c.activeWithdrawal?.medicineName}
+                    {t('farmer.medicine', 'Medicine')}: {c.activeWithdrawal?.medicineName}
                   </Text>
                   <Text style={[Typography.caption2, { color: '#B91C1C', fontWeight: '600' }]}>
-                    Withholding ends: {c.activeWithdrawal?.withdrawalEndDate} ({c.activeWithdrawal?.daysRemaining} days left)
+                    {t('farmer.withholdingEnds', {
+                      date: c.activeWithdrawal?.withdrawalEndDate || '',
+                      days: c.activeWithdrawal?.daysRemaining || 0,
+                    }, `Withholding ends: ${c.activeWithdrawal?.withdrawalEndDate} (${c.activeWithdrawal?.daysRemaining} days left)`)}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#B91C1C" />
@@ -106,10 +113,14 @@ export default function FarmerDashboard() {
         <View style={styles.heroNavyCard}>
           <View style={styles.heroCardHeaderRow}>
             <View style={styles.heroHeaderPill}>
-              <Text style={styles.heroHeaderPillText}>Main Cattle Herd ›</Text>
+              <Text style={styles.heroHeaderPillText}>
+                {t('farmer.mainCattleHerd', 'Main Cattle Herd ›')}
+              </Text>
             </View>
             <View style={styles.heroStatusBadge}>
-              <Text style={styles.heroStatusBadgeText}>✓ CLEAR</Text>
+              <Text style={styles.heroStatusBadgeText}>
+                {t('farmer.clearStatus', '✓ CLEAR')}
+              </Text>
             </View>
           </View>
 
@@ -122,7 +133,10 @@ export default function FarmerDashboard() {
               <Text style={styles.growthPillText}>+8.2% ↑</Text>
             </View>
             <Text style={styles.heroSubText}>
-              Est. Monthly: ₹{(stats.monthSupply * 37.5).toFixed(0)} ({stats.monthSupply.toFixed(1)} L)
+              {t('farmer.estMonthly', {
+                amount: (stats.monthSupply * 37.5).toFixed(0),
+                litres: stats.monthSupply.toFixed(1),
+              }, `Est. Monthly: ₹${(stats.monthSupply * 37.5).toFixed(0)} (${stats.monthSupply.toFixed(1)} L)`)}
             </Text>
           </View>
         </View>
@@ -135,13 +149,17 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#E0F2FE' }]}>
                 <Ionicons name="water" size={20} color="#0284C7" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>TODAY</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                {t('farmer.today', 'TODAY')}
+              </Text>
             </View>
             <Text style={[styles.statNumber, { color: colors.text }]}>
-              {stats.todaySupply > 0 ? `${stats.todaySupply.toFixed(1)} L` : 'Pending'}
+              {stats.todaySupply > 0 ? `${stats.todaySupply.toFixed(1)} L` : t('farmer.pending', 'Pending')}
             </Text>
             <Text style={[Typography.caption2, { color: stats.todaySupply > 0 ? '#16A34A' : colors.textMuted }]}>
-              {stats.todaySupply > 0 ? '✓ Recorded at Society' : 'No delivery recorded yet'}
+              {stats.todaySupply > 0
+                ? t('farmer.recordedAtSocietyCheck', '✓ Recorded at Society')
+                : t('farmer.noDeliveryRecorded', 'No delivery recorded yet')}
             </Text>
           </Card>
 
@@ -151,13 +169,17 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#F0FDF4' }]}>
                 <Ionicons name="calendar" size={20} color="#16A34A" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>PAST 7 DAYS</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                {t('farmer.past7Days', 'PAST 7 DAYS')}
+              </Text>
             </View>
             <Text style={[styles.statNumber, { color: colors.text }]}>
               {stats.last7DaysSupply.toFixed(1)} L
             </Text>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Avg {(stats.last7DaysSupply / 7).toFixed(1)} L / day
+              {t('farmer.avgPerDay', {
+                avg: (stats.last7DaysSupply / 7).toFixed(1),
+              }, `Avg ${(stats.last7DaysSupply / 7).toFixed(1)} L / day`)}
             </Text>
           </Card>
 
@@ -167,13 +189,17 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#FAF5FF' }]}>
                 <Ionicons name="ribbon" size={20} color="#9333EA" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>OCTOBER</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+                {t('farmer.currentMonth', 'OCTOBER').toUpperCase()}
+              </Text>
             </View>
             <Text style={[styles.statNumber, { color: colors.text }]}>
               {stats.monthSupply.toFixed(1)} L
             </Text>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Est. ₹{(stats.monthSupply * 37.5).toFixed(0)} payout
+              {t('farmer.estPayout', {
+                amount: (stats.monthSupply * 37.5).toFixed(0),
+              }, `Est. ₹${(stats.monthSupply * 37.5).toFixed(0)} payout`)}
             </Text>
           </Card>
         </View>
@@ -189,10 +215,10 @@ export default function FarmerDashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[Typography.headline, { color: colors.text, fontWeight: '700' }]}>
-                My Cows ({farmerCows.length})
+                {t('farmer.myCowsCount', { count: farmerCows.length }, `My Cows (${farmerCows.length})`)}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Digital Passports & Health
+                {t('farmer.digitalPassportsHealth', 'Digital Passports & Health')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -207,10 +233,10 @@ export default function FarmerDashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[Typography.headline, { color: colors.text, fontWeight: '700' }]}>
-                Digital Receipts
+                {t('farmer.digitalReceipts', 'Digital Receipts')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Verified collection slips
+                {t('farmer.verifiedCollectionSlips', 'Verified collection slips')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -221,10 +247,12 @@ export default function FarmerDashboard() {
         <Card style={styles.recentSection}>
           <View style={styles.sectionHeader}>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-              Recent Milk Deliveries
+              {t('farmer.recentMilkDeliveries', 'Recent Milk Deliveries')}
             </Text>
             <Pressable onPress={() => router.push('/(farmer)/milk-history')}>
-              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '600' }]}>View All</Text>
+              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '600' }]}>
+                {t('farmer.viewAll', 'View All')}
+              </Text>
             </Pressable>
           </View>
 
@@ -233,6 +261,7 @@ export default function FarmerDashboard() {
             {last7DaysData.map((d, index) => {
               const heightPercent = Math.max((d.qty / maxDailyQty) * 100, 6);
               const isToday = d.day === 'Today';
+              const localizedDay = t(`farmer.days.${d.day}`, d.day);
               return (
                 <View key={index} style={styles.barCol}>
                   <Text style={[styles.barQtyLabel, { color: isToday ? colors.primary : colors.textSecondary }]}>
@@ -250,7 +279,7 @@ export default function FarmerDashboard() {
                     />
                   </View>
                   <Text style={[styles.barDayLabel, { color: isToday ? colors.primary : colors.text, fontWeight: isToday ? '800' : '500' }]}>
-                    {d.day}
+                    {localizedDay}
                   </Text>
                 </View>
               );
@@ -261,34 +290,42 @@ export default function FarmerDashboard() {
             <View style={styles.emptyBox}>
               <Ionicons name="water-outline" size={32} color={colors.textMuted} />
               <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 8 }]}>
-                No record available
+                {t('farmer.noRecordAvailable', 'No record available')}
               </Text>
             </View>
           ) : (
-            farmerRecords.slice(0, 6).map((record) => (
-              <View key={record.id} style={[styles.recordRow, { borderBottomColor: colors.border }]}>
-                <View style={[styles.sessionCircle, { backgroundColor: record.session === 'morning' ? '#FEF3C7' : '#E0E7FF' }]}>
-                  <Ionicons
-                    name={record.session === 'morning' ? 'sunny' : 'moon'}
-                    size={16}
-                    color={record.session === 'morning' ? '#D97706' : '#4F46E5'}
-                  />
+            farmerRecords.slice(0, 6).map((record) => {
+              const localizedSession = t(`farmer.sessions.${record.session}`, record.session).toUpperCase();
+              const localizedRoute = record.route === 'direct'
+                ? t('farmer.directDelivery', 'Direct Delivery')
+                : t('farmer.vendor', 'Vendor');
+              const localizedLitres = t('common.litres', 'Litres');
+
+              return (
+                <View key={record.id} style={[styles.recordRow, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.sessionCircle, { backgroundColor: record.session === 'morning' ? '#FEF3C7' : '#E0E7FF' }]}>
+                    <Ionicons
+                      name={record.session === 'morning' ? 'sunny' : 'moon'}
+                      size={16}
+                      color={record.session === 'morning' ? '#D97706' : '#4F46E5'}
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
+                      {record.quantityLitres.toFixed(2)} {localizedLitres}
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                      {record.collectionDate} • {localizedSession} • {localizedRoute}
+                    </Text>
+                  </View>
+                  <View style={styles.receiptTag}>
+                    <Text style={[styles.receiptTagText, { color: record.receiptId ? '#16A34A' : '#D97706' }]}>
+                      {record.receiptId ? t('farmer.onReceipt', '✓ On Receipt') : t('farmer.recorded', 'Recorded')}
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                    {record.quantityLitres.toFixed(2)} Litres
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    {record.collectionDate} • {record.session.toUpperCase()} • {record.route === 'direct' ? 'Direct Delivery' : 'Vendor'}
-                  </Text>
-                </View>
-                <View style={styles.receiptTag}>
-                  <Text style={[styles.receiptTagText, { color: record.receiptId ? '#16A34A' : '#D97706' }]}>
-                    {record.receiptId ? '✓ On Receipt' : 'Recorded'}
-                  </Text>
-                </View>
-              </View>
-            ))
+              );
+            })
           )}
         </Card>
       </ScrollView>

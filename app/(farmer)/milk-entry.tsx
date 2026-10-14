@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -15,6 +16,7 @@ export default function MilkEntryScreen() {
   const { user } = useAuth();
   const { cows, recordMilk, milkRecords } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const farmerId = user?.associatedId || 'FARMER001';
@@ -32,16 +34,19 @@ export default function MilkEntryScreen() {
   const handleSubmit = () => {
     const qty = parseFloat(quantity);
     if (isNaN(qty) || qty <= 0) {
-      Alert.alert('Invalid Quantity', 'Please enter a valid volume in litres.');
+      Alert.alert(t('farmer.invalidQtyTitle', 'Invalid Quantity'), t('farmer.invalidQtyMsg', 'Please enter a valid volume in litres.'));
       return;
     }
 
     if (hasWithdrawal) {
       Alert.alert(
-        '⚠️ ACTIVE WITHDRAWAL HOLD!',
-        `This cow (${selectedCow.name}) has an active withdrawal restriction until ${selectedCow.activeWithdrawal?.withdrawalEndDate}. This milk must NOT be delivered to the Aavin collection society! Discard or segregate for calves.`,
+        t('farmer.activeHoldAlertTitle', '⚠️ ACTIVE WITHDRAWAL HOLD!'),
+        t('farmer.activeHoldAlertBody', {
+          name: selectedCow.name,
+          date: selectedCow.activeWithdrawal?.withdrawalEndDate || '',
+        }, `This cow (${selectedCow.name}) has an active withdrawal restriction until ${selectedCow.activeWithdrawal?.withdrawalEndDate}. This milk must NOT be delivered to the Aavin collection society! Discard or segregate for calves.`),
         [
-          { text: 'Acknowledge', style: 'destructive' }
+          { text: t('farmer.acknowledgeBtn', 'Acknowledge'), style: 'destructive' }
         ]
       );
       return;
@@ -64,11 +69,14 @@ export default function MilkEntryScreen() {
       });
 
       Alert.alert(
-        'Milking Logged!',
-        `Logged ${qty.toFixed(2)} L for ${selectedCow.name}. Updated on your dashboard and society records.`,
+        t('farmer.milkingLoggedTitle', 'Milking Logged!'),
+        t('farmer.milkingLoggedMsg', {
+          qty: qty.toFixed(2),
+          name: selectedCow.name,
+        }, `Logged ${qty.toFixed(2)} L for ${selectedCow.name}. Updated on your dashboard and society records.`),
         [
           {
-            text: 'View History',
+            text: t('farmer.viewHistoryBtn', 'View History'),
             onPress: () => router.push('/(farmer)/milk-history' as any),
           },
         ]
@@ -83,8 +91,8 @@ export default function MilkEntryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="On-Farm Milking Log"
-        subtitle="Record morning/evening cow yields"
+        title={t('farmer.onFarmMilkingLog', 'On-Farm Milking Log')}
+        subtitle={t('farmer.milkingLogSubtitle', 'Record morning/evening cow yields')}
         showBack
       />
 
@@ -92,7 +100,7 @@ export default function MilkEntryScreen() {
         {/* Cow Selector */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 10 }]}>
-            Select Cow
+            {t('farmer.selectCowHeader', 'Select Cow')}
           </Text>
 
           <View style={styles.cowsGrid}>
@@ -120,7 +128,7 @@ export default function MilkEntryScreen() {
                   </Text>
                   {isHold && (
                     <View style={styles.holdTag}>
-                      <Text style={styles.holdTagText}>⚠️ WITHDRAWAL</Text>
+                      <Text style={styles.holdTagText}>{t('farmer.withdrawalHoldTag', '⚠️ WITHDRAWAL')}</Text>
                     </View>
                   )}
                 </Pressable>
@@ -133,10 +141,13 @@ export default function MilkEntryScreen() {
               <Ionicons name="warning" size={20} color="#DC2626" />
               <View style={{ marginLeft: 8, flex: 1 }}>
                 <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '800' }]}>
-                  WARNING: Medicine Withdrawal Active
+                  {t('farmer.withdrawalHoldAlertTitle', 'WARNING: Medicine Withdrawal Active')}
                 </Text>
                 <Text style={[Typography.caption2, { color: '#991B1B' }]}>
-                  {selectedCow.activeWithdrawal?.medicineName} (Ends: {selectedCow.activeWithdrawal?.withdrawalEndDate}). Do not deliver this milk.
+                  {t('farmer.withdrawalHoldAlertBody', {
+                    medicine: selectedCow.activeWithdrawal?.medicineName || '',
+                    date: selectedCow.activeWithdrawal?.withdrawalEndDate || '',
+                  }, `${selectedCow.activeWithdrawal?.medicineName} (Ends: ${selectedCow.activeWithdrawal?.withdrawalEndDate}). Do not deliver this milk.`)}
                 </Text>
               </View>
             </View>
@@ -146,7 +157,7 @@ export default function MilkEntryScreen() {
         {/* Milking Details */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 12 }]}>
-            Milking Session & Yield
+            {t('farmer.sessionAndYieldHeader', 'Milking Session & Yield')}
           </Text>
 
           <View style={styles.sessionToggle}>
@@ -159,7 +170,7 @@ export default function MilkEntryScreen() {
             >
               <Ionicons name="sunny" size={16} color={session === 'morning' ? '#D97706' : colors.textSecondary} />
               <Text style={[styles.sessionTabText, { color: session === 'morning' ? '#92400E' : colors.textSecondary }]}>
-                MORNING
+                {t('farmer.morning', 'MORNING')}
               </Text>
             </Pressable>
 
@@ -172,13 +183,13 @@ export default function MilkEntryScreen() {
             >
               <Ionicons name="moon" size={16} color={session === 'evening' ? '#4F46E5' : colors.textSecondary} />
               <Text style={[styles.sessionTabText, { color: session === 'evening' ? '#3730A3' : colors.textSecondary }]}>
-                EVENING
+                {t('farmer.evening', 'EVENING')}
               </Text>
             </Pressable>
           </View>
 
           <TextField
-            label="Quantity (Litres) *"
+            label={t('farmer.quantityFieldLabel', 'Quantity (Litres) *')}
             placeholder="e.g. 8.5"
             value={quantity}
             onChangeText={setQuantity}
@@ -187,7 +198,7 @@ export default function MilkEntryScreen() {
           />
 
           <TextField
-            label="Feed & Milking Observation"
+            label={t('farmer.observationFieldLabel', 'Feed & Milking Observation')}
             value={notes}
             onChangeText={setNotes}
             icon="create-outline"
@@ -195,7 +206,7 @@ export default function MilkEntryScreen() {
         </Card>
 
         <Button
-          title={submitting ? "Logging..." : "Log Milk Entry"}
+          title={submitting ? t('farmer.loggingBtn', 'Logging...') : t('farmer.logMilkEntryBtn', 'Log Milk Entry')}
           size="lg"
           loading={submitting}
           onPress={handleSubmit}

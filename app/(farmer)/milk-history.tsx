@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, FlatList, Pressable, TextInput } from 'react-na
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -13,6 +14,7 @@ export default function FarmerMilkHistoryScreen() {
   const { user } = useAuth();
   const { milkRecords, booths } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const farmerId = user?.associatedId || 'FARMER001';
   const allFarmerRecords = milkRecords.filter(r => r.farmerId === farmerId);
@@ -45,8 +47,8 @@ export default function FarmerMilkHistoryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Milk Supply History"
-        subtitle="Complete ledger of deliveries & receipt status"
+        title={t('farmer.supplyHistoryTitle', 'Milk Supply History')}
+        subtitle={t('farmer.supplyHistorySubtitle', 'Complete ledger of deliveries & receipt status')}
         showBack
       />
 
@@ -55,7 +57,7 @@ export default function FarmerMilkHistoryScreen() {
         <View style={[styles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
           <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
           <TextInput
-            placeholder="Search by date (YYYY-MM-DD) or session..."
+            placeholder={t('farmer.searchSupplyPlaceholder', 'Search by date (YYYY-MM-DD) or session...')}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -80,7 +82,7 @@ export default function FarmerMilkHistoryScreen() {
               ]}
             >
               <Text style={[styles.segmentLabel, { color: filterPeriod === p ? '#FFFFFF' : colors.textSecondary }]}>
-                {p.toUpperCase()}
+                {t(`farmer.periods.${p}`, p).toUpperCase()}
               </Text>
             </Pressable>
           ))}
@@ -89,7 +91,10 @@ export default function FarmerMilkHistoryScreen() {
         {/* Summary Pill */}
         <View style={[styles.summaryPill, { backgroundColor: colors.primaryLight }]}>
           <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700' }]}>
-            Total: {totalLitres.toFixed(2)} Litres ({filteredRecords.length} Records)
+            {t('farmer.totalSupplyRecords', {
+              litres: totalLitres.toFixed(2),
+              count: filteredRecords.length,
+            }, `Total: ${totalLitres.toFixed(2)} Litres (${filteredRecords.length} Records)`)}
           </Text>
         </View>
       </View>
@@ -100,13 +105,24 @@ export default function FarmerMilkHistoryScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No record available"
-            message={`No milk records found for the selected ${filterPeriod} period.`}
+            title={t('farmer.noRecordAvailable', 'No record available')}
+            message={t('farmer.noRecordsFoundPeriod', {
+              period: t(`farmer.periods.${filterPeriod}`, filterPeriod),
+            }, `No milk records found for the selected ${filterPeriod} period.`)}
             icon="water-outline"
           />
         }
         renderItem={({ item }) => {
           const booth = booths.find(b => b.id === item.boothId);
+          const localizedSession = t(`farmer.sessions.${item.session}`, item.session).toUpperCase();
+          const localizedRoute = item.route === 'direct'
+            ? t('farmer.directFarmerDelivery', 'Direct Farmer Delivery')
+            : t('farmer.vendorDeliveryRoute', { vendor: item.vendorName || 'Logistics' }, `Vendor (${item.vendorName || 'Logistics'})`);
+
+          const receiptStatusText = item.receiptId
+            ? t('farmer.includedInReceipt', { receiptId: item.receiptId }, `Included in Receipt #${item.receiptId}`)
+            : t('farmer.awaitingClosure', 'Awaiting Society Receipt Closure');
+
           return (
             <Card style={styles.recordCard}>
               <View style={styles.cardHeader}>
@@ -118,7 +134,7 @@ export default function FarmerMilkHistoryScreen() {
                       color={item.session === 'morning' ? '#D97706' : '#4F46E5'} 
                     />
                     <Text style={[styles.sessionText, { color: item.session === 'morning' ? '#92400E' : '#3730A3' }]}>
-                      {item.session.toUpperCase()}
+                      {localizedSession}
                     </Text>
                   </View>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 8 }]}>
@@ -135,24 +151,24 @@ export default function FarmerMilkHistoryScreen() {
 
               <View style={styles.cardDetails}>
                 <View style={styles.detailRow}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Collection Society:</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('farmer.collectionSocietyColon', 'Collection Society:')}</Text>
                   <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600' }]}>
                     {booth?.name || item.boothId}
                   </Text>
                 </View>
 
                 <View style={styles.detailRow}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Delivery Route:</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('farmer.deliveryRouteColon', 'Delivery Route:')}</Text>
                   <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600' }]}>
-                    {item.route === 'direct' ? 'Direct Farmer Delivery' : `Vendor (${item.vendorName || 'Logistics'})`}
+                    {localizedRoute}
                   </Text>
                 </View>
 
                 <View style={styles.detailRow}>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Digital Receipt Status:</Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('farmer.digitalReceiptStatusColon', 'Digital Receipt Status:')}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: item.receiptId ? '#DCFCE7' : '#FEF3C7' }]}>
                     <Text style={[styles.statusText, { color: item.receiptId ? '#15803D' : '#B45309' }]}>
-                      {item.receiptId ? `Included in Receipt #${item.receiptId}` : 'Awaiting Society Receipt Closure'}
+                      {receiptStatusText}
                     </Text>
                   </View>
                 </View>
@@ -160,7 +176,7 @@ export default function FarmerMilkHistoryScreen() {
                 {item.notes && (
                   <View style={[styles.notesBox, { backgroundColor: colors.background }]}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontStyle: 'italic' }]}>
-                      Note: {item.notes}
+                      {t('farmer.noteColon', 'Note')}: {item.notes}
                     </Text>
                   </View>
                 )}

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -15,6 +16,7 @@ export default function ExaminationEntryScreen() {
   const { user } = useAuth();
   const { cows, addMedicalRecord } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [selectedCowId, setSelectedCowId] = useState(cows[0]?.id || 'COW001');
@@ -33,7 +35,10 @@ export default function ExaminationEntryScreen() {
 
   const handleSaveExam = () => {
     if (!diagnosis.trim()) {
-      Alert.alert('Required', 'Please enter a diagnosis or clinical assessment.');
+      Alert.alert(
+        t('veterinary.details.requiredField', 'Required Field'),
+        t('veterinary.details.enterDiagnosisPrompt', 'Please enter a diagnosis or clinical assessment.')
+      );
       return;
     }
 
@@ -52,17 +57,17 @@ export default function ExaminationEntryScreen() {
       });
 
       Alert.alert(
-        'Examination Logged!',
-        `Clinical examination saved to ${selectedCow.name}'s digital health passport.`,
+        t('veterinary.exam.examLoggedTitle', 'Examination Logged!'),
+        t('veterinary.exam.examLoggedMsg', "Clinical examination saved to {name}'s digital health passport.", { name: selectedCow.name }),
         [
           {
-            text: 'View Passport',
+            text: t('veterinary.exam.viewPassport', 'View Passport'),
             onPress: () => router.push(`/(veterinary)/cow-details?cowId=${selectedCow.id}` as any),
           },
         ]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not save examination.');
+      Alert.alert(t('common.error', 'Error'), err.message || 'Could not save examination.');
     } finally {
       setSubmitting(false);
     }
@@ -73,8 +78,8 @@ export default function ExaminationEntryScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Clinical Examination Entry"
-        subtitle="Health Audit & Bovine Diagnostics"
+        title={t('veterinary.exam.title', 'Clinical Examination Entry')}
+        subtitle={t('veterinary.exam.subtitle', 'Health Audit & Bovine Diagnostics')}
         showBack
       />
 
@@ -82,7 +87,7 @@ export default function ExaminationEntryScreen() {
         {/* Cow Selector */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 10 }]}>
-            Patient Bovine
+            {t('veterinary.exam.patientBovine', 'Patient Bovine')}
           </Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -111,7 +116,7 @@ export default function ExaminationEntryScreen() {
                         {c.name}
                       </Text>
                       <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                        Tag: #{c.tagId}
+                        {t('veterinary.common.tagLabel', 'Tag: #{tagId}', { tagId: c.tagId })}
                       </Text>
                     </View>
                   </Pressable>
@@ -124,20 +129,20 @@ export default function ExaminationEntryScreen() {
         {/* Clinical Parameters */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 12 }]}>
-            Vital Signs & Clinical Findings
+            {t('veterinary.exam.vitalsHeader', 'Vital Signs & Clinical Findings')}
           </Text>
 
           <TextField
-            label="Diagnosis / Findings *"
-            placeholder="e.g. Healthy Bovine - Prime Lactation"
+            label={t('veterinary.exam.diagnosisLabel', 'Diagnosis / Findings *')}
+            placeholder={t('veterinary.exam.diagnosisPlaceholder', 'e.g. Healthy Bovine - Prime Lactation')}
             value={diagnosis}
             onChangeText={setDiagnosis}
             icon="pulse-outline"
           />
 
           <TextField
-            label="Symptoms / Physical Exam Notes"
-            placeholder="e.g. Active, clear mucosal membranes, good rumen fill"
+            label={t('veterinary.exam.symptomsLabel', 'Symptoms / Physical Exam Notes')}
+            placeholder={t('veterinary.exam.symptomsPlaceholder', 'e.g. Active, clear mucosal membranes, good rumen fill')}
             value={symptoms}
             onChangeText={setSymptoms}
             icon="eye-outline"
@@ -146,7 +151,7 @@ export default function ExaminationEntryScreen() {
           <View style={styles.row}>
             <View style={{ flex: 1, marginRight: 8 }}>
               <TextField
-                label="Body Temp (°C)"
+                label={t('veterinary.exam.tempLabel', 'Body Temp (°C)')}
                 value={temp}
                 onChangeText={setTemp}
                 keyboardType="decimal-pad"
@@ -155,7 +160,7 @@ export default function ExaminationEntryScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <TextField
-                label="Heart Rate (bpm)"
+                label={t('veterinary.exam.heartRateLabel', 'Heart Rate (bpm)')}
                 value={heartRate}
                 onChangeText={setHeartRate}
                 keyboardType="number-pad"
@@ -165,21 +170,21 @@ export default function ExaminationEntryScreen() {
           </View>
 
           <TextField
-            label="Rumen Motility"
+            label={t('veterinary.exam.rumenLabel', 'Rumen Motility')}
             value={rumenMotility}
             onChangeText={setRumenMotility}
             icon="medical-outline"
           />
 
           <TextField
-            label="Diet & Management Recommendations"
+            label={t('veterinary.exam.recommendationsLabel', 'Diet & Management Recommendations')}
             value={recommendations}
             onChangeText={setRecommendations}
             icon="leaf-outline"
           />
 
           <TextField
-            label="Next Scheduled Follow-up (YYYY-MM-DD)"
+            label={t('veterinary.exam.followUpLabel', 'Next Scheduled Follow-up (YYYY-MM-DD)')}
             value={followUpDate}
             onChangeText={setFollowUpDate}
             icon="calendar-outline"
@@ -187,7 +192,7 @@ export default function ExaminationEntryScreen() {
         </Card>
 
         <Button
-          title={submitting ? "Saving..." : "Save Examination Record"}
+          title={submitting ? t('veterinary.exam.savingBtn', 'Saving...') : t('veterinary.exam.saveBtn', 'Save Examination Record')}
           size="lg"
           loading={submitting}
           onPress={handleSaveExam}
@@ -195,7 +200,7 @@ export default function ExaminationEntryScreen() {
         />
 
         <Button
-          title="Cancel"
+          title={t('common.cancel', 'Cancel')}
           variant="outline"
           onPress={() => router.back()}
           style={{ marginTop: 10, marginBottom: 30 }}

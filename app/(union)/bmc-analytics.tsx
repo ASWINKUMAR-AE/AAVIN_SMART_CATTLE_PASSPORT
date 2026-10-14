@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, Pressable, BackHandler } from 'reac
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -19,6 +20,7 @@ export default function BMCAnalyticsScreen() {
   const { bmcId } = useLocalSearchParams<{ bmcId: string }>();
   const { bmcs, booths, bmcDeliveries } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const handleBackToBmc = () => {
@@ -44,14 +46,21 @@ export default function BMCAnalyticsScreen() {
   if (!bmcAnalytics) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <DemoHeader title="BMC Production Analytics" subtitle="Facility Not Found" showBack onBack={handleBackToBmc} />
+        <DemoHeader
+          title={t('union.bmcAnalytics.title', 'BMC Production Analytics')}
+          subtitle={t('union.bmcAnalytics.facilityNotFound', 'Facility Not Found')}
+          showBack
+          onBack={handleBackToBmc}
+        />
         <View style={styles.emptyContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
           <Text style={[Typography.headline, { color: colors.text, marginTop: 12 }]}>
-            Facility Not Found
+            {t('union.bmcAnalytics.facilityNotFound', 'Facility Not Found')}
           </Text>
           <Pressable onPress={handleBackToBmc} style={[styles.backBtn, { backgroundColor: colors.primary }]}>
-            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>← Return to BMCs</Text>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
+              {t('union.bmcAnalytics.returnToBmcs', '← Return to BMCs')}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -74,7 +83,7 @@ export default function BMCAnalyticsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
-        title="BMC Production Analytics"
+        title={t('union.bmcAnalytics.title', 'BMC Production Analytics')}
         subtitle={bmcAnalytics.bmcName}
         showBack
         onBack={handleBackToBmc}
@@ -99,7 +108,7 @@ export default function BMCAnalyticsScreen() {
               </View>
 
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2 }]}>
-                {bmcAnalytics.location} • In-Charge: {bmcAnalytics.managerName}
+                {bmcAnalytics.location} • {t('union.inCharge', 'In-Charge')}: {bmcAnalytics.managerName}
               </Text>
             </View>
           </View>
@@ -108,10 +117,10 @@ export default function BMCAnalyticsScreen() {
           <View style={styles.capacitySection}>
             <View style={styles.capLabelRow}>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Cooling Capacity Load: {formatLitres(todayReceived)} / {formatLitres(capacityLitres)}
+                {t('union.bmcAnalytics.coolingCapacityLoad', { received: formatLitres(todayReceived), capacity: formatLitres(capacityLitres) }, `Cooling Capacity Load: ${formatLitres(todayReceived)} / ${formatLitres(capacityLitres)}`)}
               </Text>
               <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                {utilization.toFixed(1)}% Capacity
+                {t('union.bmcAnalytics.capacityPercent', { percent: utilization.toFixed(1) }, `${utilization.toFixed(1)}% Capacity`)}
               </Text>
             </View>
             <View style={[styles.barTrack, { backgroundColor: colors.background }]}>
@@ -124,11 +133,11 @@ export default function BMCAnalyticsScreen() {
         <View style={styles.sectionHeader}>
           <Ionicons name="calendar-outline" size={18} color={colors.primary} />
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-            Facility Performance Trends
+            {t('union.bmcAnalytics.performanceTrends', 'Facility Performance Trends')}
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Benchmark self-comparison against historical periods
+          {t('union.bmcAnalytics.benchmarkSubtitle', 'Benchmark self-comparison against historical periods')}
         </Text>
 
         <View style={styles.trendsGrid}>
@@ -142,7 +151,7 @@ export default function BMCAnalyticsScreen() {
               <Card key={periodKey} style={styles.trendCard}>
                 <View style={styles.trendCardTop}>
                   <Text style={[Typography.caption1, { color: colors.textSecondary, fontWeight: '800', textTransform: 'uppercase' }]}>
-                    {PERIOD_LABELS[periodKey].title}
+                    {t(`analytics.periods.${periodKey}`, PERIOD_LABELS[periodKey].title)}
                   </Text>
                   <View style={[styles.trendPill, { backgroundColor: trendBg }]}>
                     <Ionicons
@@ -167,14 +176,14 @@ export default function BMCAnalyticsScreen() {
                 <View style={[styles.compDivider, { borderTopColor: colors.border }]} />
 
                 <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                  Past: <Text style={{ fontWeight: '700', color: colors.text }}>{formatLitres(comp.previous)}</Text>
+                  {t('union.bmcAnalytics.past', 'Past:')} <Text style={{ fontWeight: '700', color: colors.text }}>{formatLitres(comp.previous)}</Text>
                 </Text>
                 <Text style={[Typography.caption2, { color: colors.textMuted }]}>
                   ({comp.periodLabel})
                 </Text>
 
                 <Text style={[Typography.caption2, { color: trendColor, fontWeight: '700', marginTop: 4 }]}>
-                  Net: {comp.deltaLitres >= 0 ? `+${formatLitres(comp.deltaLitres)}` : `-${formatLitres(Math.abs(comp.deltaLitres))}`}
+                  {t('union.bmcAnalytics.net', 'Net:')} {comp.deltaLitres >= 0 ? `+${formatLitres(comp.deltaLitres)}` : `-${formatLitres(Math.abs(comp.deltaLitres))}`}
                 </Text>
               </Card>
             );
@@ -185,11 +194,11 @@ export default function BMCAnalyticsScreen() {
         <View style={[styles.sectionHeader, { marginTop: 14 }]}>
           <Ionicons name="pie-chart-outline" size={18} color={colors.primary} />
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-            Feeder Societies Production ({societies.length})
+            {t('union.bmcAnalytics.feederSocietiesTitle', { count: societies.length }, `Feeder Societies Production (${societies.length})`)}
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Ranked comparison of feeder societies. Tap any society for dedicated analytics & member intake.
+          {t('union.bmcAnalytics.feederSocietiesSubtitle', 'Ranked comparison of feeder societies. Tap any society for dedicated analytics & member intake.')}
         </Text>
 
         {/* Period Selector Tabs */}
@@ -211,7 +220,7 @@ export default function BMCAnalyticsScreen() {
                     { color: isActive ? '#FFFFFF' : colors.textSecondary },
                   ]}
                 >
-                  {PERIOD_LABELS[periodKey].title}
+                  {t(`analytics.periods.${periodKey}`, PERIOD_LABELS[periodKey].title)}
                 </Text>
               </Pressable>
             );
@@ -225,7 +234,7 @@ export default function BMCAnalyticsScreen() {
             rank: idx + 1,
             title: society.societyName,
             code: society.code,
-            subtitle: `In-Charge: ${society.operatorName} ${society.phone ? `• ${society.phone}` : ''}`,
+            subtitle: `${t('union.inCharge', 'In-Charge')}: ${society.operatorName} ${society.phone ? `• ${society.phone}` : ''}`,
             comparison: society.metrics[selectedPeriod],
             onPress: () =>
               router.push({

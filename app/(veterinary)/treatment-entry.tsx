@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -15,6 +16,7 @@ export default function TreatmentEntryScreen() {
   const { user } = useAuth();
   const { cows, addTreatmentRecord } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [selectedCowId, setSelectedCowId] = useState(cows[0]?.id || 'COW001');
@@ -78,7 +80,10 @@ export default function TreatmentEntryScreen() {
   const handleSaveTreatment = () => {
     const days = parseInt(withdrawalPeriodDays, 10);
     if (isNaN(days) || days < 0) {
-      Alert.alert('Invalid Days', 'Please enter a valid withdrawal period in days (0 for zero-withhold drugs).');
+      Alert.alert(
+        t('veterinary.treatment.invalidDaysTitle', 'Invalid Days'),
+        t('veterinary.treatment.invalidDaysMsg', 'Please enter a valid withdrawal period in days (0 for zero-withhold drugs).')
+      );
       return;
     }
 
@@ -103,18 +108,30 @@ export default function TreatmentEntryScreen() {
         notes: notes.trim(),
       });
 
+      const message = days > 0
+        ? t('veterinary.treatment.treatmentPrescribedMsgWithhold', 'Prescription saved for {name} (#{tagId}).\n\n⚠️ Active Milk Withdrawal Period of {days} days deployed until {endDate}. Safety alert dispatched to farmer and society.', {
+            name: selectedCow.name,
+            tagId: selectedCow.tagId,
+            days: days,
+            endDate: endDate
+          })
+        : t('veterinary.treatment.treatmentPrescribedMsgZero', 'Prescription saved for {name} (#{tagId}).\n\nZero milk discard medicine. Cow remains cleared for supply.', {
+            name: selectedCow.name,
+            tagId: selectedCow.tagId
+          });
+
       Alert.alert(
-        'Treatment Prescribed!',
-        `Prescription saved for ${selectedCow.name} (#${selectedCow.tagId}).\n\n${days > 0 ? `⚠️ Active Milk Withdrawal Period of ${days} days deployed until ${endDate}. Safety alert dispatched to farmer and society.` : 'Zero milk discard medicine. Cow remains cleared for supply.'}`,
+        t('veterinary.treatment.treatmentPrescribedTitle', 'Treatment Prescribed!'),
+        message,
         [
           {
-            text: 'View Passport',
+            text: t('veterinary.exam.viewPassport', 'View Passport'),
             onPress: () => router.push(`/(veterinary)/cow-details?cowId=${selectedCow.id}` as any),
           },
         ]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not save treatment.');
+      Alert.alert(t('common.error', 'Error'), err.message || 'Could not save treatment.');
     } finally {
       setSubmitting(false);
     }
@@ -125,8 +142,8 @@ export default function TreatmentEntryScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Prescribe Treatment"
-        subtitle="Medicine Administration & Milk Withdrawal Ledger"
+        title={t('veterinary.treatment.title', 'Prescribe Treatment')}
+        subtitle={t('veterinary.treatment.subtitle', 'Medicine Administration & Milk Withdrawal Ledger')}
         showBack
       />
 
@@ -134,7 +151,7 @@ export default function TreatmentEntryScreen() {
         {/* Select Target Bovine */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 10 }]}>
-            1. Select Patient Cow
+            {t('veterinary.treatment.step1Cow', '1. Select Patient Cow')}
           </Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cowHorizontalScroll}>
@@ -163,7 +180,7 @@ export default function TreatmentEntryScreen() {
                         {c.name}
                       </Text>
                       <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                        Tag: #{c.tagId} ({c.farmerName.split(' ')[0]})
+                        {t('veterinary.common.tagLabel', 'Tag: #{tagId}', { tagId: c.tagId })} ({c.farmerName.split(' ')[0]})
                       </Text>
                     </View>
                   </Pressable>
@@ -174,7 +191,11 @@ export default function TreatmentEntryScreen() {
 
           <View style={[styles.selectedCowBadge, { backgroundColor: colors.background }]}>
             <Text style={[Typography.caption1, { color: colors.text }]}>
-              Selected: <Text style={{ fontWeight: '800' }}>{selectedCow.name}</Text> • Breed: {selectedCow.breed} • Owner: {selectedCow.farmerName}
+              {t('veterinary.treatment.selectedSummary', 'Selected: {name} • Breed: {breed} • Owner: {owner}', {
+                name: selectedCow.name,
+                breed: selectedCow.breed,
+                owner: selectedCow.farmerName
+              })}
             </Text>
           </View>
         </Card>
@@ -182,7 +203,7 @@ export default function TreatmentEntryScreen() {
         {/* Quick Presets Catalog */}
         <Card style={styles.card}>
           <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 8 }]}>
-            Veterinary Drug Presets (Tap to Load Standard Protocol):
+            {t('veterinary.treatment.presetsTitle', 'Veterinary Drug Presets (Tap to Load Standard Protocol):')}
           </Text>
           <View style={styles.presetsGrid}>
             {medicineCatalog.map((med, index) => (
@@ -198,7 +219,9 @@ export default function TreatmentEntryScreen() {
                   {med.name.split('(')[0]}
                 </Text>
                 <Text style={[Typography.caption2, { color: med.defaultDays === '0' ? '#16A34A' : '#DC2626', fontWeight: '800' }]}>
-                  {med.defaultDays === '0' ? 'Zero Discard' : `${med.defaultDays} Days Withdrawal`}
+                  {med.defaultDays === '0' 
+                    ? t('veterinary.treatment.zeroDiscard', 'Zero Discard') 
+                    : t('veterinary.treatment.daysWithdrawal', '{days} Days Withdrawal', { days: med.defaultDays })}
                 </Text>
               </Pressable>
             ))}
@@ -208,44 +231,44 @@ export default function TreatmentEntryScreen() {
         {/* Prescription Details Card */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800', marginBottom: 12 }]}>
-            2. Clinical Diagnosis & Dosage
+            {t('veterinary.treatment.step2Dosage', '2. Clinical Diagnosis & Dosage')}
           </Text>
 
           <TextField
-            label="Diagnosis / Reason for Treatment *"
-            placeholder="e.g. Acute Clinical Mastitis"
+            label={t('veterinary.treatment.reasonLabel', 'Diagnosis / Reason for Treatment *')}
+            placeholder={t('veterinary.treatment.reasonPlaceholder', 'e.g. Acute Clinical Mastitis')}
             value={reason}
             onChangeText={setReason}
             icon="pulse-outline"
           />
 
           <TextField
-            label="Trade / Brand Name *"
-            placeholder="e.g. Amoxicillin & Cloxacillin Intramammary"
+            label={t('veterinary.treatment.medicineLabel', 'Trade / Brand Name *')}
+            placeholder={t('veterinary.treatment.medicinePlaceholder', 'e.g. Amoxicillin & Cloxacillin Intramammary')}
             value={medicineName}
             onChangeText={setMedicineName}
             icon="medkit-outline"
           />
 
           <TextField
-            label="Generic / Active Ingredients"
-            placeholder="e.g. Amoxicillin + Cloxacillin"
+            label={t('veterinary.treatment.genericLabel', 'Generic / Active Ingredients')}
+            placeholder={t('veterinary.treatment.genericPlaceholder', 'e.g. Amoxicillin + Cloxacillin')}
             value={genericName}
             onChangeText={setGenericName}
             icon="flask-outline"
           />
 
           <TextField
-            label="Dosage & Regimen"
-            placeholder="e.g. 1 tube bid x 3 days"
+            label={t('veterinary.treatment.dosageLabel', 'Dosage & Regimen')}
+            placeholder={t('veterinary.treatment.dosagePlaceholder', 'e.g. 1 tube bid x 3 days')}
             value={dosage}
             onChangeText={setDosage}
             icon="fitness-outline"
           />
 
           <TextField
-            label="Route of Administration"
-            placeholder="e.g. Intramammary Infusion"
+            label={t('veterinary.treatment.routeLabel', 'Route of Administration')}
+            placeholder={t('veterinary.treatment.routePlaceholder', 'e.g. Intramammary Infusion')}
             value={route}
             onChangeText={setRoute}
             icon="eyedrop-outline"
@@ -256,15 +279,15 @@ export default function TreatmentEntryScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
               <Ionicons name="warning" size={20} color="#DC2626" />
               <Text style={[Typography.subhead, { color: '#B91C1C', fontWeight: '900', marginLeft: 6 }]}>
-                MANDATORY MILK WITHDRAWAL DAYS *
+                {t('veterinary.treatment.mandatoryWithdrawalTitle', 'MANDATORY MILK WITHDRAWAL DAYS *')}
               </Text>
             </View>
             <Text style={[Typography.caption2, { color: '#991B1B', marginBottom: 8 }]}>
-              Enter number of days milk must be discarded following last administration to ensure zero antibiotic residue.
+              {t('veterinary.treatment.mandatoryWithdrawalDesc', 'Enter number of days milk must be discarded following last administration to ensure zero antibiotic residue.')}
             </Text>
             <TextField
-              label="Withdrawal Period (Days)"
-              placeholder="e.g. 4 (0 if zero milk discard)"
+              label={t('veterinary.treatment.withdrawalDaysLabel', 'Withdrawal Period (Days)')}
+              placeholder={t('veterinary.treatment.withdrawalDaysPlaceholder', 'e.g. 4 (0 if zero milk discard)')}
               value={withdrawalPeriodDays}
               onChangeText={setWithdrawalPeriodDays}
               keyboardType="number-pad"
@@ -273,8 +296,8 @@ export default function TreatmentEntryScreen() {
           </View>
 
           <TextField
-            label="Clinical Advice / Notes to Farmer"
-            placeholder="e.g. Discard all milk during treatment. Complete full 3-day course."
+            label={t('veterinary.treatment.notesLabel', 'Clinical Advice / Notes to Farmer')}
+            placeholder={t('veterinary.treatment.notesPlaceholder', 'e.g. Discard all milk during treatment. Complete full 3-day course.')}
             value={notes}
             onChangeText={setNotes}
             icon="create-outline"
@@ -282,7 +305,7 @@ export default function TreatmentEntryScreen() {
         </Card>
 
         <Button
-          title={submitting ? "Deploying Restriction..." : "Confirm & Deploy Treatment Record"}
+          title={submitting ? t('veterinary.treatment.deployingBtn', 'Deploying Restriction...') : t('veterinary.treatment.submitBtn', 'Confirm & Deploy Treatment Record')}
           size="lg"
           loading={submitting}
           onPress={handleSaveTreatment}
@@ -290,7 +313,7 @@ export default function TreatmentEntryScreen() {
         />
 
         <Button
-          title="Cancel"
+          title={t('common.cancel', 'Cancel')}
           variant="outline"
           onPress={() => router.back()}
           style={{ marginTop: 10, marginBottom: 30 }}

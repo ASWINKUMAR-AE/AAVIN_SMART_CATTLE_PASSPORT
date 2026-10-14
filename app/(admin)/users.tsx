@@ -9,14 +9,19 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { UserRole } from '../../types/aavin';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function AdminUsersScreen() {
   const { demoUsers, activeRole, switchRole } = useAuth();
   const { colors } = useTheme();
+  const { setLanguage } = useTranslation();
   const router = useRouter();
 
   const handleSwitch = (role: UserRole) => {
     switchRole(role);
+    if (role === 'farmer' || role === 'booth' || role === 'bmc' || role === 'union' || role === 'veterinary') {
+      setLanguage('en');
+    }
     switch (role) {
       case 'farmer':
         router.replace('/(farmer)');

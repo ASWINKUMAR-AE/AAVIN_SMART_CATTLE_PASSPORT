@@ -9,11 +9,13 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function VeterinaryDashboard() {
   const { user } = useAuth();
   const { cows } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -31,7 +33,7 @@ export default function VeterinaryDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={user?.fullName || "Dr. R. Anand BVSc"}
-        subtitle="Aavin Veterinary Dispensary • Melur Division"
+        subtitle={t('veterinary.dashboard.dispensarySubtitle', 'Aavin Veterinary Dispensary • Melur Division')}
       />
 
       <ScrollView 
@@ -44,10 +46,10 @@ export default function VeterinaryDashboard() {
             <Ionicons name="warning" size={24} color="#DC2626" />
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={[Typography.headline, { color: '#B91C1C', fontWeight: '900' }]}>
-                ⚠️ ACTIVE MEDICINE WITHDRAWAL RESTRICTIONS ({cowsWithWithdrawal.length})
+                {t('veterinary.dashboard.activeWithdrawalAlert', '⚠️ ACTIVE MEDICINE WITHDRAWAL RESTRICTIONS ({count})', { count: cowsWithWithdrawal.length })}
               </Text>
               <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                Veterinary antibiotic/NSAID withdrawal active. Society alerts and milk withholding flags deployed.
+                {t('veterinary.dashboard.activeWithdrawalDesc', 'Veterinary antibiotic/NSAID withdrawal active. Society alerts and milk withholding flags deployed.')}
               </Text>
             </View>
           </View>
@@ -60,7 +62,9 @@ export default function VeterinaryDashboard() {
               <Ionicons name="paw" size={18} color="#0284C7" />
             </View>
             <Text style={[styles.kpiNumber, { color: colors.text }]}>{cows.length}</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Assigned Bovines</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+              {t('veterinary.dashboard.assignedBovines', 'Assigned Bovines')}
+            </Text>
           </Card>
 
           <Card style={styles.kpiCard}>
@@ -68,7 +72,9 @@ export default function VeterinaryDashboard() {
               <Ionicons name="bandage" size={18} color="#DC2626" />
             </View>
             <Text style={[styles.kpiNumber, { color: '#DC2626' }]}>{cowsUnderTreatment.length}</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Under Active Treatment</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+              {t('veterinary.dashboard.underActiveTreatment', 'Under Active Treatment')}
+            </Text>
           </Card>
 
           <Card style={styles.kpiCard}>
@@ -76,19 +82,21 @@ export default function VeterinaryDashboard() {
               <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
             </View>
             <Text style={[styles.kpiNumber, { color: '#16A34A' }]}>{healthyCows.length}</Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Optimal Health</Text>
+            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+              {t('veterinary.dashboard.optimalHealth', 'Optimal Health')}
+            </Text>
           </Card>
         </View>
 
         {/* Cows Currently on Medicine Milk Withholding */}
         <Card style={styles.sectionCard}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Active Treatment & Withdrawal Surveillance
+            {t('veterinary.dashboard.activeSurveillanceTitle', 'Active Treatment & Withdrawal Surveillance')}
           </Text>
 
           {cowsWithWithdrawal.length === 0 ? (
             <Text style={[Typography.subhead, { color: colors.textSecondary, textAlign: 'center', marginVertical: 14 }]}>
-              No animals currently on milk withholding.
+              {t('veterinary.dashboard.noAnimalsWithholding', 'No animals currently on milk withholding.')}
             </Text>
           ) : (
             cowsWithWithdrawal.map((c) => (
@@ -106,10 +114,16 @@ export default function VeterinaryDashboard() {
                     {c.activeWithdrawal?.medicineName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Owner: {c.farmerName} • Diagnosis: {c.activeWithdrawal?.reason}
+                    {t('veterinary.dashboard.ownerDiagnosis', 'Owner: {owner} • Diagnosis: {diagnosis}', {
+                      owner: c.farmerName,
+                      diagnosis: c.activeWithdrawal?.reason || ''
+                    })}
                   </Text>
                   <Text style={[Typography.caption2, { color: '#991B1B', fontWeight: '700', marginTop: 2 }]}>
-                    Withholding ends: {c.activeWithdrawal?.withdrawalEndDate} ({c.activeWithdrawal?.daysRemaining} days remaining)
+                    {t('veterinary.dashboard.withholdingEndsRemaining', 'Withholding ends: {date} ({days} days remaining)', {
+                      date: c.activeWithdrawal?.withdrawalEndDate || '',
+                      days: c.activeWithdrawal?.daysRemaining || 0
+                    })}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -121,7 +135,7 @@ export default function VeterinaryDashboard() {
         {/* Upcoming Clinical Appointments & Follow-ups */}
         <Card style={styles.sectionCard}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Upcoming Health Follow-ups & Vaccinations
+            {t('veterinary.dashboard.upcomingHealthTitle', 'Upcoming Health Follow-ups & Vaccinations')}
           </Text>
 
           <View style={styles.appointmentRow}>
@@ -131,14 +145,16 @@ export default function VeterinaryDashboard() {
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                Post-Mastitis Udder Palpation & CMT Test
+                {t('veterinary.dashboard.sampleExam1Title', 'Post-Mastitis Udder Palpation & CMT Test')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Cow Lakshmi (#100100001002) • Farmer K. Murugesan
+                {t('veterinary.dashboard.sampleExam1Sub', 'Cow Lakshmi (#100100001002) • Farmer K. Murugesan')}
               </Text>
             </View>
             <View style={[styles.typeBadge, { backgroundColor: '#FEE2E2' }]}>
-              <Text style={[styles.typeBadgeText, { color: '#DC2626' }]}>Follow-up</Text>
+              <Text style={[styles.typeBadgeText, { color: '#DC2626' }]}>
+                {t('veterinary.common.followUp', 'Follow-up')}
+              </Text>
             </View>
           </View>
 
@@ -149,14 +165,16 @@ export default function VeterinaryDashboard() {
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                Bi-annual Foot & Mouth (FMD) Booster Camp
+                {t('veterinary.dashboard.sampleExam2Title', 'Bi-annual Foot & Mouth (FMD) Booster Camp')}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Melur Rural Cluster Society • All Registered Herds
+                {t('veterinary.dashboard.sampleExam2Sub', 'Melur Rural Cluster Society • All Registered Herds')}
               </Text>
             </View>
             <View style={[styles.typeBadge, { backgroundColor: '#E0F2FE' }]}>
-              <Text style={[styles.typeBadgeText, { color: '#0284C7' }]}>Vaccine</Text>
+              <Text style={[styles.typeBadgeText, { color: '#0284C7' }]}>
+                {t('veterinary.common.vaccine', 'Vaccine')}
+              </Text>
             </View>
           </View>
         </Card>
@@ -164,17 +182,17 @@ export default function VeterinaryDashboard() {
         {/* Quick Operations Actions */}
         <View style={styles.actionsGrid}>
           <Button
-            title="💊 Prescribe Treatment & Set Withdrawal Period"
+            title={t('veterinary.dashboard.actionPrescribe', '💊 Prescribe Treatment & Set Withdrawal Period')}
             size="lg"
             onPress={() => router.push('/(veterinary)/treatment-entry' as any)}
           />
           <Button
-            title="🩺 Perform Clinical Examination"
+            title={t('veterinary.dashboard.actionExam', '🩺 Perform Clinical Examination')}
             variant="secondary"
             onPress={() => router.push('/(veterinary)/examination-entry' as any)}
           />
           <Button
-            title="🔍 Search & Browse Cattle Registry"
+            title={t('veterinary.dashboard.actionRegistry', '🔍 Search & Browse Cattle Registry')}
             variant="outline"
             onPress={() => router.push('/(veterinary)/cattle-registry' as any)}
           />

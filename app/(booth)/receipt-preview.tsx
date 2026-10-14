@@ -8,8 +8,10 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function ReceiptPreviewScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const receiptId = params.receiptId as string;
   const { boothReceipts, sendBoothReceiptToBmc, milkRecords, bmcDeliveries, bmcs } = useAavinStore();
@@ -122,7 +124,7 @@ export default function ReceiptPreviewScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Send Dispatch Receipt"
+        title={t('booth.sendDispatchReceiptsTitle', 'Send Dispatch Receipt')}
         subtitle={`Receipt #${receipt.id} • ${receipt.bmcName}`}
         showBack
       />
@@ -503,7 +505,7 @@ export default function ReceiptPreviewScreen() {
         {!isAlreadySent ? (
           <View style={styles.actionSection}>
             <Button
-              title={sending ? "Transmitting Waybill to BMC..." : `Transmit Consignment to BMC (${receipt.bmcName})`}
+              title={sending ? t('booth.transmittingBtn', 'Transmitting to BMC...') : `${t('booth.sendReceiptToBmc', 'Transmit Receipt to BMC')} (${receipt.bmcName})`}
               size="lg"
               loading={sending}
               onPress={handleSendToBmc}
@@ -533,14 +535,14 @@ export default function ReceiptPreviewScreen() {
             </View>
 
             <Button
-              title="View in Transit Ledger & Reconciliation"
+              title={t('booth.sentReceiptsTitle', 'View in Transit Ledger & Reconciliation')}
               size="lg"
               onPress={() => router.push('/(booth)/sent-receipts')}
               style={{ marginTop: 12 }}
             />
 
             <Button
-              title="Return to Booth Dashboard"
+              title={t('common.home', 'Return to Booth Dashboard')}
               variant="outline"
               onPress={() => router.replace('/(booth)')}
               style={{ marginTop: 8 }}

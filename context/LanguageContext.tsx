@@ -16,6 +16,8 @@ import {
 
 export type LanguageCode = 'en' | 'ta';
 
+export type TranslationParams = Record<string, string | number>;
+
 interface LanguageContextType {
   language: LanguageCode;
   indicTransCode: IndicTransLang;
@@ -23,7 +25,11 @@ interface LanguageContextType {
   isTranslating: boolean;
   setLanguage: (lang: LanguageCode | IndicTransLang) => Promise<void>;
   toggleLanguage: () => Promise<void>;
-  t: (keyPath: string, fallback?: string) => string;
+  t: (
+    keyPath: string,
+    arg2?: string | TranslationParams,
+    arg3?: string | TranslationParams
+  ) => string;
   translateDynamic: (text: string, targetLang?: LanguageCode | IndicTransLang) => Promise<IndicTransResult>;
   translateInstant: (text: string, targetLang?: LanguageCode | IndicTransLang) => string;
 }
@@ -40,7 +46,11 @@ const LanguageContext = createContext<LanguageContextType>({
   isTranslating: false,
   setLanguage: async () => {},
   toggleLanguage: async () => {},
-  t: (keyPath: string, fallback?: string) => fallback || keyPath,
+  t: (keyPath: string, arg2?: string | TranslationParams, arg3?: string | TranslationParams) => {
+    if (typeof arg2 === 'string') return arg2;
+    if (typeof arg3 === 'string') return arg3;
+    return keyPath;
+  },
   translateDynamic: async (text: string) => ({
     originalText: text,
     translatedText: text,
@@ -88,11 +98,38 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await setLanguage(next);
   };
 
-  // Structured key translation (from locales JSON)
-  const t = (keyPath: string, fallback?: string): string => {
+  // Helper to interpolate {key} or {{key}} in strings
+  const interpolate = (str: string, params?: TranslationParams): string => {
+    if (!params || typeof str !== 'string') return str;
+    return Object.entries(params).reduce((acc, [k, v]) => {
+      return acc.replace(new RegExp(`\\{\\{?\\s*${k}\\s*\\}\\}?`, 'g'), String(v));
+    }, str);
+  };
+
+  // Structured key translation (from locales JSON) with parameter interpolation
+  const t = (
+    keyPath: string,
+    arg2?: string | TranslationParams,
+    arg3?: string | TranslationParams
+  ): string => {
     const dict = dictionaries[language] || dictionaries.en;
     const parts = keyPath.split('.');
     let current: any = dict;
+
+    let actualParams: TranslationParams | undefined;
+    let actualFallback: string | undefined;
+
+    if (typeof arg2 === 'object' && arg2 !== null) {
+      actualParams = arg2;
+      if (typeof arg3 === 'string') {
+        actualFallback = arg3;
+      }
+    } else if (typeof arg2 === 'string') {
+      actualFallback = arg2;
+      if (typeof arg3 === 'object' && arg3 !== null) {
+        actualParams = arg3;
+      }
+    }
 
     for (const part of parts) {
       if (current && typeof current === 'object' && part in current) {
@@ -105,17 +142,20 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             enCurrent = enCurrent[p];
           } else {
             // Also try IndicTrans2 fast translator before giving up
-            return fallback || fastTranslateInstant(keyPath, language) || keyPath;
+            const raw = actualFallback || fastTranslateInstant(keyPath, language) || keyPath;
+            return interpolate(raw, actualParams);
           }
         }
         if (typeof enCurrent === 'string') {
-          return language === 'ta' ? fastTranslateInstant(enCurrent, 'tam_Taml') : enCurrent;
+          const res = language === 'ta' ? fastTranslateInstant(enCurrent, 'tam_Taml') : enCurrent;
+          return interpolate(res, actualParams);
         }
-        return fallback || keyPath;
+        return interpolate(actualFallback || keyPath, actualParams);
       }
     }
 
-    return typeof current === 'string' ? current : (fallback || keyPath);
+    const result = typeof current === 'string' ? current : (actualFallback || keyPath);
+    return interpolate(result, actualParams);
   };
 
   // Dynamic sentence / phrase translation powered by IndicTrans2

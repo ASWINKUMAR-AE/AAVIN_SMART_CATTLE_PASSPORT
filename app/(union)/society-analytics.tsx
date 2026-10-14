@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, Pressable, BackHandler } from 'reac
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -19,6 +20,7 @@ export default function SocietyAnalyticsScreen() {
   const { societyId, bmcId } = useLocalSearchParams<{ societyId: string; bmcId?: string }>();
   const { bmcs, booths, bmcDeliveries, farmers, milkRecords, discrepancyCases } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   // Active society fallback
@@ -54,18 +56,20 @@ export default function SocietyAnalyticsScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <DemoHeader
-          title="Society Production Analytics"
-          subtitle="Society Not Found"
+          title={t('union.societyAnalytics.title', 'Society Production Analytics')}
+          subtitle={t('union.societyAnalytics.societyNotFound', 'Society Facility Not Found')}
           showBack
           onBack={handleBack}
         />
         <View style={styles.emptyContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
           <Text style={[Typography.headline, { color: colors.text, marginTop: 12 }]}>
-            Society Facility Not Found
+            {t('union.societyAnalytics.societyNotFound', 'Society Facility Not Found')}
           </Text>
           <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: colors.primary }]}>
-            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>← Return to BMC Analytics</Text>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
+              {t('union.societyAnalytics.returnToBmcAnalytics', '← Return to BMC Analytics')}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -112,7 +116,7 @@ export default function SocietyAnalyticsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
-        title="Society Production Analytics"
+        title={t('union.societyAnalytics.title', 'Society Production Analytics')}
         subtitle={society.societyName}
         showBack
         onBack={handleBack}
@@ -137,7 +141,7 @@ export default function SocietyAnalyticsScreen() {
               </View>
 
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 2 }]}>
-                {society.village}, {society.taluk} • In-Charge: {society.operatorName} {society.phone ? `(${society.phone})` : ''}
+                {society.village}, {society.taluk} • {t('union.inCharge', 'In-Charge')}: {society.operatorName} {society.phone ? `(${society.phone})` : ''}
               </Text>
             </View>
           </View>
@@ -155,12 +159,12 @@ export default function SocietyAnalyticsScreen() {
             <View style={styles.linkedBmcLeft}>
               <Ionicons name="snow" size={16} color={colors.primary} />
               <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700', marginLeft: 6 }]}>
-                Linked BMC: <Text style={{ color: colors.primary, fontWeight: '800' }}>{society.bmcName}</Text>
+                {t('union.societyAnalytics.linkedBmc', { name: society.bmcName }, `Linked BMC: ${society.bmcName}`)}
               </Text>
             </View>
             <View style={styles.linkedBmcRight}>
               <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700', marginRight: 4 }]}>
-                View BMC
+                {t('union.societyAnalytics.viewBmc', 'View BMC')}
               </Text>
               <Ionicons name="chevron-forward" size={14} color={colors.primary} />
             </View>
@@ -170,10 +174,10 @@ export default function SocietyAnalyticsScreen() {
           <View style={styles.capacitySection}>
             <View style={styles.capLabelRow}>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Daily Intake Load: {formatLitres(todayReceived)} / {formatLitres(capacityLitres)}
+                {t('union.societyAnalytics.dailyIntakeLoad', { received: formatLitres(todayReceived), capacity: formatLitres(capacityLitres) }, `Daily Intake Load: ${formatLitres(todayReceived)} / ${formatLitres(capacityLitres)}`)}
               </Text>
               <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                {utilization.toFixed(1)}% Capacity
+                {t('union.societyAnalytics.capacityPercent', { percent: utilization.toFixed(1) }, `${utilization.toFixed(1)}% Capacity`)}
               </Text>
             </View>
             <View style={[styles.barTrack, { backgroundColor: colors.background }]}>
@@ -186,11 +190,11 @@ export default function SocietyAnalyticsScreen() {
         <View style={styles.sectionHeader}>
           <Ionicons name="calendar-outline" size={18} color={colors.primary} />
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-            Society Performance Trends
+            {t('union.societyAnalytics.performanceTrends', 'Society Performance Trends')}
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Benchmark self-comparison against historical collection periods
+          {t('union.societyAnalytics.benchmarkSubtitle', 'Benchmark self-comparison against historical collection periods')}
         </Text>
 
         <View style={styles.trendsGrid}>
@@ -204,7 +208,7 @@ export default function SocietyAnalyticsScreen() {
               <Card key={periodKey} style={styles.trendCard}>
                 <View style={styles.trendCardTop}>
                   <Text style={[Typography.caption1, { color: colors.textSecondary, fontWeight: '800', textTransform: 'uppercase' }]}>
-                    {PERIOD_LABELS[periodKey].title}
+                    {t(`analytics.periods.${periodKey}`, PERIOD_LABELS[periodKey].title)}
                   </Text>
                   <View style={[styles.trendPill, { backgroundColor: trendBg }]}>
                     <Ionicons
@@ -229,14 +233,14 @@ export default function SocietyAnalyticsScreen() {
                 <View style={[styles.compDivider, { borderTopColor: colors.border }]} />
 
                 <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                  Past: <Text style={{ fontWeight: '700', color: colors.text }}>{formatLitres(comp.previous)}</Text>
+                  {t('union.bmcAnalytics.past', 'Past:')} <Text style={{ fontWeight: '700', color: colors.text }}>{formatLitres(comp.previous)}</Text>
                 </Text>
                 <Text style={[Typography.caption2, { color: colors.textMuted }]}>
                   ({comp.periodLabel})
                 </Text>
 
                 <Text style={[Typography.caption2, { color: trendColor, fontWeight: '700', marginTop: 4 }]}>
-                  Net: {comp.deltaLitres >= 0 ? `+${formatLitres(comp.deltaLitres)}` : `-${formatLitres(Math.abs(comp.deltaLitres))}`}
+                  {t('union.bmcAnalytics.net', 'Net:')} {comp.deltaLitres >= 0 ? `+${formatLitres(comp.deltaLitres)}` : `-${formatLitres(Math.abs(comp.deltaLitres))}`}
                 </Text>
               </Card>
             );
@@ -247,29 +251,29 @@ export default function SocietyAnalyticsScreen() {
         <View style={[styles.sectionHeader, { marginTop: 14 }]}>
           <Ionicons name="git-branch-outline" size={18} color={colors.primary} />
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-            Session & Quality Breakdown
+            {t('union.societyAnalytics.sessionQualityBreakdown', 'Session & Quality Breakdown')}
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Operational milk intake sessions and laboratory quality metrics
+          {t('union.societyAnalytics.sessionQualityDesc', 'Operational milk intake sessions and laboratory quality metrics')}
         </Text>
 
         <Card style={styles.breakdownCard}>
           {/* Morning vs Evening Session Split */}
           <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800', marginBottom: 8 }]}>
-            Intake Session Distribution
+            {t('union.societyAnalytics.sessionDistribution', 'Intake Session Distribution')}
           </Text>
           <View style={styles.sessionPillsRow}>
             <View style={styles.sessionPill}>
               <Ionicons name="sunny-outline" size={14} color="#D97706" />
               <Text style={[Typography.caption2, { color: colors.text, fontWeight: '700', marginLeft: 4 }]}>
-                Morning: {morningPercent}% {totalSessionVol > 0 ? `(${formatLitres(morningVol)})` : ''}
+                {t('union.societyAnalytics.morningLabel', { percent: morningPercent }, `Morning: ${morningPercent}%`)} {totalSessionVol > 0 ? `(${formatLitres(morningVol)})` : ''}
               </Text>
             </View>
             <View style={styles.sessionPill}>
               <Ionicons name="moon-outline" size={14} color="#4F46E5" />
               <Text style={[Typography.caption2, { color: colors.text, fontWeight: '700', marginLeft: 4 }]}>
-                Evening: {eveningPercent}% {totalSessionVol > 0 ? `(${formatLitres(eveningVol)})` : ''}
+                {t('union.societyAnalytics.eveningLabel', { percent: eveningPercent }, `Evening: ${eveningPercent}%`)} {totalSessionVol > 0 ? `(${formatLitres(eveningVol)})` : ''}
               </Text>
             </View>
           </View>
@@ -284,27 +288,33 @@ export default function SocietyAnalyticsScreen() {
           {/* Quality Metrics Grid */}
           <View style={styles.qualityGrid}>
             <View style={[styles.qualityItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Avg Fat %</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('union.avgFat', 'Avg FAT')}</Text>
               <Text style={[Typography.headline, { color: colors.primary, fontWeight: '900', marginTop: 2 }]}>
                 4.25%
               </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700' }]}>✓ High Grade</Text>
+              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700' }]}>
+                {t('union.societyAnalytics.highGrade', '✓ High Grade')}
+              </Text>
             </View>
 
             <View style={[styles.qualityItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Avg SNF %</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('union.avgSnf', 'Avg SNF')}</Text>
               <Text style={[Typography.headline, { color: colors.primary, fontWeight: '900', marginTop: 2 }]}>
                 8.65%
               </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700' }]}>✓ Meets Norms</Text>
+              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700' }]}>
+                {t('union.societyAnalytics.meetsNorms', '✓ Meets Norms')}
+              </Text>
             </View>
 
             <View style={[styles.qualityItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Water Ratio</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>{t('union.societyAnalytics.waterRatio', 'Water Ratio')}</Text>
               <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '900', marginTop: 2 }]}>
                 0.0%
               </Text>
-              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700' }]}>✓ Pure Pure</Text>
+              <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700' }]}>
+                {t('union.societyAnalytics.pureQuality', '✓ Pure Pure')}
+              </Text>
             </View>
           </View>
         </Card>
@@ -313,11 +323,11 @@ export default function SocietyAnalyticsScreen() {
         <View style={[styles.sectionHeader, { marginTop: 14 }]}>
           <Ionicons name="people-outline" size={18} color={colors.primary} />
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-            Registered Member Producers ({affiliatedFarmers.length})
+            {t('union.societyAnalytics.affiliatedFarmersTitle', { count: affiliatedFarmers.length }, `Registered Member Producers (${affiliatedFarmers.length})`)}
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Dairy farmers registered and delivering milk to this primary cooperative society
+          {t('union.societyAnalytics.affiliatedFarmersSubtitle', 'Dairy farmers registered and delivering milk to this primary cooperative society')}
         </Text>
 
         <Card style={styles.farmersCard}>
@@ -325,7 +335,7 @@ export default function SocietyAnalyticsScreen() {
             <View style={styles.emptyInlineBox}>
               <Ionicons name="people-circle-outline" size={32} color={colors.textSecondary} />
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
-                No primary farmers directly registered under this society node
+                {t('union.societyAnalytics.noFarmersRegistered', 'No primary farmers directly registered under this society node')}
               </Text>
             </View>
           ) : (
@@ -345,12 +355,12 @@ export default function SocietyAnalyticsScreen() {
                     {f.name}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    {f.farmerIdCode} • {f.village} • {f.numberOfCows} Cow(s)
+                    {f.farmerIdCode} • {f.village} • {t('union.societyAnalytics.cowsCountSuffix', { count: f.numberOfCows }, `${f.numberOfCows} Cow(s)`)}
                   </Text>
                 </View>
                 <View style={[styles.statusBadge, { backgroundColor: f.verificationStatus === 'verified' ? '#DCFCE7' : '#FEF3C7' }]}>
                   <Text style={[styles.statusBadgeText, { color: f.verificationStatus === 'verified' ? '#15803D' : '#D97706' }]}>
-                    {f.verificationStatus === 'verified' ? 'Verified Member' : 'Pending KYC'}
+                    {f.verificationStatus === 'verified' ? t('union.societyAnalytics.verifiedMember', 'Verified Member') : t('union.societyAnalytics.pendingKyc', 'Pending KYC')}
                   </Text>
                 </View>
               </View>
@@ -362,11 +372,11 @@ export default function SocietyAnalyticsScreen() {
         <View style={[styles.sectionHeader, { marginTop: 14 }]}>
           <Ionicons name="paper-plane-outline" size={18} color={colors.primary} />
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-            Recent Dispatches to BMC ({societyDeliveries.length})
+            {t('union.societyAnalytics.deliveriesTitle', { count: societyDeliveries.length }, `Recent Dispatches to BMC (${societyDeliveries.length})`)}
           </Text>
         </View>
         <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10, marginTop: -4 }]}>
-          Declared milk batches dispatched from this society to {society.bmcName}
+          {t('union.societyAnalytics.dispatchesSubtitle', { bmc: society.bmcName }, `Declared milk batches dispatched from this society to ${society.bmcName}`)}
         </Text>
 
         <Card style={styles.dispatchesCard}>
@@ -374,7 +384,7 @@ export default function SocietyAnalyticsScreen() {
             <View style={styles.emptyInlineBox}>
               <Ionicons name="cube-outline" size={32} color={colors.textSecondary} />
               <Text style={[Typography.caption1, { color: colors.textSecondary, marginTop: 4 }]}>
-                No dispatches recorded today for this society
+                {t('union.societyAnalytics.noDispatches', 'No dispatches recorded today for this society')}
               </Text>
             </View>
           ) : (
@@ -383,7 +393,7 @@ export default function SocietyAnalyticsScreen() {
               const isPending = d.status === 'pending_arrival';
               const badgeColor = isMatched ? '#15803D' : isPending ? '#0284C7' : '#DC2626';
               const badgeBg = isMatched ? '#DCFCE7' : isPending ? '#E0F2FE' : '#FEE2E2';
-              const badgeText = isMatched ? 'Matched ✓' : isPending ? 'In-Transit' : 'Variance Flagged';
+              const badgeText = isMatched ? t('union.societyAnalytics.matchedBadge', 'Matched ✓') : isPending ? t('union.societyAnalytics.inTransit', 'In-Transit') : t('union.societyAnalytics.varianceFlagged', 'Variance Flagged');
 
               return (
                 <View
@@ -398,10 +408,10 @@ export default function SocietyAnalyticsScreen() {
                   </View>
                   <View style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
                     <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                      Batch #{d.id} • Ref: {d.boothReceiptId}
+                      {t('union.societyAnalytics.batchRef', { id: d.id, ref: d.boothReceiptId }, `Batch #${d.id} • Ref: ${d.boothReceiptId}`)}
                     </Text>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                      Declared: {d.declaredDispatchQuantity.toFixed(1)} L • Measured: {d.measuredReceivedQuantity ? `${d.measuredReceivedQuantity.toFixed(1)} L` : 'Pending Intake'}
+                      {t('union.societyAnalytics.declaredMeasuredFormat', { declared: d.declaredDispatchQuantity.toFixed(1), measured: d.measuredReceivedQuantity ? `${d.measuredReceivedQuantity.toFixed(1)} L` : t('union.societyAnalytics.pendingIntake', 'Pending Intake') }, `Declared: ${d.declaredDispatchQuantity.toFixed(1)} L • Measured: ${d.measuredReceivedQuantity ? `${d.measuredReceivedQuantity.toFixed(1)} L` : 'Pending Intake'}`)}
                     </Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
@@ -418,14 +428,14 @@ export default function SocietyAnalyticsScreen() {
         {/* 6. Quick Action Navigation Footer */}
         <View style={styles.footerActions}>
           <Button
-            title={`← Return to ${society.bmcName} Analytics`}
+            title={t('union.societyAnalytics.returnToSpecificBmc', { name: society.bmcName }, `← Return to ${society.bmcName} Analytics`)}
             size="lg"
             variant="outline"
             onPress={handleBack}
           />
           <View style={{ height: 10 }} />
           <Button
-            title="🏛️ Return to Union Headquarters Dashboard"
+            title={t('union.societyAnalytics.returnToUnion', '🏛️ Return to Union Headquarters Dashboard')}
             size="lg"
             onPress={() => router.replace('/(union)' as any)}
           />

@@ -17,7 +17,7 @@ import { IndicTransLanguageSwitch } from '../../components/ui/IndicTransLanguage
 export default function LoginScreen() {
   const { login } = useAuth();
   const { colors } = useTheme();
-  const { language, toggleLanguage, t } = useTranslation();
+  const { language, toggleLanguage, setLanguage, t } = useTranslation();
   const router = useRouter();
 
   const [usernameOrPhone, setUsernameOrPhone] = useState('');
@@ -76,6 +76,9 @@ export default function LoginScreen() {
     try {
       const result = await login(input, pwd);
       if (result.success && result.role) {
+        if (result.role === 'farmer' || result.role === 'booth' || result.role === 'bmc' || result.role === 'union' || result.role === 'veterinary') {
+          await setLanguage('en');
+        }
         navigateByRole(result.role);
       } else {
         setErrorMessage(

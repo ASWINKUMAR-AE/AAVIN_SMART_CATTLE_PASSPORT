@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -16,6 +17,7 @@ export default function UnionDiscrepanciesScreen() {
   const { user } = useAuth();
   const { discrepancyCases, resolveDiscrepancyCase, addInvestigationNote } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const handleBackToHome = () => {
@@ -46,11 +48,15 @@ export default function UnionDiscrepanciesScreen() {
     );
     setDirectiveText('');
     setActiveModal(null);
-    Alert.alert('Directive Logged', 'Union directive logged to the case audit ledger.');
+    Alert.alert(
+      t('union.discrepancies.directiveLoggedTitle', 'Directive Logged'),
+      t('union.discrepancies.directiveLoggedMsg', 'Union directive logged to the case audit ledger.')
+    );
   };
 
   const handleUnionResolve = () => {
     if (!selectedCase || !resolutionText.trim()) return;
+    const caseId = selectedCase.id;
     resolveDiscrepancyCase(
       selectedCase.id,
       `[UNION RESOLUTION]: ${resolutionText.trim()}`,
@@ -58,14 +64,17 @@ export default function UnionDiscrepanciesScreen() {
     );
     setResolutionText('');
     setActiveModal(null);
-    Alert.alert('Case Resolved', `Discrepancy case #${selectedCase.id} closed by Union GM order.`);
+    Alert.alert(
+      t('union.discrepancies.caseResolvedTitle', 'Case Resolved'),
+      t('union.discrepancies.caseResolvedMsg', { id: caseId }, `Discrepancy case #${caseId} closed by Union GM order.`)
+    );
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
-        title="District Discrepancy Ledger"
-        subtitle="Cross-Facility Reconciliation & Integrity Audit"
+        title={t('union.discrepancies.title', 'District Discrepancy Ledger')}
+        subtitle={t('union.discrepancies.subtitle', 'Cross-Facility Reconciliation & Integrity Audit')}
         showBack
         onBack={handleBackToHome}
       />
@@ -76,8 +85,8 @@ export default function UnionDiscrepanciesScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Discrepancies"
-            message="No quantity variances reported across the district."
+            title={t('union.discrepancies.emptyTitle', 'No Discrepancies')}
+            message={t('union.discrepancies.emptyDesc', 'No quantity variances reported across the district.')}
             icon="shield-checkmark-outline"
           />
         }
@@ -87,9 +96,9 @@ export default function UnionDiscrepanciesScreen() {
           const isResolved = item.status === 'resolved';
 
           const getBadge = () => {
-            if (isEscalated) return { label: '⚠️ ESCALATED TO GM', bg: '#FAF5FF', color: '#9333EA' };
-            if (isOpen) return { label: 'OPEN INVESTIGATION', bg: '#FEF2F2', color: '#DC2626' };
-            return { label: 'RESOLVED BY AUDIT', bg: '#DCFCE7', color: '#15803D' };
+            if (isEscalated) return { label: t('union.discrepancies.escalatedToGm', '⚠️ ESCALATED TO GM'), bg: '#FAF5FF', color: '#9333EA' };
+            if (isOpen) return { label: t('union.discrepancies.openInvestigation', 'OPEN INVESTIGATION'), bg: '#FEF2F2', color: '#DC2626' };
+            return { label: t('union.discrepancies.resolvedByAudit', 'RESOLVED BY AUDIT'), bg: '#DCFCE7', color: '#15803D' };
           };
 
           const badge = getBadge();
@@ -99,14 +108,14 @@ export default function UnionDiscrepanciesScreen() {
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
-                    Case #{item.id}
+                    {t('union.discrepancies.caseTitle', { id: item.id }, `Case #${item.id}`)}
                   </Text>
                   <View style={styles.routeBox}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]} numberOfLines={2}>
-                      Origin: <Text style={{ color: colors.text, fontWeight: '600' }}>{item.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}</Text>
+                      {t('union.discrepancies.origin', 'Origin:')} <Text style={{ color: colors.text, fontWeight: '600' }}>{item.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}</Text>
                     </Text>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={2}>
-                      Destination: <Text style={{ color: colors.text, fontWeight: '600' }}>{item.bmcName}</Text>
+                      {t('union.discrepancies.destination', 'Destination:')} <Text style={{ color: colors.text, fontWeight: '600' }}>{item.bmcName}</Text>
                     </Text>
                   </View>
                 </View>
@@ -120,7 +129,7 @@ export default function UnionDiscrepanciesScreen() {
               <View style={[styles.varianceBox, { backgroundColor: colors.background }]}>
                 <View style={styles.vRow}>
                   <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>
-                    Society Declared Quantity:
+                    {t('union.discrepancies.societyDeclared', 'Society Declared Quantity:')}
                   </Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>
                     {item.declaredQuantity.toFixed(1)} L
@@ -128,7 +137,7 @@ export default function UnionDiscrepanciesScreen() {
                 </View>
                 <View style={styles.vRow}>
                   <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>
-                    BMC Intake Measured:
+                    {t('union.discrepancies.bmcMeasured', 'BMC Intake Measured:')}
                   </Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>
                     {item.measuredQuantity.toFixed(1)} L
@@ -136,7 +145,7 @@ export default function UnionDiscrepanciesScreen() {
                 </View>
                 <View style={[styles.vRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, marginTop: 4 }]}>
                   <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800', flex: 1, minWidth: 0 }]}>
-                    Transit Variance:
+                    {t('union.discrepancies.transitVariance', 'Transit Variance:')}
                   </Text>
                   <Text style={[Typography.headline, { color: '#DC2626', fontWeight: '900', flexShrink: 0 }]}>
                     -{item.differenceLitres.toFixed(1)} L ({item.differencePercent}%)
@@ -147,7 +156,7 @@ export default function UnionDiscrepanciesScreen() {
               {/* Investigation Trail */}
               <View style={styles.trailBox}>
                 <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800', marginBottom: 4 }]}>
-                  Investigation History ({item.investigationNotes.length} notes)
+                  {t('union.discrepancies.investigationHistory', { count: item.investigationNotes.length }, `Investigation History (${item.investigationNotes.length} notes)`)}
                 </Text>
                 {item.investigationNotes.map((n) => (
                   <View key={n.id} style={styles.noteItem}>
@@ -159,7 +168,7 @@ export default function UnionDiscrepanciesScreen() {
                     </Text>
                     {n.evidenceReference && (
                       <Text style={[Typography.caption2, { color: '#059669', fontWeight: '600', marginTop: 2 }]}>
-                        Tag: {n.evidenceReference}
+                        {t('union.discrepancies.tagLabel', { tag: n.evidenceReference }, `Tag: ${n.evidenceReference}`)}
                       </Text>
                     )}
                   </View>
@@ -168,10 +177,10 @@ export default function UnionDiscrepanciesScreen() {
                 {item.resolutionReason && (
                   <View style={[styles.resolutionBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
                     <Text style={[Typography.caption1, { color: '#166534', fontWeight: '800' }]}>
-                      ✓ FINAL RESOLUTION: {item.resolutionReason?.replace(/booth/gi, 'society')}
+                      {t('union.discrepancies.finalResolution', { reason: item.resolutionReason?.replace(/booth/gi, 'society') }, `✓ FINAL RESOLUTION: ${item.resolutionReason?.replace(/booth/gi, 'society')}`)}
                     </Text>
                     <Text style={[Typography.caption2, { color: '#15803D', marginTop: 2 }]}>
-                      Closed by: {item.resolvedBy} on {item.resolvedAt?.split('T')[0]}
+                      {t('union.discrepancies.closedByOn', { by: item.resolvedBy || '', date: item.resolvedAt?.split('T')[0] || '' }, `Closed by: ${item.resolvedBy} on ${item.resolvedAt?.split('T')[0]}`)}
                     </Text>
                   </View>
                 )}
@@ -180,7 +189,7 @@ export default function UnionDiscrepanciesScreen() {
               {/* Actions */}
               <View style={styles.actionRow}>
                 <Button
-                  title="+ Issue GM Directive"
+                  title={t('union.discrepancies.issueDirectiveBtn', '+ Issue GM Directive')}
                   variant="secondary"
                   size="sm"
                   onPress={() => {
@@ -192,7 +201,7 @@ export default function UnionDiscrepanciesScreen() {
 
                 {!isResolved && (
                   <Button
-                    title="Resolve Case by Order"
+                    title={t('union.discrepancies.resolveOrderBtn', 'Resolve Case by Order')}
                     size="sm"
                     onPress={() => {
                       setSelectedCase(item);
@@ -213,11 +222,13 @@ export default function UnionDiscrepanciesScreen() {
           <Pressable style={styles.modalOverlay} onPress={() => setActiveModal(null)}>
             <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
               <View style={styles.modalHeader}>
-                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>Issue Executive Directive</Text>
+                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>
+                  {t('union.discrepancies.issueDirectiveModalTitle', 'Issue Executive Directive')}
+                </Text>
                 <Pressable onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
               </View>
               <TextInput
-                placeholder="e.g. Mandatory re-calibration of tanker flow meters required within 24 hours."
+                placeholder={t('union.discrepancies.directivePlaceholder', 'e.g. Mandatory re-calibration of tanker flow meters required within 24 hours.')}
                 placeholderTextColor={colors.textMuted}
                 value={directiveText}
                 onChangeText={setDirectiveText}
@@ -225,7 +236,11 @@ export default function UnionDiscrepanciesScreen() {
                 numberOfLines={3}
                 style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
               />
-              <Button title="Issue Order" onPress={handleAddDirective} style={{ marginTop: 14 }} />
+              <Button 
+                title={t('union.discrepancies.issueOrderBtn', 'Issue Order')} 
+                onPress={handleAddDirective} 
+                style={{ marginTop: 14 }} 
+              />
             </View>
           </Pressable>
         </Modal>
@@ -237,11 +252,13 @@ export default function UnionDiscrepanciesScreen() {
           <Pressable style={styles.modalOverlay} onPress={() => setActiveModal(null)}>
             <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
               <View style={styles.modalHeader}>
-                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>Resolve Discrepancy Case</Text>
+                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>
+                  {t('union.discrepancies.resolveModalTitle', 'Resolve Discrepancy Case')}
+                </Text>
                 <Pressable onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
               </View>
               <TextInput
-                placeholder="e.g. Joint physical audit verified variance within acceptable evaporation allowance."
+                placeholder={t('union.discrepancies.resolvePlaceholder', 'e.g. Joint physical audit verified variance within acceptable evaporation allowance.')}
                 placeholderTextColor={colors.textMuted}
                 value={resolutionText}
                 onChangeText={setResolutionText}
@@ -249,7 +266,11 @@ export default function UnionDiscrepanciesScreen() {
                 numberOfLines={3}
                 style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
               />
-              <Button title="Close Discrepancy Case" onPress={handleUnionResolve} style={{ marginTop: 14 }} />
+              <Button 
+                title={t('union.discrepancies.closeCaseBtn', 'Close Discrepancy Case')} 
+                onPress={handleUnionResolve} 
+                style={{ marginTop: 14 }} 
+              />
             </View>
           </Pressable>
         </Modal>

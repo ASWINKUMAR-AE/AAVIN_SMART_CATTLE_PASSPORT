@@ -22,7 +22,7 @@ interface DemoHeaderProps {
 export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBack = false, onBack }) => {
   const { user, activeRole, switchRole, demoUsers, logout } = useAuth();
   const { colors } = useTheme();
-  const { language, toggleLanguage } = useTranslation();
+  const { language, toggleLanguage, setLanguage } = useTranslation();
   const { notifications } = useAavinStore();
   const { isScrolled } = useScroll();
   const router = useRouter();
@@ -77,6 +77,9 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
   const handleSelectRole = (r: UserRole) => {
     setModalVisible(false);
     switchRole(r);
+    if (r === 'farmer' || r === 'booth' || r === 'bmc' || r === 'union' || r === 'veterinary') {
+      setLanguage('en');
+    }
     // Navigate to role's dashboard
     switch (r) {
       case 'farmer':

@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, FlatList, TextInput, Alert, Modal, Pressable } 
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -21,6 +22,7 @@ export default function BMCInvestigationsScreen() {
     escalateDiscrepancyCase 
   } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const bmcId = user?.associatedId || 'BMC001';
   const bmc = bmcs.find(b => b.id === bmcId) || bmcs[0];
@@ -47,12 +49,12 @@ export default function BMCInvestigationsScreen() {
     setNewNote('');
     setEvidenceRef('');
     setActiveModal(null);
-    Alert.alert('Note Appended', 'Investigation note and evidence reference added to the case audit log.');
+    Alert.alert(t('bmc.noteAppendedTitle'), t('bmc.noteAppendedMsg'));
   };
 
   const handleResolveCase = () => {
     if (!selectedCase || !resolutionReason.trim()) {
-      Alert.alert('Reason Required', 'Please provide a formal justification for resolving the discrepancy.');
+      Alert.alert(t('bmc.reasonRequired'), t('bmc.justificationRequired'));
       return;
     }
     resolveDiscrepancyCase(
@@ -62,25 +64,25 @@ export default function BMCInvestigationsScreen() {
     );
     setResolutionReason('');
     setActiveModal(null);
-    Alert.alert('Case Resolved', `Discrepancy case #${selectedCase.id} has been formally closed.`);
+    Alert.alert(t('bmc.caseResolvedTitle'), t('bmc.caseResolvedMsg', { id: selectedCase.id }));
   };
 
   const handleEscalateCase = () => {
     if (!selectedCase || !escalationReason.trim()) {
-      Alert.alert('Reason Required', 'Please explain why this case requires Union executive escalation.');
+      Alert.alert(t('bmc.reasonRequired'), t('bmc.escalationReasonRequired'));
       return;
     }
     escalateDiscrepancyCase(selectedCase.id, escalationReason.trim());
     setEscalationReason('');
     setActiveModal(null);
-    Alert.alert('Case Escalated', `Case #${selectedCase.id} escalated to Union GM for joint inquiry.`);
+    Alert.alert(t('bmc.caseEscalatedTitle'), t('bmc.caseEscalatedMsg', { id: selectedCase.id }));
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Discrepancy Investigations"
-        subtitle={`Audit Ledger • ${bmc.name}`}
+        title={t('bmc.investigationsTitle')}
+        subtitle={t('bmc.investigationsSubtitle', { name: bmc.name })}
         showBack
       />
 
@@ -90,20 +92,19 @@ export default function BMCInvestigationsScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No Discrepancies"
-            message="No quantity variances have been flagged for this BMC."
+            title={t('bmc.noDiscrepanciesTitle')}
+            message={t('bmc.noDiscrepanciesMsg')}
             icon="checkmark-done-circle-outline"
           />
         }
         renderItem={({ item }) => {
           const isOpen = item.status === 'open' || item.status === 'under_investigation';
           const isEscalated = item.status === 'escalated_to_union';
-          const isResolved = item.status === 'resolved';
 
           const getStatusBadge = () => {
-            if (isOpen) return { label: 'OPEN INVESTIGATION', bg: '#FEF2F2', color: '#DC2626' };
-            if (isEscalated) return { label: 'ESCALATED TO UNION', bg: '#FAF5FF', color: '#9333EA' };
-            return { label: 'RESOLVED & CLOSED', bg: '#DCFCE7', color: '#15803D' };
+            if (isOpen) return { label: t('bmc.openInvestigationCaps'), bg: '#FEF2F2', color: '#DC2626' };
+            if (isEscalated) return { label: t('bmc.escalatedToUnionCaps'), bg: '#FAF5FF', color: '#9333EA' };
+            return { label: t('bmc.resolvedClosedCaps'), bg: '#DCFCE7', color: '#15803D' };
           };
 
           const badge = getStatusBadge();
@@ -113,10 +114,13 @@ export default function BMCInvestigationsScreen() {
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
-                    Case #{item.id}
+                    {t('bmc.caseNumber', { id: item.id })}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={2}>
-                    Feeder: <Text style={{ color: colors.text, fontWeight: '600' }}>{item.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society')}</Text> • Date: {item.collectionDate}
+                    {t('bmc.feederDate', {
+                      booth: item.boothName?.replace(/cooling booth/gi, 'Society').replace(/booth/gi, 'Society'),
+                      date: item.collectionDate
+                    })}
                   </Text>
                 </View>
 
@@ -128,15 +132,15 @@ export default function BMCInvestigationsScreen() {
               {/* Quantities & Difference Alert */}
               <View style={[styles.varianceBox, { backgroundColor: colors.background }]}>
                 <View style={styles.varianceRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>Declared by Society:</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>{t('bmc.declaredBySociety')}</Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>{item.declaredQuantity.toFixed(1)} L</Text>
                 </View>
                 <View style={styles.varianceRow}>
-                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>Measured by BMC:</Text>
+                  <Text style={[Typography.caption1, { color: colors.textSecondary, flex: 1, minWidth: 0 }]}>{t('bmc.measuredByBmc')}</Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', flexShrink: 0 }]}>{item.measuredQuantity.toFixed(1)} L</Text>
                 </View>
                 <View style={[styles.varianceRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, marginTop: 4 }]}>
-                  <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800', flex: 1, minWidth: 0 }]}>Discrepancy / Variance:</Text>
+                  <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800', flex: 1, minWidth: 0 }]}>{t('bmc.discrepancyVariance')}</Text>
                   <Text style={[Typography.headline, { color: '#DC2626', fontWeight: '900', flexShrink: 0 }]}>
                     -{item.differenceLitres.toFixed(1)} L ({item.differencePercent}%)
                   </Text>
@@ -146,7 +150,7 @@ export default function BMCInvestigationsScreen() {
               {/* Investigation Notes & Evidence Log */}
               <View style={styles.notesSection}>
                 <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 6 }]}>
-                  Investigation Log ({item.investigationNotes.length} Notes)
+                  {t('bmc.investigationLog', { count: item.investigationNotes.length })}
                 </Text>
 
                 {item.investigationNotes.map((note) => (
@@ -162,7 +166,7 @@ export default function BMCInvestigationsScreen() {
                     </Text>
                     {note.evidenceReference && (
                       <Text style={[Typography.caption2, { color: '#047857', fontWeight: '600', marginTop: 2 }]}>
-                        📎 Evidence Tag: {note.evidenceReference}
+                        {t('bmc.evidenceTag', { tag: note.evidenceReference })}
                       </Text>
                     )}
                   </View>
@@ -171,10 +175,10 @@ export default function BMCInvestigationsScreen() {
                 {item.resolutionReason && (
                   <View style={[styles.resolutionBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
                     <Text style={[Typography.caption1, { color: '#166534', fontWeight: '800' }]}>
-                      ✓ RESOLUTION: {item.resolutionReason}
+                      {t('bmc.resolutionPrefix', { reason: item.resolutionReason })}
                     </Text>
                     <Text style={[Typography.caption2, { color: '#15803D', marginTop: 2 }]}>
-                      Resolved by: {item.resolvedBy} on {item.resolvedAt?.split('T')[0]}
+                      {t('bmc.resolvedByOn', { by: item.resolvedBy || '', date: item.resolvedAt?.split('T')[0] || '' })}
                     </Text>
                   </View>
                 )}
@@ -183,7 +187,7 @@ export default function BMCInvestigationsScreen() {
               {/* Action Buttons */}
               <View style={styles.actionRow}>
                 <Button
-                  title="+ Add Note"
+                  title={t('bmc.addNote')}
                   variant="secondary"
                   size="sm"
                   onPress={() => {
@@ -196,7 +200,7 @@ export default function BMCInvestigationsScreen() {
                 {isOpen && (
                   <>
                     <Button
-                      title="Resolve Case"
+                      title={t('bmc.resolveCase')}
                       size="sm"
                       onPress={() => {
                         setSelectedCase(item);
@@ -206,7 +210,7 @@ export default function BMCInvestigationsScreen() {
                     />
 
                     <Button
-                      title="Escalate"
+                      title={t('bmc.escalate')}
                       variant="destructive"
                       size="sm"
                       onPress={() => {
@@ -229,12 +233,12 @@ export default function BMCInvestigationsScreen() {
           <Pressable style={styles.modalOverlay} onPress={() => setActiveModal(null)}>
             <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
               <View style={styles.modalHeader}>
-                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>Add Investigation Note</Text>
+                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>{t('bmc.addNoteModalTitle')}</Text>
                 <Pressable onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
               </View>
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>Investigation Finding / Observation *</Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>{t('bmc.findingLabel')}</Text>
               <TextInput
-                placeholder="e.g. Tanker valve seal re-inspected. Flow meter recalibration performed."
+                placeholder={t('bmc.findingPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={newNote}
                 onChangeText={setNewNote}
@@ -242,15 +246,15 @@ export default function BMCInvestigationsScreen() {
                 numberOfLines={3}
                 style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
               />
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>Evidence Reference (Optional)</Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4, marginTop: 10 }]}>{t('bmc.evidenceRefLabel')}</Text>
               <TextInput
-                placeholder="e.g. Seal Tag #TN59-001, Dipstick Slip #9921"
+                placeholder={t('bmc.evidenceRefPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={evidenceRef}
                 onChangeText={setEvidenceRef}
                 style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
               />
-              <Button title="Save Note to Case Log" onPress={handleAddNote} style={{ marginTop: 14 }} />
+              <Button title={t('bmc.saveNoteBtn')} onPress={handleAddNote} style={{ marginTop: 14 }} />
             </View>
           </Pressable>
         </Modal>
@@ -262,12 +266,12 @@ export default function BMCInvestigationsScreen() {
           <Pressable style={styles.modalOverlay} onPress={() => setActiveModal(null)}>
             <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
               <View style={styles.modalHeader}>
-                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>Resolve Discrepancy</Text>
+                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>{t('bmc.resolveModalTitle')}</Text>
                 <Pressable onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
               </View>
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>Formal Resolution Justification *</Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>{t('bmc.justificationLabel')}</Text>
               <TextInput
-                placeholder="e.g. Variance within normal 0.5% temperature expansion allowance. Society records confirmed."
+                placeholder={t('bmc.justificationPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={resolutionReason}
                 onChangeText={setResolutionReason}
@@ -275,7 +279,7 @@ export default function BMCInvestigationsScreen() {
                 numberOfLines={3}
                 style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
               />
-              <Button title="Close Discrepancy Case" onPress={handleResolveCase} style={{ marginTop: 14 }} />
+              <Button title={t('bmc.closeCaseBtn')} onPress={handleResolveCase} style={{ marginTop: 14 }} />
             </View>
           </Pressable>
         </Modal>
@@ -287,12 +291,12 @@ export default function BMCInvestigationsScreen() {
           <Pressable style={styles.modalOverlay} onPress={() => setActiveModal(null)}>
             <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
               <View style={styles.modalHeader}>
-                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>Escalate to Union GM</Text>
+                <Text style={[Typography.title2, { color: colors.text, fontWeight: '800' }]}>{t('bmc.escalateModalTitle')}</Text>
                 <Pressable onPress={() => setActiveModal(null)}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
               </View>
-              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>Escalation Directive / Concern *</Text>
+              <Text style={[Typography.caption1, { color: colors.textSecondary, marginBottom: 4 }]}>{t('bmc.escalationConcernLabel')}</Text>
               <TextInput
-                placeholder="e.g. Tanker seal tampered during transit. Unexplained 30L shortfall requires Union inquiry."
+                placeholder={t('bmc.escalationConcernPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={escalationReason}
                 onChangeText={setEscalationReason}
@@ -300,7 +304,7 @@ export default function BMCInvestigationsScreen() {
                 numberOfLines={3}
                 style={[styles.inputField, { color: colors.text, borderColor: colors.border }]}
               />
-              <Button title="Escalate to Union Executive" variant="destructive" onPress={handleEscalateCase} style={{ marginTop: 14 }} />
+              <Button title={t('bmc.escalateToExecutiveBtn')} variant="destructive" onPress={handleEscalateCase} style={{ marginTop: 14 }} />
             </View>
           </Pressable>
         </Modal>

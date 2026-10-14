@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -21,6 +22,7 @@ export default function BMCDashboard() {
     bmcReceipts 
   } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -44,7 +46,7 @@ export default function BMCDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title={bmc.name}
-        subtitle={`${assignedBooths.length} Feeder Societies • Capacity: ${bmc.capacityLitres.toLocaleString()} L`}
+        subtitle={t('bmc.feederSocietiesSubtitle', { count: assignedBooths.length, capacity: bmc.capacityLitres.toLocaleString() })}
       />
 
       <ScrollView 
@@ -57,14 +59,14 @@ export default function BMCDashboard() {
             <Ionicons name="time" size={24} color="#0284C7" />
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={[Typography.headline, { color: '#0369A1', fontWeight: '800' }]}>
-                {pendingArrivals.length} Society Delivery Awaiting Measurement
+                {pendingArrivals.length} {t('bmc.societyDeliveryAwaiting')}
               </Text>
               <Text style={[Typography.caption1, { color: '#0284C7', marginTop: 2 }]}>
-                {pendingArrivals[0].boothName} dispatched {pendingArrivals[0].declaredDispatchQuantity} L. Confirm arrival volume.
+                {t('bmc.societyDispatchedConfirm', { name: pendingArrivals[0].boothName, qty: pendingArrivals[0].declaredDispatchQuantity })}
               </Text>
             </View>
             <Button
-              title="Measure"
+              title={t('bmc.measure')}
               size="sm"
               onPress={() => router.push('/(bmc)/receive-milk')}
             />
@@ -77,14 +79,14 @@ export default function BMCDashboard() {
             <Ionicons name="alert-circle" size={24} color="#DC2626" />
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={[Typography.headline, { color: '#B91C1C', fontWeight: '800' }]}>
-                ⚠️ {openDiscrepancies.length} Active Discrepancy Case(s)
+                ⚠️ {openDiscrepancies.length} {t('bmc.activeDiscrepanciesTitle')}
               </Text>
               <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                Variance detected between Society dispatch receipt and BMC flow meter.
+                {t('bmc.varianceDetectedDesc')}
               </Text>
             </View>
             <Button
-              title="Audit"
+              title={t('bmc.audit')}
               variant="destructive"
               size="sm"
               onPress={() => router.push('/(bmc)/investigations')}
@@ -96,27 +98,27 @@ export default function BMCDashboard() {
         <View style={styles.heroNavyCard}>
           <View style={styles.heroCardHeaderRow}>
             <View style={styles.heroHeaderPill}>
-              <Text style={styles.heroHeaderPillText}>BMC Intake Volume ›</Text>
+              <Text style={styles.heroHeaderPillText}>{t('bmc.bmcIntakeVolume')} ›</Text>
             </View>
             <View style={[styles.heroStatusBadge, { backgroundColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
               <Text style={styles.heroStatusBadgeText}>
-                {stats.totalDifference > 0 ? '⚠️ VARIANCE DETECTED' : '✓ BALANCED'}
+                {stats.totalDifference > 0 ? `⚠️ ${t('bmc.varianceDetected')}` : `✓ ${t('bmc.balanced')}`}
               </Text>
             </View>
           </View>
 
           <Text style={styles.heroBalanceNumber}>
-            {stats.todayReceived.toFixed(1)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
+            {stats.todayReceived.toFixed(1)} <Text style={{ fontSize: 20, fontWeight: '600' }}>{t('common.litres')}</Text>
           </Text>
 
           <View style={styles.heroSubRow}>
             <View style={[styles.growthPill, { backgroundColor: stats.totalDifference > 0 ? 'rgba(220, 38, 38, 0.2)' : 'rgba(22, 163, 74, 0.2)' }]}>
               <Text style={[styles.growthPillText, { color: stats.totalDifference > 0 ? '#F87171' : '#4ADE80' }]}>
-                {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L Diff` : '100% Reconciled'}
+                {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L Diff` : t('bmc.reconciled100')}
               </Text>
             </View>
             <Text style={styles.heroSubText}>
-              Society Declared: {stats.todayDeclared.toFixed(1)} L
+              {t('bmc.societyDeclaredPrefix', { qty: stats.todayDeclared.toFixed(1) })}
             </Text>
           </View>
 
@@ -129,7 +131,7 @@ export default function BMCDashboard() {
               <View style={styles.circleBtn}>
                 <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
               </View>
-              <Text style={styles.circleBtnLabel}>Measure</Text>
+              <Text style={styles.circleBtnLabel}>{t('bmc.measure')}</Text>
             </Pressable>
 
             <Pressable 
@@ -139,7 +141,7 @@ export default function BMCDashboard() {
               <View style={styles.circleBtn}>
                 <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
               </View>
-              <Text style={styles.circleBtnLabel}>Summary</Text>
+              <Text style={styles.circleBtnLabel}>{t('bmc.summary')}</Text>
             </Pressable>
 
             <Pressable 
@@ -149,7 +151,7 @@ export default function BMCDashboard() {
               <View style={styles.circleBtn}>
                 <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
               </View>
-              <Text style={styles.circleBtnLabel}>Audit</Text>
+              <Text style={styles.circleBtnLabel}>{t('bmc.audit')}</Text>
             </Pressable>
 
             <Pressable 
@@ -159,7 +161,7 @@ export default function BMCDashboard() {
               <View style={styles.circleBtn}>
                 <Ionicons name="add" size={20} color="#FFFFFF" />
               </View>
-              <Text style={styles.circleBtnLabel}>Intake</Text>
+              <Text style={styles.circleBtnLabel}>{t('bmc.intake')}</Text>
             </Pressable>
           </View>
         </View>
@@ -169,31 +171,31 @@ export default function BMCDashboard() {
           {/* Declared vs Received */}
           <Card style={styles.metricCard}>
             <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
-              SOCIETY DECLARED
+              {t('bmc.societyDeclared')}
             </Text>
             <Text style={[styles.metricNumber, { color: colors.text }]}>
               {stats.todayDeclared.toFixed(1)} L
             </Text>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Total Feeder Dispatches
+              {t('bmc.totalFeederDispatches')}
             </Text>
           </Card>
 
           <Card style={styles.metricCard}>
             <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
-              BMC RECEIVED
+              {t('bmc.bmcReceived')}
             </Text>
             <Text style={[styles.metricNumber, { color: colors.primary }]}>
               {stats.todayReceived.toFixed(1)} L
             </Text>
             <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '600' }]}>
-              Actual Measured Vol
+              {t('bmc.actualMeasuredVolShort')}
             </Text>
           </Card>
 
           <Card style={styles.metricCard}>
             <Text style={[Typography.caption2, { color: '#DC2626', fontWeight: '700' }]}>
-              NET VARIANCE
+              {t('bmc.netVariance')}
             </Text>
             <Text 
               style={[
@@ -204,7 +206,7 @@ export default function BMCDashboard() {
               {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L` : '0.0 L'}
             </Text>
             <Text style={[Typography.caption2, { color: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
-              {stats.totalDifference > 0 ? 'Shortfall' : 'Balanced'}
+              {stats.totalDifference > 0 ? t('bmc.shortfall') : t('bmc.balancedState')}
             </Text>
           </Card>
         </View>
@@ -212,7 +214,7 @@ export default function BMCDashboard() {
         {/* Assigned Feeder Societies */}
         <Card style={styles.sectionCard}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 10 }]}>
-            Assigned Feeder Societies ({assignedBooths.length})
+            {t('bmc.assignedFeederSocieties', { count: assignedBooths.length })}
           </Text>
 
           {assignedBooths.map((b) => {
@@ -228,10 +230,10 @@ export default function BMCDashboard() {
                     {b.name}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Code: {b.code} • {b.village} • In-Charge: {b.operatorName}
+                    {t('bmc.code')}: {b.code} • {b.village} • {t('bmc.inCharge')}: {b.operatorName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Status: {boothDelivery ? (boothDelivery.status === 'pending_arrival' ? 'Awaiting Measurement' : `Measured (${boothDelivery.measuredReceivedQuantity}L)`) : 'No Dispatch Today'}
+                    {t('bmc.status')}: {boothDelivery ? (boothDelivery.status === 'pending_arrival' ? t('bmc.awaitingMeasurement') : t('bmc.measuredWithQty', { qty: boothDelivery.measuredReceivedQuantity ?? 0 })) : t('bmc.noDispatchToday')}
                   </Text>
                 </View>
 
@@ -246,17 +248,17 @@ export default function BMCDashboard() {
         {/* Quick Operations Actions */}
         <View style={styles.actionGrid}>
           <Button
-            title="📥 Confirm Milk Received (Intake)"
+            title={`📥 ${t('bmc.confirmMilkReceivedIntake')}`}
             size="lg"
             onPress={() => router.push('/(bmc)/receive-milk')}
           />
           <Button
-            title="🔍 View Discrepancies & Audit Cases"
+            title={`🔍 ${t('bmc.viewDiscrepanciesAudit')}`}
             variant="secondary"
             onPress={() => router.push('/(bmc)/investigations')}
           />
           <Button
-            title="📋 Close BMC Daily Receipt for Union"
+            title={`📋 ${t('bmc.closeBmcDailyReceipt')}`}
             variant="outline"
             onPress={() => router.push('/(bmc)/daily-summary')}
           />

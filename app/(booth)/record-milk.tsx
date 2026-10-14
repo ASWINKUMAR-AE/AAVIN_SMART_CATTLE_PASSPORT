@@ -11,8 +11,10 @@ import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 import { CollectionRoute, MeasurementMethod } from '../../types/aavin';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function RecordMilkScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { farmers, vendors, booths, recordMilk, cows } = useAavinStore();
   const { colors, isDark } = useTheme();
@@ -181,8 +183,8 @@ export default function RecordMilkScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <DemoHeader 
-        title="Record Milk Collection"
-        subtitle={`Milk Intake Station • ${booth.name}`}
+        title={t('booth.recordMilkTitle', 'Record Milk Collection')}
+        subtitle={t('booth.recordMilkSubtitle', { booth: booth.name }, `Milk Intake Station • ${booth.name}`)}
         showBack
       />
 
@@ -196,11 +198,11 @@ export default function RecordMilkScreen() {
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="options-outline" size={18} color={colors.primary} />
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 8 }]}>
-              Intake Measurement Mode
+              {t('booth.intakeMeasurementMode', 'Intake Measurement Mode')}
             </Text>
           </View>
           <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
-            Select direct individual producer weighing or consolidated route logistics batch
+            {t('booth.intakeModeDesc', 'Select direct individual producer weighing or consolidated route logistics batch')}
           </Text>
 
           <View style={styles.modeToggleRow}>
@@ -217,10 +219,10 @@ export default function RecordMilkScreen() {
             >
               <View style={styles.modeTextCol}>
                 <Text style={[Typography.subhead, { color: measurementMethod === 'farmer_wise' ? colors.primary : colors.text, fontWeight: '800', textAlign: 'center' }]}>
-                  Farmer-Wise
+                  {t('booth.farmerWise', 'Farmer-Wise')}
                 </Text>
                 <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 11, textAlign: 'center', marginTop: 3 }]}>
-                  Individual Weighing
+                  {t('booth.individualWeighing', 'Individual Weighing')}
                 </Text>
               </View>
             </Pressable>
@@ -238,10 +240,10 @@ export default function RecordMilkScreen() {
             >
               <View style={styles.modeTextCol}>
                 <Text style={[Typography.subhead, { color: measurementMethod === 'combined' ? colors.primary : colors.text, fontWeight: '800', textAlign: 'center' }]}>
-                  Combined Route
+                  {t('booth.combinedRoute', 'Combined Route')}
                 </Text>
                 <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 11, textAlign: 'center', marginTop: 3 }]}>
-                  Bulk Can Batch
+                  {t('booth.vendorBulkBatch', 'Bulk Can Batch')}
                 </Text>
               </View>
             </Pressable>
@@ -264,14 +266,14 @@ export default function RecordMilkScreen() {
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="person-circle-outline" size={18} color={colors.primary} />
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 8 }]}>
-                Selected Milk Producer
+                {t('booth.producerSelection', 'Selected Milk Producer')}
               </Text>
               <Pressable 
                 onPress={() => setShowFarmerSelector(!showFarmerSelector)}
                 style={styles.changeProducerLink}
               >
                 <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800' }]}>
-                  {showFarmerSelector ? 'Close List' : 'Change Producer ▾'}
+                  {showFarmerSelector ? t('common.close', 'Close List') : t('booth.selectProducerPrompt', 'Change Producer ▾')}
                 </Text>
               </Pressable>
             </View>
@@ -318,7 +320,7 @@ export default function RecordMilkScreen() {
                     <View style={styles.metaIconText}>
                       <Ionicons name="paw-outline" size={12} color={colors.textSecondary} />
                       <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 3 }]}>
-                        {selectedFarmer.numberOfCows} Cattle
+                        {selectedFarmer.numberOfCows} {t('farmer.cows', 'Cattle')}
                       </Text>
                     </View>
                     <Text style={styles.metaDot}>•</Text>
@@ -334,7 +336,7 @@ export default function RecordMilkScreen() {
                 {/* Right Action Badge / Chevron Indicator */}
                 <View style={[styles.changeFarmerActionPill, { backgroundColor: showFarmerSelector ? colors.primaryLight : (isDark ? '#334155' : '#E0F2FE') }]}>
                   <Text style={[styles.changeFarmerActionText, { color: colors.primary }]}>
-                    {showFarmerSelector ? 'Close' : 'Change'}
+                    {showFarmerSelector ? t('common.close', 'Close') : t('common.edit', 'Change')}
                   </Text>
                   <Ionicons 
                     name={showFarmerSelector ? "chevron-up" : "chevron-forward"} 
@@ -352,7 +354,7 @@ export default function RecordMilkScreen() {
                 <View style={[styles.farmerSearchInputRow, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9', borderColor: colors.border }]}>
                   <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
                   <TextInput
-                    placeholder="Search by name, ID code, or village..."
+                    placeholder={t('booth.searchFarmersPlaceholder', 'Search by name, ID code, or village...')}
                     placeholderTextColor={colors.textMuted}
                     value={farmerSearch}
                     onChangeText={setFarmerSearch}
@@ -399,7 +401,7 @@ export default function RecordMilkScreen() {
                             </Text>
                           </View>
                           <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                            {f.village} • {f.numberOfCows} Cows • +91 {f.mobileNumber}
+                            {f.village} • {f.numberOfCows} {t('farmer.cows', 'Cows')} • +91 {f.mobileNumber}
                           </Text>
                         </View>
                       </Pressable>
@@ -417,7 +419,7 @@ export default function RecordMilkScreen() {
                 </View>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={[Typography.caption1, { color: '#B91C1C', fontWeight: '900' }]}>
-                    SAFETY WITHDRAWAL HOLD: ACTIVE MEDICINE
+                    {t('booth.activeWithdrawalHold', 'SAFETY WITHDRAWAL HOLD: ACTIVE MEDICINE')}
                   </Text>
                   <Text style={[Typography.caption2, { color: '#991B1B', marginTop: 2, lineHeight: 16 }]}>
                     Cow "{cowWithWithdrawal.name}" (Tag #{cowWithWithdrawal.tagId}) is under antibiotic withdrawal hold. Ensure milk from this animal was segregated and NOT included in this batch!
@@ -431,7 +433,7 @@ export default function RecordMilkScreen() {
               <View style={styles.routeHeaderRow}>
                 <Ionicons name="navigate-outline" size={16} color={colors.primary} />
                 <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 6 }]}>
-                  Delivery Handover Method
+                  {t('booth.intakeMeasurementMode', 'Delivery Handover Method')}
                 </Text>
               </View>
               <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
@@ -451,7 +453,7 @@ export default function RecordMilkScreen() {
                 >
                   <View style={styles.routeBtnTextCol}>
                     <Text style={[styles.routeToggleBtnText, { color: route === 'direct' ? colors.primary : colors.text }]}>
-                      Direct Producer Supply
+                      {t('booth.directFarmerMeasurement', 'Direct Producer Supply')}
                     </Text>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 10, textAlign: 'center', marginTop: 2 }]}>
                       Producer Handover
@@ -471,7 +473,7 @@ export default function RecordMilkScreen() {
                 >
                   <View style={styles.routeBtnTextCol}>
                     <Text style={[styles.routeToggleBtnText, { color: route === 'vendor' ? colors.primary : colors.text }]}>
-                      Route Transport Vehicle
+                      {t('booth.vendorCombined', 'Route Transport Vehicle')}
                     </Text>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontSize: 10, textAlign: 'center', marginTop: 2 }]}>
                       Vendor Can Route
@@ -564,7 +566,7 @@ export default function RecordMilkScreen() {
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="water" size={18} color="#0072BC" />
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 8 }]}>
-              Milk Intake Volume
+              {t('booth.measuredVolume', 'Milk Intake Volume')}
             </Text>
           </View>
           <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10 }]}>
@@ -584,7 +586,7 @@ export default function RecordMilkScreen() {
             />
             <View style={styles.volumeUnitTag}>
               <Ionicons name="water-outline" size={14} color="#0284C7" />
-              <Text style={styles.volumeUnitTagText}>LITRES (L)</Text>
+              <Text style={styles.volumeUnitTagText}>{t('booth.litres', 'LITRES (L)')}</Text>
             </View>
           </View>
 
@@ -651,7 +653,7 @@ export default function RecordMilkScreen() {
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="time-outline" size={18} color={colors.primary} />
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 8 }]}>
-              Intake Shift & Session
+              {t('farmer.sessionAndYieldHeader', 'Intake Shift & Session')}
             </Text>
           </View>
 
@@ -672,7 +674,7 @@ export default function RecordMilkScreen() {
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={[Typography.subhead, { color: session === 'morning' ? '#92400E' : colors.text, fontWeight: '800' }]}>
-                  Morning Shift
+                  {t('booth.morningSession', 'Morning Shift')}
                 </Text>
                 <Text style={[Typography.caption2, { color: session === 'morning' ? '#B45309' : colors.textSecondary }]}>
                   காலை • 06:00 - 09:30 AM
@@ -701,7 +703,7 @@ export default function RecordMilkScreen() {
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={[Typography.subhead, { color: session === 'evening' ? '#3730A3' : colors.text, fontWeight: '800' }]}>
-                  Evening Shift
+                  {t('booth.eveningSession', 'Evening Shift')}
                 </Text>
                 <Text style={[Typography.caption2, { color: session === 'evening' ? '#4338CA' : colors.textSecondary }]}>
                   மாலை • 04:30 - 07:30 PM
@@ -719,14 +721,14 @@ export default function RecordMilkScreen() {
         {/* 5. Date & Operator Remarks Card */}
         <Card style={styles.sectionCard}>
           <TextField
-            label="Collection Date (YYYY-MM-DD)"
+            label={t('common.date', 'Collection Date (YYYY-MM-DD)')}
             value={collectionDate}
             onChangeText={setCollectionDate}
             icon="calendar-outline"
           />
 
           <TextField
-            label="Operator Notes (Optional)"
+            label={t('farmer.observationFieldLabel', 'Operator Notes (Optional)')}
             placeholder="e.g. Can #4 inspected, lactometer 1.028, FAT/SNF passed"
             value={notes}
             onChangeText={setNotes}
@@ -741,7 +743,7 @@ export default function RecordMilkScreen() {
             <View style={styles.livePreviewHeader}>
               <Ionicons name="calculator-outline" size={16} color="#15803D" />
               <Text style={[Typography.caption2, { color: '#166534', fontWeight: '800', marginLeft: 6 }]}>
-                INTAKE AUDIT & ESTIMATED VALUE
+                {t('booth.estimatedPayoutLabel', 'INTAKE AUDIT & ESTIMATED VALUE')}
               </Text>
             </View>
 
@@ -777,7 +779,7 @@ export default function RecordMilkScreen() {
         {/* 7. Action Buttons */}
         <View style={styles.actionsContainer}>
           <Button
-            title={submitting ? "Saving Intake Entry..." : "Submit Milk Intake Record"}
+            title={submitting ? t('booth.savingEntryBtn', 'Saving Milk Entry...') : t('booth.saveMilkEntryBtn', 'Save Milk Collection Entry')}
             size="lg"
             loading={submitting}
             onPress={handleSubmit}
@@ -786,7 +788,7 @@ export default function RecordMilkScreen() {
           />
 
           <Button
-            title="Review Daily Collection Ledger"
+            title={t('booth.reviewCollection', 'Review Daily Collection Ledger')}
             variant="outline"
             onPress={() => router.push('/(booth)/review-collection')}
             style={{ marginTop: 10, marginBottom: 28 }}

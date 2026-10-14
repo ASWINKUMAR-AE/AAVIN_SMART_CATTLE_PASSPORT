@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, View, Text, ScrollView, FlatList } from 'react-native';
+import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from '../../context/LanguageContext';
 import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
@@ -12,6 +13,7 @@ export default function FarmerPaymentsScreen() {
   const { user } = useAuth();
   const { milkRecords, farmers } = useAavinStore();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const farmerId = user?.associatedId || 'FARMER001';
   const farmer = farmers.find(f => f.id === farmerId) || farmers[0];
@@ -24,8 +26,8 @@ export default function FarmerPaymentsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Payment & Passbook"
-        subtitle={`DBT Bank: ${farmer.bankName || 'Canara Bank'} • Direct Ledger`}
+        title={t('farmer.receiptsAndPassbook', 'Payment & Passbook')}
+        subtitle={t('farmer.dbtBankSubtitle', { bank: farmer.bankName || 'Canara Bank' }, `DBT Bank: ${farmer.bankName || 'Canara Bank'} • Direct Ledger`)}
         showBack
       />
 
@@ -33,19 +35,19 @@ export default function FarmerPaymentsScreen() {
         {/* Total Earned Card */}
         <Card style={styles.card}>
           <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-            ESTIMATED OCTOBER PROCUREMENT PAYOUT
+            {t('farmer.estimatedProcurementPayout', 'ESTIMATED OCTOBER PROCUREMENT PAYOUT')}
           </Text>
           <Text style={[styles.bigAmount, { color: colors.text }]}>
             ₹{totalAmount.toFixed(2)}
           </Text>
           <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-            Total Supplied: {totalLitres.toFixed(2)} L @ ₹{baseRate.toFixed(2)} / Litre
+            {t('farmer.totalSuppliedAtRate', { litres: totalLitres.toFixed(2), rate: baseRate.toFixed(2) }, `Total Supplied: ${totalLitres.toFixed(2)} L @ ₹${baseRate.toFixed(2)} / Litre`)}
           </Text>
 
           <View style={[styles.dbtBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
             <Ionicons name="shield-checkmark" size={16} color="#16A34A" />
             <Text style={[Typography.caption2, { color: '#166534', fontWeight: '700', marginLeft: 6 }]}>
-              DBT Account: {farmer.bankAccountNumber || '•••• 6501'} (IFSC: {farmer.bankIfsc || 'CNRB0001092'})
+              {t('farmer.dbtAccount', { account: farmer.bankAccountNumber || '•••• 6501', ifsc: farmer.bankIfsc || 'CNRB0001092' }, `DBT Account: ${farmer.bankAccountNumber || '•••• 6501'} (IFSC: ${farmer.bankIfsc || 'CNRB0001092'})`)}
             </Text>
           </View>
         </Card>
@@ -53,19 +55,21 @@ export default function FarmerPaymentsScreen() {
         {/* Transaction Passbook */}
         <Card style={styles.card}>
           <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-            Milk Supply Credit Ledger
+            {t('farmer.creditLedgerTitle', 'Milk Supply Credit Ledger')}
           </Text>
 
           {myRecords.map((r) => {
             const amount = r.quantityLitres * baseRate;
+            const sessionName = t(`farmer.sessions.${r.session}`, r.session).toUpperCase();
+
             return (
               <View key={r.id} style={[styles.ledgerRow, { borderBottomColor: colors.border }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                    {r.collectionDate} • {r.session.toUpperCase()}
+                    {r.collectionDate} • {sessionName}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    {r.quantityLitres.toFixed(2)} L supplied @ ₹{baseRate}/L
+                    {t('farmer.suppliedAtRate', { litres: r.quantityLitres.toFixed(2), rate: baseRate }, `${r.quantityLitres.toFixed(2)} L supplied @ ₹${baseRate}/L`)}
                   </Text>
                 </View>
 
@@ -74,7 +78,7 @@ export default function FarmerPaymentsScreen() {
                     +₹{amount.toFixed(2)}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    {r.receiptId ? 'Verified' : 'Calculated'}
+                    {r.receiptId ? t('farmer.verified', 'Verified') : t('farmer.calculated', 'Calculated')}
                   </Text>
                 </View>
               </View>
