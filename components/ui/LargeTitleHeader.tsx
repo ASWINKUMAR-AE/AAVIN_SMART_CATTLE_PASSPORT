@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTranslation } from '../../context/LanguageContext';
+import { IndicTransLanguageSwitch } from './IndicTransLanguageSwitch';
 
 interface LargeTitleHeaderProps {
   title: string;
@@ -51,18 +52,7 @@ export const LargeTitleHeader: React.FC<LargeTitleHeaderProps> = ({
         </View>
         <View style={styles.actionsRow}>
           {showLanguageSwitch && (
-            <Pressable
-              onPress={toggleLanguage}
-              style={[
-                styles.langPill,
-                { backgroundColor: colors.skyBlueLight, borderColor: colors.border }
-              ]}
-              accessibilityLabel="Switch Language between English and Tamil"
-            >
-              <Text style={[Typography.caption2, { color: colors.primaryDark, fontWeight: '800' }]}>
-                {language === 'en' ? '🌐 தமிழ்' : '🌐 EN'}
-              </Text>
-            </Pressable>
+            <IndicTransLanguageSwitch variant="compact" />
           )}
           {rightActions && rightActions.map((action, idx) => (
             <Pressable
