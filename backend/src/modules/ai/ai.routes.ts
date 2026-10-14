@@ -10,6 +10,7 @@ router.post('/chat', authenticate, aiRateLimiter, AIController.chat);
 router.post('/cow-summary', authenticate, aiRateLimiter, AIController.cowSummary);
 router.post('/production-insights', authenticate, aiRateLimiter, AIController.productionInsights);
 router.post('/quality-summary', authenticate, aiRateLimiter, AIController.qualitySummary);
+router.post('/translate', aiRateLimiter, AIController.translate);
 
 // Admin AI endpoints
 router.get('/admin/config', authenticate, authorizeRoles('admin'), AIController.getConfig);

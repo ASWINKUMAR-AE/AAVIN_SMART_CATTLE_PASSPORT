@@ -168,4 +168,25 @@ export class AIController {
       return sendError(res, err.message);
     }
   }
+
+  static async translate(req: Request, res: Response) {
+    try {
+      const { text, sourceLanguage, targetLanguage } = req.body;
+      if (!text || typeof text !== 'string') {
+        return sendError(res, 'Text is required for translation', 400);
+      }
+
+      const { IndicTrans2BackendService } = await import('./indictrans2.service.js');
+      const result = await IndicTrans2BackendService.translate(
+        text,
+        sourceLanguage,
+        targetLanguage
+      );
+
+      return sendSuccess(res, result, 'Translation completed via IndicTrans2');
+    } catch (err: any) {
+      return sendError(res, err.message || 'Translation failed', 500);
+    }
+  }
 }
+

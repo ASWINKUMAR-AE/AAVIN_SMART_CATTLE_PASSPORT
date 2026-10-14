@@ -10,6 +10,7 @@ import { DemoHeader } from './DemoHeader';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { IndicTransLanguageSwitch } from './ui/IndicTransLanguageSwitch';
 
 interface RoleProfileScreenProps {
   roleTitle: string;
@@ -135,32 +136,8 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
           </Card>
         )}
 
-        {/* App Settings Card */}
-        <Card style={styles.card}>
-          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', marginBottom: 12 }]}>
-            Application Preferences
-          </Text>
-
-          <View style={[styles.row, { paddingVertical: 8 }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
-                {t('common.language', 'Language')}
-              </Text>
-              <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-                {language === 'ta' ? 'தமிழ் (Tamil)' : 'English'}
-              </Text>
-            </View>
-            <Pressable
-              style={[styles.langBtn, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
-              onPress={toggleLanguage}
-            >
-              <Ionicons name="language" size={16} color={colors.primary} />
-              <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700', marginLeft: 6 }]}>
-                {language === 'ta' ? 'Switch to English' : 'தமிழுக்கு மாறுக'}
-              </Text>
-            </Pressable>
-          </View>
-        </Card>
+        {/* AI4Bharat IndicTrans2 Language Switcher */}
+        <IndicTransLanguageSwitch variant="expanded" />
 
         {/* Quick Demo Role Switcher */}
         <Card style={styles.card}>
