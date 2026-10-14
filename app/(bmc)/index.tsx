@@ -21,7 +21,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 
-type SocietyFilter = 'all' | 'active' | 'inactive' | 'pending' | 'submitted' | 'discrepancy';
+type SocietyFilter = 'all' | 'active' | 'inactive' | 'pending' | 'submitted' | 'discrepancy' | 'high_yield' | 'low_yield';
+type SocietySort = 'milk_desc' | 'milk_asc' | 'alpha_asc' | 'discrepancy';
 
 export default function BMCDashboard() {
   const { user } = useAuth();
@@ -47,9 +48,23 @@ export default function BMCDashboard() {
     ? (isWebOrDesktop ? 'calc(25% - 8px)' : 'calc(50% - 6px)')
     : Math.floor((width - 32 - (numCols - 1) * 10) / numCols)) as any;
 
+  // Responsive grid layout for feeder society cards: 1 col mobile, 2 col tablet, 3 col desktop
+  const isDesktop = width >= 1150;
+  const isTablet = width >= 720 && width < 1150;
+  const societyCardWidth = (isWeb
+    ? (isDesktop ? 'calc(33.333% - 8px)' : (isTablet ? 'calc(50% - 6px)' : '100%'))
+    : (isDesktop ? Math.floor((width - 32 - 16) / 3) : (isTablet ? Math.floor((width - 32 - 12) / 2) : '100%'))) as any;
+
+  // Compact summary card width: 4 cols on desktop/tablet, 2 cols on mobile
+  const summaryMetricWidth = (isWeb
+    ? (width >= 850 ? 'calc(25% - 9px)' : 'calc(50% - 6px)')
+    : (width >= 850 ? Math.floor((width - 32 - 27) / 4) : Math.floor((width - 32 - 10) / 2))) as any;
+
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [societyFilter, setSocietyFilter] = useState<SocietyFilter>('all');
+  const [selectedVillage, setSelectedVillage] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SocietySort>('milk_desc');
 
   const bmcId = user?.associatedId || 'BMC001';
   const bmc = bmcs.find(b => b.id === bmcId) || bmcs[0];
@@ -83,17 +98,25 @@ export default function BMCDashboard() {
     });
   }, [assignedBooths, deliveries, getSocietyDetailedStats]);
 
+  const villages = useMemo(() => {
+    return Array.from(new Set(assignedBooths.map(b => b.village).filter(Boolean)));
+  }, [assignedBooths]);
+
   const filteredSocieties = useMemo(() => {
-    return processedSocieties.filter(s => {
+    let result = processedSocieties.filter(s => {
       // Search
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         s.name.toLowerCase().includes(q) || 
         s.code.toLowerCase().includes(q) || 
         s.village.toLowerCase().includes(q) ||
+        s.taluk.toLowerCase().includes(q) ||
         s.id.toLowerCase().includes(q);
 
       if (!matchesSearch) return false;
+
+      // Location / Village filter
+      if (selectedVillage !== 'all' && s.village !== selectedVillage) return false;
 
       // Filter chips
       if (societyFilter === 'active') return s.detail.isActive;
@@ -101,10 +124,26 @@ export default function BMCDashboard() {
       if (societyFilter === 'pending') return s.hasPendingDelivery;
       if (societyFilter === 'submitted') return s.isSubmitted;
       if (societyFilter === 'discrepancy') return s.hasDiscrepancy;
+      if (societyFilter === 'high_yield') return s.detail.dailyMilk >= 400;
+      if (societyFilter === 'low_yield') return s.detail.dailyMilk < 400;
 
       return true;
     });
-  }, [processedSocieties, searchQuery, societyFilter]);
+
+    // Sorting
+    result.sort((a, b) => {
+      if (sortBy === 'milk_desc') return b.detail.dailyMilk - a.detail.dailyMilk;
+      if (sortBy === 'milk_asc') return a.detail.dailyMilk - b.detail.dailyMilk;
+      if (sortBy === 'alpha_asc') return a.name.localeCompare(b.name);
+      if (sortBy === 'discrepancy') {
+        return (b.detail.unresolvedDiscrepanciesCount - a.detail.unresolvedDiscrepanciesCount) ||
+               (Math.abs(b.detail.differenceLitres) - Math.abs(a.detail.differenceLitres));
+      }
+      return 0;
+    });
+
+    return result;
+  }, [processedSocieties, searchQuery, selectedVillage, societyFilter, sortBy]);
 
   // Operations & Governance Overview: dynamic n-cards configuration
   interface OverviewCardItem {
@@ -363,23 +402,102 @@ export default function BMCDashboard() {
           ))}
         </View>
 
-        {/* Section 3: Requirement #3 — Society Management Directory */}
+        {/* Section 3: Redesigned Assigned Feeder Societies Directory */}
         <View style={styles.sectionHeaderWithAction}>
           <View>
             <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-              🏢 Assigned Feeder Societies ({assignedBooths.length})
+              🏢 Assigned Feeder Societies
             </Text>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Search, filter and inspect society dashboards
+              Real-time intake tracking, reconciliation, and financial status for assigned cooperatives
             </Text>
           </View>
 
-          <Button
-            title="+ Record Income"
-            size="sm"
-            variant="outline"
-            onPress={() => router.push('/(bmc)/society-income')}
-          />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Button
+              title="📊 Compare"
+              size="sm"
+              variant="outline"
+              onPress={() => router.push('/(bmc)/society-comparison')}
+            />
+            <Button
+              title="+ Income"
+              size="sm"
+              variant="outline"
+              onPress={() => router.push('/(bmc)/society-income')}
+            />
+          </View>
+        </View>
+
+        {/* 4 Compact Summary Cards */}
+        <View style={styles.compactSummaryGrid}>
+          <Pressable 
+            style={[styles.compactSummaryCardWrapper, { width: summaryMetricWidth }]}
+            onPress={() => setSocietyFilter('all')}
+          >
+            <Card style={[styles.compactSummaryCard, societyFilter === 'all' && { borderColor: colors.primary }]}>
+              <View style={styles.compactSummaryCardTop}>
+                <Ionicons name="business" size={16} color={colors.primary} />
+                <View style={[styles.pillBadge, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.pillText, { color: colors.primary }]}>Total</Text>
+                </View>
+              </View>
+              <Text style={[styles.compactSummaryValue, { color: colors.text }]}>{assignedBooths.length}</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '600' }]}>Assigned Societies</Text>
+            </Card>
+          </Pressable>
+
+          <Pressable 
+            style={[styles.compactSummaryCardWrapper, { width: summaryMetricWidth }]}
+            onPress={() => setSocietyFilter('active')}
+          >
+            <Card style={[styles.compactSummaryCard, societyFilter === 'active' && { borderColor: '#16A34A' }]}>
+              <View style={styles.compactSummaryCardTop}>
+                <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+                <View style={[styles.pillBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <Text style={[styles.pillText, { color: '#166534' }]}>{stats.inactiveBoothsCount} inactive</Text>
+                </View>
+              </View>
+              <Text style={[styles.compactSummaryValue, { color: '#16A34A' }]}>{stats.activeBoothsCount}</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '600' }]}>Active Societies</Text>
+            </Card>
+          </Pressable>
+
+          <Pressable 
+            style={[styles.compactSummaryCardWrapper, { width: summaryMetricWidth }]}
+            onPress={() => setSocietyFilter('pending')}
+          >
+            <Card style={[styles.compactSummaryCard, societyFilter === 'pending' && { borderColor: '#D97706' }]}>
+              <View style={styles.compactSummaryCardTop}>
+                <Ionicons name="hourglass" size={16} color="#D97706" />
+                <View style={[styles.pillBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <Text style={[styles.pillText, { color: '#B45309' }]}>Awaiting</Text>
+                </View>
+              </View>
+              <Text style={[styles.compactSummaryValue, { color: '#D97706' }]}>{stats.pendingDeliveriesCount}</Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '600' }]}>Reports Pending</Text>
+            </Card>
+          </Pressable>
+
+          <Pressable 
+            style={[styles.compactSummaryCardWrapper, { width: summaryMetricWidth }]}
+            onPress={() => setSocietyFilter('discrepancy')}
+          >
+            <Card style={[styles.compactSummaryCard, societyFilter === 'discrepancy' && { borderColor: '#DC2626' }]}>
+              <View style={styles.compactSummaryCardTop}>
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                <View style={[styles.pillBadge, { backgroundColor: stats.totalDifference > 0 ? '#FEE2E2' : '#DCFCE7' }]}>
+                  <Text style={[styles.pillText, { color: stats.totalDifference > 0 ? '#991B1B' : '#166534' }]}>
+                    {stats.totalDifference > 0 ? `${stats.totalDifference.toFixed(1)}L var` : 'Reconciled'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.compactSummaryValue, { color: stats.activeDiscrepanciesCount > 0 ? '#DC2626' : '#16A34A' }]}>
+                {stats.activeDiscrepanciesCount}
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '600' }]}>Discrepancy Review</Text>
+            </Card>
+          </Pressable>
         </View>
 
         {/* Search Bar */}
@@ -387,7 +505,7 @@ export default function BMCDashboard() {
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search by Society Name, Code, ID, or Village..."
+            placeholder="Search by society name, code, unique ID, or village..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -399,154 +517,289 @@ export default function BMCDashboard() {
           ) : null}
         </View>
 
-        {/* Filter Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsContainer}>
-          {[
-            { id: 'all', label: `All (${assignedBooths.length})` },
-            { id: 'active', label: `Active (${stats.activeBoothsCount})` },
-            { id: 'inactive', label: `Inactive (${stats.inactiveBoothsCount})` },
-            { id: 'pending', label: `Reports Pending (${stats.pendingDeliveriesCount})` },
-            { id: 'submitted', label: `Submitted Today` },
-            { id: 'discrepancy', label: `Discrepancies (${stats.activeDiscrepanciesCount})` },
-          ].map(f => {
-            const isActive = societyFilter === f.id;
-            return (
+        {/* Location / Village Filter Pills */}
+        {villages.length > 0 && (
+          <View style={styles.filterGroupRow}>
+            <Text style={[Typography.caption2, { color: colors.textMuted, fontWeight: '700', alignSelf: 'center', marginRight: 4 }]}>
+              LOCATION:
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsContainer}>
               <Pressable
-                key={f.id}
                 style={[
                   styles.filterPill,
-                  isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  !isActive && { backgroundColor: colors.card, borderColor: colors.border }
+                  selectedVillage === 'all' && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  selectedVillage !== 'all' && { backgroundColor: colors.card, borderColor: colors.border }
                 ]}
-                onPress={() => setSocietyFilter(f.id as SocietyFilter)}
+                onPress={() => setSelectedVillage('all')}
               >
-                <Text style={[
-                  Typography.caption2,
-                  { fontWeight: '700' },
-                  isActive ? { color: '#FFFFFF' } : { color: colors.textSecondary }
-                ]}>
-                  {f.label}
+                <Text style={[Typography.caption2, { fontWeight: '700' }, selectedVillage === 'all' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                  All Locations ({assignedBooths.length})
                 </Text>
               </Pressable>
-            );
-          })}
-        </ScrollView>
+              {villages.map(v => {
+                const count = assignedBooths.filter(b => b.village === v).length;
+                const isSelected = selectedVillage === v;
+                return (
+                  <Pressable
+                    key={v}
+                    style={[
+                      styles.filterPill,
+                      isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      !isSelected && { backgroundColor: colors.card, borderColor: colors.border }
+                    ]}
+                    onPress={() => setSelectedVillage(isSelected ? 'all' : v)}
+                  >
+                    <Text style={[Typography.caption2, { fontWeight: '700' }, isSelected ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                      📍 {v} ({count})
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
-        {/* Societies List */}
+        {/* Status / Category Filter Pills */}
+        <View style={styles.filterGroupRow}>
+          <Text style={[Typography.caption2, { color: colors.textMuted, fontWeight: '700', alignSelf: 'center', marginRight: 4 }]}>
+            STATUS:
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsContainer}>
+            {[
+              { id: 'all', label: `All (${assignedBooths.length})` },
+              { id: 'active', label: `Active (${stats.activeBoothsCount})` },
+              { id: 'inactive', label: `Inactive (${stats.inactiveBoothsCount})` },
+              { id: 'pending', label: `Reports Pending (${stats.pendingDeliveriesCount})` },
+              { id: 'submitted', label: `Submitted Today` },
+              { id: 'discrepancy', label: `Discrepancies (${stats.activeDiscrepanciesCount})` },
+              { id: 'high_yield', label: `High Yield (≥400L)` },
+              { id: 'low_yield', label: `Low Yield (<400L)` },
+            ].map(f => {
+              const isActive = societyFilter === f.id;
+              return (
+                <Pressable
+                  key={f.id}
+                  style={[
+                    styles.filterPill,
+                    isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    !isActive && { backgroundColor: colors.card, borderColor: colors.border }
+                  ]}
+                  onPress={() => setSocietyFilter(f.id as SocietyFilter)}
+                >
+                  <Text style={[
+                    Typography.caption2,
+                    { fontWeight: '700' },
+                    isActive ? { color: '#FFFFFF' } : { color: colors.textSecondary }
+                  ]}>
+                    {f.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Sort Controls & Active Results Summary */}
+        <View style={styles.sortAndCountRow}>
+          <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
+            Showing {filteredSocieties.length} of {assignedBooths.length} societies
+            {(searchQuery || societyFilter !== 'all' || selectedVillage !== 'all') ? ' (Filtered)' : ''}
+          </Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[Typography.caption2, { color: colors.textMuted }]}>Sort:</Text>
+            <Pressable
+              style={[styles.sortButton, sortBy === 'milk_desc' && styles.sortButtonActive]}
+              onPress={() => setSortBy('milk_desc')}
+            >
+              <Text style={[styles.sortButtonText, sortBy === 'milk_desc' && styles.sortButtonTextActive]}>Milk ↓</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sortButton, sortBy === 'milk_asc' && styles.sortButtonActive]}
+              onPress={() => setSortBy('milk_asc')}
+            >
+              <Text style={[styles.sortButtonText, sortBy === 'milk_asc' && styles.sortButtonTextActive]}>Milk ↑</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sortButton, sortBy === 'alpha_asc' && styles.sortButtonActive]}
+              onPress={() => setSortBy('alpha_asc')}
+            >
+              <Text style={[styles.sortButtonText, sortBy === 'alpha_asc' && styles.sortButtonTextActive]}>A-Z</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sortButton, sortBy === 'discrepancy' && styles.sortButtonActive]}
+              onPress={() => setSortBy('discrepancy')}
+            >
+              <Text style={[styles.sortButtonText, sortBy === 'discrepancy' && styles.sortButtonTextActive]}>Discrepancy</Text>
+            </Pressable>
+
+            {(searchQuery || societyFilter !== 'all' || selectedVillage !== 'all') && (
+              <Pressable 
+                onPress={() => { setSearchQuery(''); setSocietyFilter('all'); setSelectedVillage('all'); setSortBy('milk_desc'); }}
+                style={styles.clearFilterButton}
+              >
+                <Text style={styles.clearFilterText}>Reset</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Responsive Societies Grid */}
         {filteredSocieties.length === 0 ? (
           <Card style={styles.emptyCard}>
-            <Ionicons name="search-outline" size={36} color={colors.textMuted} />
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginTop: 8 }]}>
+            <Ionicons name="search-outline" size={40} color={colors.textMuted} />
+            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginTop: 10 }]}>
               No Societies Found
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-              No assigned feeder societies match the query "{searchQuery}" and active filter.
+            <Text style={[Typography.caption2, { color: colors.textSecondary, textAlign: 'center', marginTop: 4, maxWidth: 360 }]}>
+              No assigned feeder societies match your search query "{searchQuery}" or the active filters.
             </Text>
             <Button
-              title="Reset Filters"
+              title="Reset All Filters"
               size="sm"
               variant="outline"
-              style={{ marginTop: 12 }}
-              onPress={() => { setSearchQuery(''); setSocietyFilter('all'); }}
+              style={{ marginTop: 14 }}
+              onPress={() => { setSearchQuery(''); setSocietyFilter('all'); setSelectedVillage('all'); setSortBy('milk_desc'); }}
             />
           </Card>
         ) : (
-          filteredSocieties.map((society) => {
-            const detail = society.detail;
-            return (
-              <Pressable
-                key={society.id}
-                onPress={() => router.push({ pathname: '/(bmc)/society-details', params: { societyId: society.id } })}
-              >
-                <Card style={styles.societyCard}>
-                  {/* Card Header */}
-                  <View style={styles.societyCardHeader}>
-                    <View style={[styles.societyIconBadge, { backgroundColor: colors.primaryLight }]}>
-                      <Ionicons name="business" size={20} color={colors.primary} />
-                    </View>
+          <View style={styles.societiesGrid}>
+            {filteredSocieties.map((society) => {
+              const detail = society.detail;
+              return (
+                <View key={society.id} style={[styles.societyCardWrapper, { width: societyCardWidth }]}>
+                  <Pressable
+                    style={{ flex: 1 }}
+                    onPress={() => router.push({ pathname: '/(bmc)/societies/[societyId]', params: { societyId: society.id } })}
+                  >
+                    <Card style={styles.societyCard}>
+                      {/* Card Header: Icon, Name, Status Badge */}
+                      <View style={styles.societyCardHeader}>
+                        <View style={[styles.societyIconBadge, { backgroundColor: colors.primaryLight }]}>
+                          <Ionicons name="business" size={20} color={colors.primary} />
+                        </View>
 
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <View style={styles.societyNameRow}>
-                        <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
-                          {society.name}
-                        </Text>
-                        <View style={[styles.statusBadge, { 
-                          backgroundColor: detail.isActive ? '#DCFCE7' : '#F1F5F9' 
-                        }]}>
-                          <Text style={[styles.statusText, { 
-                            color: detail.isActive ? '#166534' : '#64748B' 
-                          }]}>
-                            {detail.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <View style={styles.societyNameRow}>
+                            <Text style={[Typography.headline, { color: colors.text, fontWeight: '800', flex: 1 }]} numberOfLines={1}>
+                              {society.name}
+                            </Text>
+                            <View style={[styles.statusBadge, { 
+                              backgroundColor: detail.isActive ? '#DCFCE7' : '#F1F5F9' 
+                            }]}>
+                              <Text style={[styles.statusText, { 
+                                color: detail.isActive ? '#166534' : '#64748B' 
+                              }]}>
+                                {detail.isActive ? 'ACTIVE' : 'INACTIVE'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                            <View style={styles.idChip}>
+                              <Text style={styles.idChipText}>ID: {society.id}</Text>
+                            </View>
+                            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                              Code: {society.code} • 📍 {society.village}, {society.taluk}
+                            </Text>
+                          </View>
+
+                          <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 2 }]}>
+                            In-Charge: {society.operatorName} • 📞 {society.phone}
                           </Text>
                         </View>
                       </View>
 
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                        ID: {society.id} • Code: {society.code} • {society.village}, {society.taluk}
-                      </Text>
-                      <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                        In-Charge: {society.operatorName} • 📞 {society.phone} • Assigned BMC: {bmc.name}
-                      </Text>
-                    </View>
-                  </View>
+                      {/* Primary Metric: Today's Milk Collection Callout */}
+                      <View style={[styles.primaryMetricBanner, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', letterSpacing: 0.5 }]}>
+                            TODAY'S MILK INTAKE
+                          </Text>
+                          <Text style={[Typography.title2, { color: colors.primary, fontWeight: '900', marginTop: 2 }]}>
+                            {detail.dailyMilk > 0 ? `${detail.dailyMilk.toFixed(1)} L` : 'Pending Intake'}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <View style={[styles.intakeBadge, { backgroundColor: detail.dailyMilk > 0 ? '#DCFCE7' : '#FEF3C7' }]}>
+                            <Ionicons 
+                              name={detail.dailyMilk > 0 ? "checkmark-circle" : "time-outline"} 
+                              size={12} 
+                              color={detail.dailyMilk > 0 ? "#166534" : "#B45309"} 
+                            />
+                            <Text style={[styles.intakeBadgeText, { color: detail.dailyMilk > 0 ? "#166534" : "#B45309" }]}>
+                              {detail.dailyMilk > 0 ? 'Received' : 'Pending Arrival'}
+                            </Text>
+                          </View>
+                          <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 4 }]}>
+                            Date: {detail.latestSubmissionDate || '12 Oct 2026'}
+                          </Text>
+                        </View>
+                      </View>
 
-                  {/* Volume Grid */}
-                  <View style={[styles.societyVolGrid, { borderTopColor: colors.border }]}>
-                    <View style={styles.volCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>TODAY</Text>
-                      <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                        {detail.dailyMilk > 0 ? `${detail.dailyMilk} L` : 'Pending'}
-                      </Text>
-                    </View>
+                      {/* Secondary Volume & Financial Metrics Grid */}
+                      <View style={[styles.societyVolGrid, { borderTopColor: colors.border }]}>
+                        <View style={styles.volCell}>
+                          <Text style={[Typography.caption2, { color: colors.textSecondary }]}>THIS MONTH</Text>
+                          <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                            {detail.monthlyTotalMilk.toLocaleString()} L
+                          </Text>
+                        </View>
 
-                    <View style={styles.volCell}>
-                      <Text style={[Typography.caption2, { color: colors.primary }]}>MONTH</Text>
-                      <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
-                        {detail.monthlyTotalMilk.toLocaleString()} L
-                      </Text>
-                    </View>
+                        <View style={styles.volCell}>
+                          <Text style={[Typography.caption2, { color: '#7C3AED' }]}>THIS YEAR</Text>
+                          <Text style={[Typography.subhead, { color: '#7C3AED', fontWeight: '800' }]}>
+                            {detail.yearlyTotalMilk.toLocaleString()} L
+                          </Text>
+                        </View>
 
-                    <View style={styles.volCell}>
-                      <Text style={[Typography.caption2, { color: '#7C3AED' }]}>YEAR</Text>
-                      <Text style={[Typography.subhead, { color: '#7C3AED', fontWeight: '800' }]}>
-                        {detail.yearlyTotalMilk.toLocaleString()} L
-                      </Text>
-                    </View>
+                        <View style={styles.volCell}>
+                          <Text style={[Typography.caption2, { color: '#059669' }]}>RECORDED INCOME</Text>
+                          <Text style={[Typography.subhead, { color: '#059669', fontWeight: '800' }]}>
+                            ₹{detail.totalRecordedIncome.toLocaleString('en-IN')}
+                          </Text>
+                        </View>
+                      </View>
 
-                    <View style={styles.volCell}>
-                      <Text style={[Typography.caption2, { color: '#059669' }]}>INCOME</Text>
-                      <Text style={[Typography.subhead, { color: '#059669', fontWeight: '800' }]}>
-                        ₹{detail.totalRecordedIncome.toLocaleString('en-IN')}
-                      </Text>
-                    </View>
-                  </View>
+                      {/* Card Footer: Discrepancy & Reporting Indicators + View Details Action */}
+                      <View style={[styles.societyFooter, { backgroundColor: '#F8FAFC', borderColor: colors.border }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, flexWrap: 'wrap', gap: 6 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons 
+                              name={detail.reconciliationStatus === 'variance' ? 'warning' : 'checkmark-circle'} 
+                              size={14} 
+                              color={detail.reconciliationStatus === 'variance' ? '#DC2626' : '#16A34A'} 
+                            />
+                            <Text style={[Typography.caption2, { 
+                              color: detail.reconciliationStatus === 'variance' ? '#B91C1C' : '#15803D',
+                              fontWeight: '700',
+                              marginLeft: 4,
+                            }]}>
+                              {detail.reconciliationStatus === 'variance' ? 'Discrepancy Review' : 'Reconciled'}
+                              {detail.differenceLitres !== 0 ? ` (${detail.differenceLitres > 0 ? '-' : '+'}${Math.abs(detail.differenceLitres).toFixed(1)}L)` : ''}
+                            </Text>
+                          </View>
 
-                  {/* Card Footer: Reconciliation & Submission Status */}
-                  <View style={[styles.societyFooter, { backgroundColor: '#F8FAFC' }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons 
-                        name={detail.reconciliationStatus === 'variance' ? 'warning' : 'checkmark-circle'} 
-                        size={14} 
-                        color={detail.reconciliationStatus === 'variance' ? '#DC2626' : '#16A34A'} 
-                      />
-                      <Text style={[Typography.caption2, { 
-                        color: detail.reconciliationStatus === 'variance' ? '#B91C1C' : '#15803D',
-                        fontWeight: '700',
-                        marginLeft: 4,
-                      }]}>
-                        Reconciliation: {detail.reconciliationStatus.toUpperCase()}
-                        {detail.differenceLitres !== 0 ? ` (${detail.differenceLitres > 0 ? '-' : '+'}${Math.abs(detail.differenceLitres)}L)` : ''}
-                      </Text>
-                    </View>
+                          {society.hasPendingDelivery && (
+                            <View style={[styles.miniPendingPill, { backgroundColor: '#FEF3C7' }]}>
+                              <Text style={[styles.miniPendingText, { color: '#B45309' }]}>Report Pending</Text>
+                            </View>
+                          )}
+                        </View>
 
-                    <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
-                      View Dashboard ›
-                    </Text>
-                  </View>
-                </Card>
-              </Pressable>
-            );
-          })
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', marginRight: 2 }]}>
+                            View Analytics
+                          </Text>
+                          <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                        </View>
+                      </View>
+                    </Card>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
         )}
 
         {/* Quick Operations Actions Grid */}
@@ -708,6 +961,32 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
   },
+  compactSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  compactSummaryCardWrapper: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  compactSummaryCard: {
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  compactSummaryCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  compactSummaryValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -721,6 +1000,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
   },
+  filterGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   filterPillsContainer: {
     flexDirection: 'row',
     gap: 8,
@@ -732,10 +1015,56 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
   },
+  sortAndCountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  sortButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  sortButtonActive: {
+    backgroundColor: '#00529B',
+  },
+  sortButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  sortButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  clearFilterButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+    marginLeft: 4,
+  },
+  clearFilterText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#DC2626',
+  },
+  societiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  societyCardWrapper: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   societyCard: {
     padding: 14,
     borderRadius: 16,
-    marginBottom: 2,
+    flex: 1,
   },
   societyCardHeader: {
     flexDirection: 'row',
@@ -752,6 +1081,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 6,
+  },
+  idChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  idChipText: {
+    fontSize: 10,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: '#475569',
   },
   statusBadge: {
     paddingHorizontal: 6,
@@ -760,6 +1102,27 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 9,
+    fontWeight: '800',
+  },
+  primaryMetricBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+  },
+  intakeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  intakeBadgeText: {
+    fontSize: 10,
     fontWeight: '800',
   },
   societyVolGrid: {
@@ -777,14 +1140,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
     marginTop: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  miniPendingPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniPendingText: {
+    fontSize: 9,
+    fontWeight: '800',
   },
   emptyCard: {
-    padding: 24,
+    padding: 28,
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
   },
   actionGrid: {
     gap: 10,

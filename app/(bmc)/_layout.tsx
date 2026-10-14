@@ -73,6 +73,14 @@ export default function BMCLayout() {
       />
 
       <Tabs.Screen
+        name="societies/[societyId]"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+
+      <Tabs.Screen
         name="society-comparison"
         options={{
           href: null,
