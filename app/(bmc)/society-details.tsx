@@ -9,7 +9,8 @@ import {
   RefreshControl,
   useWindowDimensions,
   ActivityIndicator,
-  LayoutChangeEvent
+  LayoutChangeEvent,
+  DimensionValue
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Svg, { Rect, Circle, Path, Line, Text as SvgText, G, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
@@ -40,14 +41,21 @@ export default function SocietyDetailsScreen() {
   const isTablet = width >= 720 && width < 1100;
   const isMobile = width < 720;
 
-  // Responsive card widths
-  const metricColWidth = isDesktop ? '23.8%' : (isTablet ? '48.5%' : (width < 380 ? '100%' : '48.5%'));
-  const telemetryColWidth = isDesktop ? '31.8%' : (isTablet ? '48.5%' : '100%');
+  // Dedicated 2-column card width for Milk Collection Overview (2x2), Performance Metrics (2x2), and Operational Supply Telemetry (2 cols)
+  const col2Width: DimensionValue = isWeb ? '48.5%' : (width < 340 ? '100%' : Math.floor((width - 32 - 10) / 2));
 
   // Dynamic container widths measured via onLayout to guarantee zero SVG overflow and responsive resize
   const [lineChartCardWidth, setLineChartCardWidth] = useState<number>(0);
   const [barChartCardWidth, setBarChartCardWidth] = useState<number>(0);
   const [incomeChartCardWidth, setIncomeChartCardWidth] = useState<number>(0);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(bmc)');
+    }
+  }, [router]);
 
   const { 
     booths, 
@@ -404,42 +412,34 @@ export default function SocietyDetailsScreen() {
       <DemoHeader 
         title={society.name}
         subtitle={`ID: ${society.id} • ${society.village}, ${society.taluk}`}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        {/* Navigation Breadcrumb & Quick Actions Bar */}
-        <View style={styles.breadcrumbBar}>
-          <View style={styles.breadcrumbsWrapper}>
-            <Pressable onPress={() => router.push('/(bmc)')}>
-              <Text style={[styles.breadcrumbText, { color: colors.primary }]}>BMC Dashboard</Text>
-            </Pressable>
-            <Ionicons name="chevron-forward" size={12} color={colors.textMuted} style={{ marginHorizontal: 4 }} />
-            <Pressable onPress={() => router.push('/(bmc)')}>
-              <Text style={[styles.breadcrumbText, { color: colors.primary }]}>Assigned Feeder Societies</Text>
-            </Pressable>
-            <Ionicons name="chevron-forward" size={12} color={colors.textMuted} style={{ marginHorizontal: 4 }} />
-            <Text style={[styles.breadcrumbText, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
-              {society.name}
+        {/* Dedicated Top Navigation Bar with Back Button & Quick Actions */}
+        <View style={styles.topNavBar}>
+          <Pressable 
+            style={[styles.navBackBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Feeder Societies"
+          >
+            <Ionicons name="arrow-back" size={16} color={colors.primary} />
+            <Text style={[styles.navBackBtnText, { color: colors.primary }]}>
+              Back to Feeder Societies
             </Text>
-          </View>
+          </Pressable>
 
           <View style={styles.headerActionRow}>
             <Pressable 
-              style={[styles.actionBtnPill, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={14} color={colors.text} />
-              <Text style={[Typography.caption2, { color: colors.text, fontWeight: '700', marginLeft: 4 }]}>
-                Back
-              </Text>
-            </Pressable>
-
-            <Pressable 
-              style={[styles.actionBtnPill, { backgroundColor: colors.primaryLight }]}
+              style={[styles.actionBtnPill, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
               onPress={() => router.push({ pathname: '/(bmc)/society-income', params: { preselectedSocietyId: society.id } })}
+              accessibilityRole="button"
+              accessibilityLabel="Record Society Income"
             >
               <Ionicons name="cash-outline" size={14} color={colors.primary} />
               <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', marginLeft: 4 }]}>
@@ -450,6 +450,8 @@ export default function SocietyDetailsScreen() {
             <Pressable 
               style={[styles.actionBtnPill, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' }]}
               onPress={() => router.push({ pathname: '/(bmc)/society-comparison', params: { preselectedId1: society.id } })}
+              accessibilityRole="button"
+              accessibilityLabel="Compare Societies"
             >
               <Ionicons name="bar-chart-outline" size={14} color="#166534" />
               <Text style={[Typography.caption2, { color: '#166534', fontWeight: '800', marginLeft: 4 }]}>
@@ -457,6 +459,22 @@ export default function SocietyDetailsScreen() {
               </Text>
             </Pressable>
           </View>
+        </View>
+
+        {/* Dedicated Non-Colliding Breadcrumb Trail */}
+        <View style={[styles.breadcrumbTrailContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Pressable onPress={() => router.push('/(bmc)')} style={styles.breadcrumbItem}>
+            <Ionicons name="home-outline" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+            <Text style={[styles.breadcrumbText, { color: colors.primary }]}>BMC Dashboard</Text>
+          </Pressable>
+          <Ionicons name="chevron-forward" size={11} color={colors.textMuted} style={{ marginHorizontal: 4 }} />
+          <Pressable onPress={handleBack} style={styles.breadcrumbItem}>
+            <Text style={[styles.breadcrumbText, { color: colors.primary }]}>Assigned Feeder Societies</Text>
+          </Pressable>
+          <Ionicons name="chevron-forward" size={11} color={colors.textMuted} style={{ marginHorizontal: 4 }} />
+          <Text style={[styles.breadcrumbText, { color: colors.text, fontWeight: '800', flexShrink: 1 }]} numberOfLines={1}>
+            {society.name} ({society.id})
+          </Text>
         </View>
 
         {/* Society Profile Card */}
@@ -612,12 +630,12 @@ export default function SocietyDetailsScreen() {
               </Text>
             </View>
 
-            {/* 1. Milk Collection Overview (4 Uniform Metric Cards) */}
+            {/* 1. Milk Collection Overview (4 Uniform Metric Cards arranged 2 col x 2 row) */}
             <View style={styles.subSectionBlock}>
-              <Text style={styles.subSectionTitle}>1. MILK COLLECTION OVERVIEW</Text>
+              <Text style={styles.subSectionTitle}>1. MILK COLLECTION OVERVIEW (2 × 2 GRID)</Text>
               <View style={styles.uniformMetricsGrid}>
                 {/* Metric 1 */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="scale-outline" size={18} color={colors.primary} />
@@ -634,7 +652,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Metric 2 */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="flask-outline" size={18} color={colors.primary} />
@@ -651,7 +669,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Metric 3 */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="send-outline" size={18} color="#7C3AED" />
@@ -668,7 +686,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Metric 4 */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={[styles.uniformMetricCard, milkAnalytics.totalVarianceLitres > 0 && { borderColor: '#FCA5A5' }]}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="swap-vertical" size={18} color={milkAnalytics.totalVarianceLitres > 0 ? '#DC2626' : '#16A34A'} />
@@ -688,12 +706,12 @@ export default function SocietyDetailsScreen() {
               </View>
             </View>
 
-            {/* 2. Society Performance Overview (4 Uniform Metric Cards) */}
+            {/* 2. Society Performance Overview (4 Uniform Metric Cards arranged 2 col x 2 row) */}
             <View style={styles.subSectionBlock}>
-              <Text style={styles.subSectionTitle}>2. SOCIETY PERFORMANCE METRICS</Text>
+              <Text style={styles.subSectionTitle}>2. SOCIETY PERFORMANCE METRICS (2 × 2 GRID)</Text>
               <View style={styles.uniformMetricsGrid}>
                 {/* Daily Avg */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="speedometer-outline" size={18} color="#16A34A" />
@@ -708,7 +726,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Peak Day */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="trending-up-outline" size={18} color="#EA580C" />
@@ -723,7 +741,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Min Day */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="trending-down-outline" size={18} color="#64748B" />
@@ -738,7 +756,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Recorded Session Days */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <View style={styles.metricTopRow}>
                       <Ionicons name="calendar-outline" size={18} color="#0284C7" />
@@ -1251,10 +1269,10 @@ export default function SocietyDetailsScreen() {
               </Text>
             </View>
 
-            {/* 8 Operational Telemetry Cards Grid */}
+            {/* 8 Operational Telemetry Cards Grid (Dedicated 2-Column Grid) */}
             <View style={styles.telemetryGrid}>
               {/* Telemetry 1: Latest Supply Activity */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={styles.telemetryCard}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons name="time" size={18} color={colors.primary} />
@@ -1275,7 +1293,7 @@ export default function SocietyDetailsScreen() {
               </View>
 
               {/* Telemetry 2: Society-Wise Supply Status */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={styles.telemetryCard}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons name="business" size={18} color="#059669" />
@@ -1296,7 +1314,7 @@ export default function SocietyDetailsScreen() {
               </View>
 
               {/* Telemetry 3: Daily Milk Quantity */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={styles.telemetryCard}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons name="water" size={18} color="#0284C7" />
@@ -1315,7 +1333,7 @@ export default function SocietyDetailsScreen() {
               </View>
 
               {/* Telemetry 4: Expected vs Recorded Supply */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={styles.telemetryCard}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons name="pie-chart-outline" size={18} color="#7C3AED" />
@@ -1336,7 +1354,7 @@ export default function SocietyDetailsScreen() {
               </View>
 
               {/* Telemetry 5: Reported vs Received Quantity */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={styles.telemetryCard}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons name="swap-horizontal" size={18} color={supplyTelemetry.intakeVariance === 0 ? '#16A34A' : '#DC2626'} />
@@ -1359,7 +1377,7 @@ export default function SocietyDetailsScreen() {
               </View>
 
               {/* Telemetry 6: Supply Changes & Discrepancy Alerts (Neutral Tone) */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={[styles.telemetryCard, supplyTelemetry.unresolvedCasesCount > 0 && { borderColor: '#FCA5A5' }]}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons 
@@ -1383,7 +1401,7 @@ export default function SocietyDetailsScreen() {
               </View>
 
               {/* Telemetry 7: Missing or Delayed Records Audit */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={styles.telemetryCard}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons name="document-text" size={18} color="#D97706" />
@@ -1404,7 +1422,7 @@ export default function SocietyDetailsScreen() {
               </View>
 
               {/* Telemetry 8: Historical Supply Trends (7-Day Trail) */}
-              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+              <View style={[styles.telemetryCardWrapper, { width: col2Width }]}>
                 <Card style={styles.telemetryCard}>
                   <View style={styles.telemetryCardTop}>
                     <Ionicons name="trending-up" size={18} color={colors.primary} />
@@ -1459,7 +1477,7 @@ export default function SocietyDetailsScreen() {
 
               <View style={styles.uniformMetricsGrid}>
                 {/* Total Recorded Income */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <Text style={styles.metricCardTitle}>TOTAL RECORDED INCOME</Text>
                     <Text style={[styles.metricBigNumber, { color: '#059669' }]}>
@@ -1470,7 +1488,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Cleared Payments */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <Text style={styles.metricCardTitle}>CLEARED DISBURSEMENTS</Text>
                     <Text style={[styles.metricBigNumber, { color: '#16A34A' }]}>
@@ -1481,7 +1499,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Pending Payments */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <Text style={styles.metricCardTitle}>PENDING DISBURSEMENTS</Text>
                     <Text style={[styles.metricBigNumber, { color: '#D97706' }]}>
@@ -1492,7 +1510,7 @@ export default function SocietyDetailsScreen() {
                 </View>
 
                 {/* Reported to Union */}
-                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: col2Width }]}>
                   <Card style={styles.uniformMetricCard}>
                     <Text style={styles.metricCardTitle}>REPORTED TO UNION</Text>
                     <Text style={[styles.metricBigNumber, { color: '#2563EB' }]}>
@@ -1902,19 +1920,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 32,
   },
-  breadcrumbBar: {
+  topNavBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
-  breadcrumbsWrapper: {
+  navBackBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  navBackBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginLeft: 6,
+  },
+  breadcrumbTrailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
     flexWrap: 'wrap',
-    flex: 1,
+    gap: 4,
+  },
+  breadcrumbItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   breadcrumbText: {
     fontSize: 12,
@@ -1923,14 +1967,14 @@ const styles = StyleSheet.create({
   headerActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   actionBtnPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'transparent',
   },
