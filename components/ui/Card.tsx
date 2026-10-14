@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
+import { StyleSheet, View, ViewStyle, StyleProp, LayoutChangeEvent } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { PressableScale } from './PressableScale';
 
@@ -8,9 +8,10 @@ interface CardProps {
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   bordered?: boolean;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }
 
-export const Card: React.FC<CardProps> = ({ children, style, onPress, bordered = false }) => {
+export const Card: React.FC<CardProps> = ({ children, style, onPress, bordered = false, onLayout }) => {
   const { colors, isDark } = useTheme();
 
   const cardStyle = [
@@ -26,13 +27,13 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, bordered =
 
   if (onPress) {
     return (
-      <PressableScale onPress={onPress} style={cardStyle}>
+      <PressableScale onPress={onPress} style={cardStyle} onLayout={onLayout}>
         {children}
       </PressableScale>
     );
   }
 
-  return <View style={cardStyle}>{children}</View>;
+  return <View style={cardStyle} onLayout={onLayout}>{children}</View>;
 };
 
 const styles = StyleSheet.create({

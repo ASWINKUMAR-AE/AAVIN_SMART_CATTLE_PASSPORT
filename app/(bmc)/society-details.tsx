@@ -8,7 +8,8 @@ import {
   Platform, 
   RefreshControl,
   useWindowDimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  LayoutChangeEvent
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Svg, { Rect, Circle, Path, Line, Text as SvgText, G, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
@@ -33,15 +34,20 @@ export default function SocietyDetailsScreen() {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
 
-  // Responsive breakpoints
+  // Responsive breakpoints matching BMC standard
   const isWeb = Platform.OS === 'web';
   const isDesktop = width >= 1100;
   const isTablet = width >= 720 && width < 1100;
   const isMobile = width < 720;
 
-  // Responsive column widths
-  const metricColWidth = isDesktop ? '23.5%' : (isTablet ? '31.5%' : '48.5%');
-  const chartWidth = Math.min(width - 48, 880);
+  // Responsive card widths
+  const metricColWidth = isDesktop ? '23.8%' : (isTablet ? '48.5%' : (width < 380 ? '100%' : '48.5%'));
+  const telemetryColWidth = isDesktop ? '31.8%' : (isTablet ? '48.5%' : '100%');
+
+  // Dynamic container widths measured via onLayout to guarantee zero SVG overflow and responsive resize
+  const [lineChartCardWidth, setLineChartCardWidth] = useState<number>(0);
+  const [barChartCardWidth, setBarChartCardWidth] = useState<number>(0);
+  const [incomeChartCardWidth, setIncomeChartCardWidth] = useState<number>(0);
 
   const { 
     booths, 
@@ -50,7 +56,7 @@ export default function SocietyDetailsScreen() {
     bmcDeliveries, 
     discrepancyCases, 
     societyIncomeRecords,
-    bmcReceipts,
+    bmcReceipts, 
     getSocietyDetailedStats 
   } = useAavinStore();
 
@@ -75,13 +81,13 @@ export default function SocietyDetailsScreen() {
     return bmcs.find(b => b.id === society.assignedBmcId) || bmcs[0];
   }, [society, bmcs]);
 
-  // Simulate initial loading skeleton for responsive feel
+  // Simulate smooth loading transition on society change
   useEffect(() => {
     setIsLoading(true);
     setHasError(false);
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 250);
+    }, 200);
     return () => clearTimeout(timer);
   }, [societyId]);
 
@@ -89,7 +95,7 @@ export default function SocietyDetailsScreen() {
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
-    }, 350);
+    }, 300);
   }, []);
 
   // Filtered raw datasets for the selected society
@@ -119,25 +125,24 @@ export default function SocietyDetailsScreen() {
     return getSocietyDetailedStats(society.id, period);
   }, [society, period, getSocietyDetailedStats]);
 
-  // Date range filters logic
+  // Date range bounds & active labels
   const dateRangeBounds = useMemo(() => {
     const today = '2026-10-12';
     if (period === 'today') return { start: today, end: today, label: 'Today (12 Oct 2026)' };
-    if (period === 'week') return { start: '2026-10-06', end: today, label: 'Last 7 Days (06-12 Oct 2026)' };
+    if (period === 'week') return { start: '2026-10-06', end: today, label: 'Last 7 Days (06 - 12 Oct 2026)' };
     if (period === 'month') return { start: '2026-10-01', end: '2026-10-31', label: 'Current Month (October 2026)' };
     if (period === 'prev_month') return { start: '2026-09-01', end: '2026-09-30', label: 'Previous Month (September 2026)' };
-    if (period === 'year') return { start: '2026-01-01', end: '2026-12-31', label: 'Current Year (FY 2026-27)' };
-    if (period === 'prev_year') return { start: '2025-01-01', end: '2025-12-31', label: 'Previous Year (FY 2025-26)' };
+    if (period === 'year') return { start: '2026-01-01', end: '2026-12-31', label: 'Current Fiscal Year (2026-27)' };
+    if (period === 'prev_year') return { start: '2025-01-01', end: '2025-12-31', label: 'Previous Fiscal Year (2025-26)' };
     return { start: '2025-01-01', end: '2026-12-31', label: 'All Recorded Time' };
   }, [period]);
 
-  // Dynamic daily series for selected period (used in Line Chart & Comparison)
+  // 7-day daily series for selected period (used in Line Chart & Telemetry)
   const dailySeries = useMemo(() => {
     const dates = ['2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12'];
     const baseDaily = stats?.dailyMilk || 450;
 
     return dates.map((d, index) => {
-      // Find matching milk record or delivery
       const recordsOnDate = rawMilkRecords.filter(r => r.collectionDate === d);
       const deliveryOnDate = societyDeliveries.find(del => del.collectionDate === d);
 
@@ -160,6 +165,16 @@ export default function SocietyDetailsScreen() {
         ? eveningRecords.reduce((s, r) => s + r.quantityLitres, 0)
         : reportedQty * 0.42;
 
+      // Telemetry operational status
+      let telemetryStatus: 'verified_intake' | 'delayed_submission' | 'unlogged' | 'verified_zero' | 'discrepancy' = 'verified_intake';
+      if (Math.abs(difference) > 3) {
+        telemetryStatus = 'discrepancy';
+      } else if (deliveryOnDate?.status === 'pending_arrival') {
+        telemetryStatus = 'delayed_submission';
+      } else if (reportedQty === 0 && receivedQty === 0) {
+        telemetryStatus = 'unlogged';
+      }
+
       return {
         date: d,
         shortDate: d.slice(5),
@@ -170,11 +185,12 @@ export default function SocietyDetailsScreen() {
         hasDiscrepancy: Math.abs(difference) > 3,
         morningLitres: parseFloat(morningLitres.toFixed(1)),
         eveningLitres: parseFloat(eveningLitres.toFixed(1)),
+        telemetryStatus,
       };
     });
   }, [rawMilkRecords, societyDeliveries, stats]);
 
-  // Section 6: Distinct Milk Summary Metrics
+  // Section 3: Milk Collection Overview & Analytics Metrics
   const milkAnalytics = useMemo(() => {
     const totalReported = dailySeries.reduce((s, d) => s + d.reportedLitres, 0);
     const totalReceived = dailySeries.reduce((s, d) => s + d.receivedLitres, 0);
@@ -188,7 +204,7 @@ export default function SocietyDetailsScreen() {
       }
     });
     if (unionDispatched === 0 && totalReceived > 0) {
-      unionDispatched = totalReceived * 0.98; // safe baseline based on BMC intake returns
+      unionDispatched = totalReceived * 0.98;
     }
 
     const recordedDays = dailySeries.filter(d => d.reportedLitres > 0).length;
@@ -211,19 +227,18 @@ export default function SocietyDetailsScreen() {
     };
   }, [dailySeries, bmcReceipts, society]);
 
-  // Section 6B: 12-Month Jan-Dec Bar Chart Data (2026 vs 2025)
+  // Section 3: 12-Month Jan-Dec Bar Chart Data
   const monthlyBarData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthlyBaseline = (stats?.monthlyTotalMilk || 12500);
 
     return months.map((m, idx) => {
-      // Seasonal dairy curve multipliers
       const curve2026 = [0.88, 0.92, 0.96, 1.02, 1.05, 1.08, 1.04, 0.98, 0.97, 1.00, 0.95, 0.94];
       const curve2025 = [0.82, 0.86, 0.90, 0.95, 0.98, 1.00, 0.97, 0.92, 0.91, 0.94, 0.90, 0.89];
 
       const currentVal = idx <= 9 
         ? Math.round(monthlyBaseline * curve2026[idx])
-        : 0; // future months unlogged
+        : 0;
 
       const previousVal = Math.round(monthlyBaseline * curve2025[idx]);
 
@@ -236,17 +251,15 @@ export default function SocietyDetailsScreen() {
     });
   }, [stats]);
 
-  // Section 7: Historical Comparison & Analysis
+  // Section 3: Historical Comparison
   const historicalAnalysis = useMemo(() => {
-    // Current vs Previous Month
     const curMonthVal = stats?.monthlyTotalMilk || 12850;
-    const prevMonthVal = Math.round(curMonthVal * 0.945); // Sep 2026 baseline
+    const prevMonthVal = Math.round(curMonthVal * 0.945);
     const monthDiff = curMonthVal - prevMonthVal;
     const monthGrowthPct = prevMonthVal > 0 ? parseFloat(((monthDiff / prevMonthVal) * 100).toFixed(1)) : 0;
 
-    // Current vs Previous Year
     const curYearVal = stats?.yearlyTotalMilk || 148200;
-    const prevYearVal = Math.round(curYearVal * 0.915); // FY 2025 baseline
+    const prevYearVal = Math.round(curYearVal * 0.915);
     const yearDiff = curYearVal - prevYearVal;
     const yearGrowthPct = prevYearVal > 0 ? parseFloat(((yearDiff / prevYearVal) * 100).toFixed(1)) : 0;
 
@@ -261,15 +274,39 @@ export default function SocietyDetailsScreen() {
       yearGrowthPct,
       avgDailyCur: stats?.avgDailyQuantity || 430,
       avgDailyPrev: Math.round((stats?.avgDailyQuantity || 430) * 0.95),
-      peakPeriod: 'June 2026 (Peak Flush Season)',
-      lowPeriod: 'January 2026 (Winter Lean Season)',
       varianceTrend: stats?.differenceLitres && stats.differenceLitres > 0
-        ? 'Discrepancy of 12L logged on 11 Oct; currently undergoing routine technical calibration review.'
-        : 'All receipts balanced within Union acceptable threshold (±0.5%).',
+        ? 'A volume difference of 12.0L logged on 11 Oct; currently undergoing routine sensor calibration verification.'
+        : 'All receipts balanced within Union acceptable transit threshold (±0.5%).',
     };
   }, [stats]);
 
-  // Section 8: Financial Details
+  // Section 4: Operational Supply Telemetry Facets
+  const supplyTelemetry = useMemo(() => {
+    const latestDate = '2026-10-12';
+    const latestSessionToday = dailySeries.find(d => d.date === latestDate) || dailySeries[dailySeries.length - 1];
+    const latestDelivery = societyDeliveries.find(d => d.collectionDate === latestDate) || societyDeliveries[0];
+
+    const targetQuota = 440.0;
+    const quotaPct = ((latestSessionToday.receivedLitres / targetQuota) * 100).toFixed(1);
+
+    return {
+      latestDate,
+      sessionName: 'Morning Shift Session #1',
+      sessionTime: latestDelivery?.dispatchTime || '07:15 AM',
+      vehicleNumber: 'TN-59-BZ-4819 (Insulated SS Tanker)',
+      route: 'Melur -> Othakadai -> Madurai Central Dairy',
+      chillingTemp: '4.1°C (Standard Grade)',
+      statusBadge: latestDelivery?.status === 'pending_arrival' ? 'Awaiting Arrival' : 'Intake Verified & Chilled',
+      targetQuota,
+      quotaFulfillmentPct: quotaPct,
+      dailyQuantity: latestSessionToday.receivedLitres,
+      reportedQuantity: latestSessionToday.reportedLitres,
+      intakeVariance: latestSessionToday.differenceLitres,
+      unresolvedCasesCount: societyDiscrepancies.filter(c => c.status !== 'resolved').length,
+    };
+  }, [dailySeries, societyDeliveries, societyDiscrepancies]);
+
+  // Financial Summary
   const financialTotals = useMemo(() => {
     const totalRecorded = societyIncome.reduce((s, i) => s + i.amountInr, 0);
     const cleared = societyIncome
@@ -279,7 +316,6 @@ export default function SocietyDetailsScreen() {
       .filter(i => i.status === 'recorded')
       .reduce((s, i) => s + i.amountInr, 0);
 
-    // Amount reported in Union BMC receipts
     let unionReported = 0;
     bmcReceipts.forEach(r => {
       const match = r.societySummaries?.find(s => s.societyId === society?.id);
@@ -296,7 +332,6 @@ export default function SocietyDetailsScreen() {
     };
   }, [societyIncome, bmcReceipts, stats, society]);
 
-  // If society is invalid
   if (!society) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -307,7 +342,7 @@ export default function SocietyDetailsScreen() {
             Society Not Found
           </Text>
           <Text style={[Typography.body, { color: colors.textSecondary, textAlign: 'center', marginTop: 8 }]}>
-            The requested feeder society ID could not be located in the registered registry.
+            The requested feeder society ID could not be located in the registry.
           </Text>
           <Button 
             title="← Back to Societies Directory" 
@@ -319,7 +354,6 @@ export default function SocietyDetailsScreen() {
     );
   }
 
-  // Loading skeleton screen
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -327,17 +361,16 @@ export default function SocietyDetailsScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[Typography.subhead, { color: colors.text, marginTop: 14, fontWeight: '700' }]}>
-            Loading Society Records & Analytics...
+            Loading Society Telemetry & Analytics...
           </Text>
           <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 4 }]}>
-            Fetching milk collection sessions, flow meter readings, and financial ledgers.
+            Fetching weigh-scale telemetry, chilling flow meters, and financial ledgers.
           </Text>
         </View>
       </View>
     );
   }
 
-  // Error retry state
   if (hasError) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -356,7 +389,7 @@ export default function SocietyDetailsScreen() {
             onPress={() => {
               setIsLoading(true);
               setHasError(false);
-              setTimeout(() => setIsLoading(false), 300);
+              setTimeout(() => setIsLoading(false), 200);
             }} 
           />
         </View>
@@ -377,7 +410,7 @@ export default function SocietyDetailsScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        {/* Section 4: Breadcrumbs & Navigation Bar */}
+        {/* Navigation Breadcrumb & Quick Actions Bar */}
         <View style={styles.breadcrumbBar}>
           <View style={styles.breadcrumbsWrapper}>
             <Pressable onPress={() => router.push('/(bmc)')}>
@@ -426,7 +459,7 @@ export default function SocietyDetailsScreen() {
           </View>
         </View>
 
-        {/* Section 5: Society Details Page — Header Card */}
+        {/* Society Profile Card */}
         <Card style={styles.profileHeaderCard}>
           <View style={styles.profileHeaderTop}>
             <View style={[styles.societyIconBadgeLarge, { backgroundColor: colors.primaryLight }]}>
@@ -487,23 +520,23 @@ export default function SocietyDetailsScreen() {
                        stats?.reconciliationStatus === 'reconciled' ? '#166534' : '#334155',
                 fontWeight: '800',
               }]}>
-                Reconciliation Status: {stats?.reconciliationStatus.toUpperCase()}
+                Reconciliation: {stats?.reconciliationStatus.toUpperCase()}
                 {stats?.differenceLitres && stats.differenceLitres !== 0 ? ` (${stats.differenceLitres > 0 ? '-' : '+'}${Math.abs(stats.differenceLitres)}L variance)` : ' (Balanced)'}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                Latest Intake Session: {stats?.latestSubmissionDate || '12-Oct-2026'} • Active Audit Cases: {stats?.unresolvedDiscrepanciesCount || 0}
+                Latest Intake: {stats?.latestSubmissionDate || '12-Oct-2026'} • Active Audit Cases: {stats?.unresolvedDiscrepanciesCount || 0}
               </Text>
             </View>
 
             <Button
-              title="Audit Logs"
+              title="Audit Log"
               size="sm"
               variant="outline"
               onPress={() => router.push('/(bmc)/investigations')}
             />
           </View>
 
-          {/* Section 5: Date-Range Selector & Quick Filters */}
+          {/* Date-Range Selector & Quick Filters */}
           <View style={styles.periodFilterSection}>
             <Text style={[Typography.caption2, { color: colors.textMuted, fontWeight: '800', marginBottom: 6 }]}>
               SELECT REPORTING PERIOD:
@@ -546,12 +579,11 @@ export default function SocietyDetailsScreen() {
           </View>
         </Card>
 
-        {/* Empty State Guard: Truthful missing data vs zero */}
         {hasNoData ? (
           <Card style={styles.emptyCard}>
             <Ionicons name="document-text-outline" size={44} color={colors.textMuted} />
             <Text style={[Typography.headline, { color: colors.text, marginTop: 10 }]}>
-              No Historical Telemetry
+              No Historical Records
             </Text>
             <Text style={[Typography.body, { color: colors.textSecondary, textAlign: 'center', marginTop: 6, maxWidth: 420 }]}>
               This feeder society has no recorded milk collections or delivery records in the active period. Missing records are transparently marked as unlogged rather than assuming 0L supply.
@@ -565,644 +597,850 @@ export default function SocietyDetailsScreen() {
           </Card>
         ) : (
           <>
-            {/* Section 6: Society Milk Analytics (9 Distinct Metrics) */}
-            <View style={styles.sectionHeader}>
-              <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                🥛 Milk Analytics & Supply Telemetry
-              </Text>
-              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                Physical volume verification across society dispatch, BMC intake, and Union returns
+            {/* ========================================================================= */}
+            {/* SECTION 3: MILK ANALYTICS DASHBOARD (Organized into 6 Sub-sections)        */}
+            {/* ========================================================================= */}
+            <View style={styles.sectionHeaderContainer}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="analytics" size={22} color={colors.primary} />
+                <Text style={[Typography.headline, { color: colors.text, fontWeight: '900', marginLeft: 8 }]}>
+                  Milk Analytics Dashboard
+                </Text>
+              </View>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                Aggregated collection telemetry, flow-meter verification, and comparative trends
               </Text>
             </View>
 
-            <View style={styles.metricsGrid}>
-              {/* 1. Total Reported by Society */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={styles.statMetricCard}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800' }]}>
-                      REPORTED BY SOCIETY
+            {/* 1. Milk Collection Overview (4 Uniform Metric Cards) */}
+            <View style={styles.subSectionBlock}>
+              <Text style={styles.subSectionTitle}>1. MILK COLLECTION OVERVIEW</Text>
+              <View style={styles.uniformMetricsGrid}>
+                {/* Metric 1 */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="scale-outline" size={18} color={colors.primary} />
+                      <View style={[styles.miniBadge, { backgroundColor: colors.primaryLight }]}>
+                        <Text style={[styles.miniBadgeText, { color: colors.primary }]}>Declared</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: colors.text }]}>
+                      {milkAnalytics.totalReportedLitres.toLocaleString()} L
                     </Text>
-                    <Ionicons name="scale-outline" size={16} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: colors.text }]}>
-                    {milkAnalytics.totalReportedLitres.toLocaleString()} L
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Society dispatch declaration
-                  </Text>
-                </Card>
-              </View>
+                    <Text style={styles.metricCardTitle}>Reported by Society</Text>
+                    <Text style={styles.metricCardSubtitle}>Society weigh-scale dispatch</Text>
+                  </Card>
+                </View>
 
-              {/* 2. Measured & Received by BMC */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={styles.statMetricCard}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>
-                      RECEIVED AT BMC
+                {/* Metric 2 */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="flask-outline" size={18} color={colors.primary} />
+                      <View style={[styles.miniBadge, { backgroundColor: '#DCFCE7' }]}>
+                        <Text style={[styles.miniBadgeText, { color: '#166534' }]}>Verified</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: colors.primary }]}>
+                      {milkAnalytics.totalReceivedLitres.toLocaleString()} L
                     </Text>
-                    <Ionicons name="flask-outline" size={16} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: colors.primary }]}>
-                    {milkAnalytics.totalReceivedLitres.toLocaleString()} L
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Flow-meter intake verified
-                  </Text>
-                </Card>
-              </View>
+                    <Text style={styles.metricCardTitle}>Received at BMC</Text>
+                    <Text style={styles.metricCardSubtitle}>Chilling flow-meter verified</Text>
+                  </Card>
+                </View>
 
-              {/* 3. Dispatched / Reported to Union */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={styles.statMetricCard}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: '#7C3AED', fontWeight: '800' }]}>
-                      REPORTED TO UNION
+                {/* Metric 3 */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="send-outline" size={18} color="#7C3AED" />
+                      <View style={[styles.miniBadge, { backgroundColor: '#F3E8FF' }]}>
+                        <Text style={[styles.miniBadgeText, { color: '#7C3AED' }]}>Dispatched</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: '#7C3AED' }]}>
+                      {milkAnalytics.unionDispatchedLitres.toLocaleString()} L
                     </Text>
-                    <Ionicons name="send-outline" size={16} color="#7C3AED" />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: '#7C3AED' }]}>
-                    {milkAnalytics.unionDispatchedLitres.toLocaleString()} L
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Consolidated returns
-                  </Text>
-                </Card>
-              </View>
+                    <Text style={styles.metricCardTitle}>Reported to Union</Text>
+                    <Text style={styles.metricCardSubtitle}>Included in consolidated return</Text>
+                  </Card>
+                </View>
 
-              {/* 4. Average Daily Milk Quantity */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={styles.statMetricCard}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '800' }]}>
-                      AVG DAILY INTAKE
+                {/* Metric 4 */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={[styles.uniformMetricCard, milkAnalytics.totalVarianceLitres > 0 && { borderColor: '#FCA5A5' }]}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="swap-vertical" size={18} color={milkAnalytics.totalVarianceLitres > 0 ? '#DC2626' : '#16A34A'} />
+                      <View style={[styles.miniBadge, { backgroundColor: milkAnalytics.totalVarianceLitres > 0 ? '#FEE2E2' : '#DCFCE7' }]}>
+                        <Text style={[styles.miniBadgeText, { color: milkAnalytics.totalVarianceLitres > 0 ? '#991B1B' : '#166534' }]}>
+                          {milkAnalytics.totalVarianceLitres > 0 ? 'Variance' : 'Balanced'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: milkAnalytics.totalVarianceLitres > 0 ? '#DC2626' : '#16A34A' }]}>
+                      {milkAnalytics.totalVarianceLitres > 0 ? `-${milkAnalytics.totalVarianceLitres} L` : '0.0 L'}
                     </Text>
-                    <Ionicons name="speedometer-outline" size={16} color="#16A34A" />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: '#16A34A' }]}>
-                    {milkAnalytics.avgDailyLitres} L
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Across active session days
-                  </Text>
-                </Card>
-              </View>
-
-              {/* 5. Highest Daily Quantity */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={styles.statMetricCard}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: '#EA580C', fontWeight: '800' }]}>
-                      PEAK DAILY INTAKE
-                    </Text>
-                    <Ionicons name="trending-up-outline" size={16} color="#EA580C" />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: '#EA580C' }]}>
-                    {milkAnalytics.peakDayLitres} L
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Peak recorded session
-                  </Text>
-                </Card>
-              </View>
-
-              {/* 6. Lowest Daily Quantity */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={styles.statMetricCard}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: '#64748B', fontWeight: '800' }]}>
-                      MIN DAILY INTAKE
-                    </Text>
-                    <Ionicons name="trending-down-outline" size={16} color="#64748B" />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: '#64748B' }]}>
-                    {milkAnalytics.minDayLitres} L
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Lowest recorded session
-                  </Text>
-                </Card>
-              </View>
-
-              {/* 7. Total Discrepancy in Litres */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={[styles.statMetricCard, milkAnalytics.totalVarianceLitres > 0 && { borderColor: '#FCA5A5' }]}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: milkAnalytics.totalVarianceLitres > 0 ? '#DC2626' : '#16A34A', fontWeight: '800' }]}>
-                      NET DISCREPANCY
-                    </Text>
-                    <Ionicons name="swap-vertical" size={16} color={milkAnalytics.totalVarianceLitres > 0 ? '#DC2626' : '#16A34A'} />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: milkAnalytics.totalVarianceLitres > 0 ? '#DC2626' : '#16A34A' }]}>
-                    {milkAnalytics.totalVarianceLitres > 0 ? `-${milkAnalytics.totalVarianceLitres} L` : '0.0 L Balanced'}
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Transit variance difference
-                  </Text>
-                </Card>
-              </View>
-
-              {/* 8. Days with Recorded Collections */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={styles.statMetricCard}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: '#0284C7', fontWeight: '800' }]}>
-                      RECORDED DAYS
-                    </Text>
-                    <Ionicons name="calendar-outline" size={16} color="#0284C7" />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: '#0284C7' }]}>
-                    {milkAnalytics.recordedDaysCount} Days
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    Verified session telemetry
-                  </Text>
-                </Card>
-              </View>
-
-              {/* 9. Missing or Incomplete Records */}
-              <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                <Card style={[styles.statMetricCard, milkAnalytics.missingDaysCount > 0 && { backgroundColor: '#FFFBEB' }]}>
-                  <View style={styles.statIconRow}>
-                    <Text style={[Typography.caption2, { color: milkAnalytics.missingDaysCount > 0 ? '#B45309' : '#16A34A', fontWeight: '800' }]}>
-                      UNLOGGED DAYS
-                    </Text>
-                    <Ionicons 
-                      name={milkAnalytics.missingDaysCount > 0 ? "warning-outline" : "checkmark-circle-outline"} 
-                      size={16} 
-                      color={milkAnalytics.missingDaysCount > 0 ? "#D97706" : "#16A34A"} 
-                    />
-                  </View>
-                  <Text style={[styles.statBigNumber, { color: milkAnalytics.missingDaysCount > 0 ? '#D97706' : '#16A34A' }]}>
-                    {milkAnalytics.missingDaysCount > 0 ? `${milkAnalytics.missingDaysCount} Day(s)` : 'None (100%)'}
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                    {milkAnalytics.missingDaysCount > 0 ? 'Awaiting society logs' : 'Complete data audit'}
-                  </Text>
-                </Card>
+                    <Text style={styles.metricCardTitle}>Net Intake Discrepancy</Text>
+                    <Text style={styles.metricCardSubtitle}>Transit measurement delta</Text>
+                  </Card>
+                </View>
               </View>
             </View>
 
-            {/* Section 6A: Daily Milk Collection — Line Chart (SVG) */}
-            <Card style={styles.chartCard}>
-              <View style={styles.chartHeaderRow}>
-                <View>
-                  <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                    📈 Daily Milk Intake Trend
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Daily quantities for the selected period with flow-meter verification
-                  </Text>
+            {/* 2. Society Performance Overview (4 Uniform Metric Cards) */}
+            <View style={styles.subSectionBlock}>
+              <Text style={styles.subSectionTitle}>2. SOCIETY PERFORMANCE METRICS</Text>
+              <View style={styles.uniformMetricsGrid}>
+                {/* Daily Avg */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="speedometer-outline" size={18} color="#16A34A" />
+                      <Text style={[Typography.caption2, { color: '#166534', fontWeight: '800' }]}>Daily Pace</Text>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: '#16A34A' }]}>
+                      {milkAnalytics.avgDailyLitres} L
+                    </Text>
+                    <Text style={styles.metricCardTitle}>Average Daily Intake</Text>
+                    <Text style={styles.metricCardSubtitle}>Across active recording sessions</Text>
+                  </Card>
                 </View>
 
-                {/* Switch between Reported and Received quantities */}
-                <View style={styles.chartToggleGroup}>
-                  {(['both', 'reported', 'received'] as LineChartMetric[]).map((m) => (
-                    <Pressable
-                      key={m}
-                      style={[
-                        styles.toggleBtn,
-                        lineMetric === m && { backgroundColor: colors.primary }
-                      ]}
-                      onPress={() => setLineMetric(m)}
-                    >
-                      <Text style={[
-                        styles.toggleBtnText,
-                        lineMetric === m ? { color: '#FFFFFF' } : { color: colors.textSecondary }
-                      ]}>
-                        {m.toUpperCase()}
-                      </Text>
-                    </Pressable>
-                  ))}
+                {/* Peak Day */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="trending-up-outline" size={18} color="#EA580C" />
+                      <Text style={[Typography.caption2, { color: '#EA580C', fontWeight: '800' }]}>Peak Day</Text>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: '#EA580C' }]}>
+                      {milkAnalytics.peakDayLitres} L
+                    </Text>
+                    <Text style={styles.metricCardTitle}>Highest Daily Yield</Text>
+                    <Text style={styles.metricCardSubtitle}>Single-day peak intake session</Text>
+                  </Card>
+                </View>
+
+                {/* Min Day */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="trending-down-outline" size={18} color="#64748B" />
+                      <Text style={[Typography.caption2, { color: '#64748B', fontWeight: '800' }]}>Lean Day</Text>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: '#64748B' }]}>
+                      {milkAnalytics.minDayLitres} L
+                    </Text>
+                    <Text style={styles.metricCardTitle}>Lowest Daily Yield</Text>
+                    <Text style={styles.metricCardSubtitle}>Single-day lowest recorded session</Text>
+                  </Card>
+                </View>
+
+                {/* Recorded Session Days */}
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <View style={styles.metricTopRow}>
+                      <Ionicons name="calendar-outline" size={18} color="#0284C7" />
+                      <Text style={[Typography.caption2, { color: '#0284C7', fontWeight: '800' }]}>Compliance</Text>
+                    </View>
+                    <Text style={[styles.metricBigNumber, { color: '#0284C7' }]}>
+                      {milkAnalytics.recordedDaysCount} / 7 Days
+                    </Text>
+                    <Text style={styles.metricCardTitle}>Telemetry Completeness</Text>
+                    <Text style={styles.metricCardSubtitle}>
+                      {milkAnalytics.missingDaysCount > 0 ? `⚠️ ${milkAnalytics.missingDaysCount} unlogged session(s)` : '100% telemetry verified'}
+                    </Text>
+                  </Card>
                 </View>
               </View>
+            </View>
 
-              {/* Chart Legend */}
-              <View style={styles.chartLegendRow}>
-                {(lineMetric === 'both' || lineMetric === 'reported') && (
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendIndicator, { backgroundColor: '#0284C7' }]} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Reported by Society (L)</Text>
+            {/* 3. Supply Trends — Fully Responsive SVG Line Chart */}
+            <View style={styles.subSectionBlock}>
+              <Text style={styles.subSectionTitle}>3. DAILY SUPPLY TRENDS</Text>
+              <Card 
+                style={styles.chartCard}
+                onLayout={(e: LayoutChangeEvent) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (w > 0 && Math.abs(w - lineChartCardWidth) > 2) {
+                    setLineChartCardWidth(w);
+                  }
+                }}
+              >
+                <View style={styles.chartHeaderRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      Daily Milk Collection & Chilling Influx
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                      Dynamic volume curves across weigh-scale and flow-meter sensors
+                    </Text>
                   </View>
-                )}
-                {(lineMetric === 'both' || lineMetric === 'received') && (
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendIndicator, { backgroundColor: '#16A34A' }]} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Received at BMC (L)</Text>
+
+                  <View style={styles.chartToggleGroup}>
+                    {(['both', 'reported', 'received'] as LineChartMetric[]).map((m) => (
+                      <Pressable
+                        key={m}
+                        style={[
+                          styles.toggleBtn,
+                          lineMetric === m && { backgroundColor: colors.primary }
+                        ]}
+                        onPress={() => setLineMetric(m)}
+                      >
+                        <Text style={[
+                          styles.toggleBtnText,
+                          lineMetric === m ? { color: '#FFFFFF' } : { color: colors.textSecondary }
+                        ]}>
+                          {m.toUpperCase()}
+                        </Text>
+                      </Pressable>
+                    ))}
                   </View>
-                )}
-              </View>
+                </View>
 
-              {/* SVG Line Chart */}
-              <View style={{ alignItems: 'center', marginTop: 10 }}>
-                {(() => {
-                  const svgH = 220;
-                  const padLeft = 46;
-                  const padRight = 20;
-                  const padBottom = 34;
-                  const padTop = 20;
+                {/* Legend Row */}
+                <View style={styles.chartLegendRow}>
+                  {(lineMetric === 'both' || lineMetric === 'reported') && (
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendIndicatorLine, { backgroundColor: '#0284C7' }]} />
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Society Declared (L)</Text>
+                    </View>
+                  )}
+                  {(lineMetric === 'both' || lineMetric === 'received') && (
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendIndicatorLine, { backgroundColor: '#16A34A' }]} />
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>BMC Intake Measured (L)</Text>
+                    </View>
+                  )}
+                </View>
 
-                  const allVals = dailySeries.flatMap(d => [d.reportedLitres, d.receivedLitres]);
-                  const maxVal = Math.max(...allVals, 500);
-                  const minVal = Math.min(...allVals, 300);
-                  const range = maxVal - minVal || 1;
+                {/* Render SVG Line Chart with auto-measured width */}
+                <View style={styles.svgContainer}>
+                  {(() => {
+                    const cardInnerW = lineChartCardWidth > 0 ? lineChartCardWidth - 32 : (width - (isMobile ? 48 : 64));
+                    const svgW = Math.max(280, cardInnerW);
+                    const svgH = isMobile ? 190 : 220;
+                    const padLeft = 44;
+                    const padRight = 20;
+                    const padBottom = 28;
+                    const padTop = 18;
 
-                  const plotW = chartWidth - padLeft - padRight;
-                  const plotH = svgH - padTop - padBottom;
+                    const allVals = dailySeries.flatMap(d => [d.reportedLitres, d.receivedLitres]);
+                    const maxVal = Math.max(...allVals, 500);
+                    const minVal = Math.min(...allVals, 300);
+                    const range = maxVal - minVal || 1;
 
-                  const getX = (i: number) => padLeft + (i / (dailySeries.length - 1)) * plotW;
-                  const getY = (val: number) => padTop + plotH - ((val - minVal) / range) * plotH;
+                    const plotW = svgW - padLeft - padRight;
+                    const plotH = svgH - padTop - padBottom;
 
-                  // Build reported line path
-                  const reportedPoints = dailySeries.map((d, i) => `${getX(i)},${getY(d.reportedLitres)}`).join(' ');
-                  const receivedPoints = dailySeries.map((d, i) => `${getX(i)},${getY(d.receivedLitres)}`).join(' ');
+                    const getX = (i: number) => padLeft + (i / (dailySeries.length - 1)) * plotW;
+                    const getY = (val: number) => padTop + plotH - ((val - minVal) / range) * plotH;
 
-                  return (
-                    <Svg width={chartWidth} height={svgH}>
-                      {/* Grid Lines */}
-                      <Line x1={padLeft} y1={padTop} x2={chartWidth - padRight} y2={padTop} stroke="#E2E8F0" strokeDasharray="3,3" />
-                      <Line x1={padLeft} y1={padTop + plotH / 2} x2={chartWidth - padRight} y2={padTop + plotH / 2} stroke="#E2E8F0" strokeDasharray="3,3" />
-                      <Line x1={padLeft} y1={padTop + plotH} x2={chartWidth - padRight} y2={padTop + plotH} stroke="#CBD5E1" strokeWidth={1} />
+                    const reportedPath = dailySeries.map((d, i) => `${getX(i)},${getY(d.reportedLitres)}`).join(' ');
+                    const receivedPath = dailySeries.map((d, i) => `${getX(i)},${getY(d.receivedLitres)}`).join(' ');
 
-                      {/* Y-Axis Labels */}
-                      <SvgText x={padLeft - 6} y={padTop + 4} fontSize={9} fill="#64748B" textAnchor="end">
-                        {Math.round(maxVal)}L
-                      </SvgText>
-                      <SvgText x={padLeft - 6} y={padTop + plotH / 2 + 3} fontSize={9} fill="#64748B" textAnchor="end">
-                        {Math.round((maxVal + minVal) / 2)}L
-                      </SvgText>
-                      <SvgText x={padLeft - 6} y={padTop + plotH} fontSize={9} fill="#64748B" textAnchor="end">
-                        {Math.round(minVal)}L
-                      </SvgText>
+                    return (
+                      <Svg width={svgW} height={svgH}>
+                        {/* Horizontal Grid */}
+                        <Line x1={padLeft} y1={padTop} x2={svgW - padRight} y2={padTop} stroke="#E2E8F0" strokeDasharray="3,3" />
+                        <Line x1={padLeft} y1={padTop + plotH / 2} x2={svgW - padRight} y2={padTop + plotH / 2} stroke="#E2E8F0" strokeDasharray="3,3" />
+                        <Line x1={padLeft} y1={padTop + plotH} x2={svgW - padRight} y2={padTop + plotH} stroke="#CBD5E1" strokeWidth={1} />
 
-                      {/* Reported Polyline */}
-                      {(lineMetric === 'both' || lineMetric === 'reported') && (
-                        <Path
-                          d={`M ${reportedPoints}`}
-                          fill="none"
-                          stroke="#0284C7"
-                          strokeWidth={2.5}
-                          strokeDasharray={lineMetric === 'both' ? '5,3' : undefined}
-                        />
-                      )}
+                        {/* Y-Axis Labels */}
+                        <SvgText x={padLeft - 6} y={padTop + 4} fontSize={9} fill="#64748B" textAnchor="end">
+                          {Math.round(maxVal)}L
+                        </SvgText>
+                        <SvgText x={padLeft - 6} y={padTop + plotH / 2 + 3} fontSize={9} fill="#64748B" textAnchor="end">
+                          {Math.round((maxVal + minVal) / 2)}L
+                        </SvgText>
+                        <SvgText x={padLeft - 6} y={padTop + plotH} fontSize={9} fill="#64748B" textAnchor="end">
+                          {Math.round(minVal)}L
+                        </SvgText>
 
-                      {/* Received Polyline */}
-                      {(lineMetric === 'both' || lineMetric === 'received') && (
-                        <Path
-                          d={`M ${receivedPoints}`}
-                          fill="none"
-                          stroke="#16A34A"
-                          strokeWidth={3}
-                        />
-                      )}
+                        {/* Line 1: Reported */}
+                        {(lineMetric === 'both' || lineMetric === 'reported') && (
+                          <Path
+                            d={`M ${reportedPath}`}
+                            fill="none"
+                            stroke="#0284C7"
+                            strokeWidth={2.5}
+                            strokeDasharray={lineMetric === 'both' ? '4,4' : undefined}
+                          />
+                        )}
 
-                      {/* Data Dots & X Labels */}
-                      {dailySeries.map((d, i) => {
-                        const x = getX(i);
-                        const yRec = getY(d.receivedLitres);
-                        const isSelected = selectedPointIndex === i;
+                        {/* Line 2: Received */}
+                        {(lineMetric === 'both' || lineMetric === 'received') && (
+                          <Path
+                            d={`M ${receivedPath}`}
+                            fill="none"
+                            stroke="#16A34A"
+                            strokeWidth={3}
+                          />
+                        )}
 
-                        return (
-                          <G key={d.date}>
-                            {/* Circle for received */}
-                            <Circle
-                              cx={x}
-                              cy={yRec}
-                              r={isSelected ? 6 : 4}
-                              fill="#16A34A"
-                              stroke="#FFFFFF"
-                              strokeWidth={2}
-                              onPress={() => setSelectedPointIndex(isSelected ? null : i)}
-                            />
+                        {/* Nodes and Labels */}
+                        {dailySeries.map((d, i) => {
+                          const x = getX(i);
+                          const yRec = getY(d.receivedLitres);
+                          const isSelected = selectedPointIndex === i;
 
-                            {/* X-axis date label */}
-                            <SvgText
-                              x={x}
-                              y={svgH - 10}
-                              fontSize={10}
-                              fontWeight="600"
-                              fill="#475569"
-                              textAnchor="middle"
-                            >
-                              {d.label}
-                            </SvgText>
+                          return (
+                            <G key={d.date}>
+                              <Circle
+                                cx={x}
+                                cy={yRec}
+                                r={isSelected ? 6 : 4}
+                                fill="#16A34A"
+                                stroke="#FFFFFF"
+                                strokeWidth={2}
+                                onPress={() => setSelectedPointIndex(isSelected ? null : i)}
+                              />
 
-                            {/* Value label on top of point if selected */}
-                            {isSelected && (
                               <SvgText
                                 x={x}
-                                y={yRec - 10}
-                                fontSize={10}
-                                fontWeight="800"
-                                fill="#166534"
+                                y={svgH - 8}
+                                fontSize={9}
+                                fontWeight="600"
+                                fill="#475569"
                                 textAnchor="middle"
                               >
-                                {d.receivedLitres}L
+                                {d.label}
                               </SvgText>
-                            )}
-                          </G>
-                        );
-                      })}
-                    </Svg>
-                  );
-                })()}
-              </View>
 
-              <Text style={[Typography.caption2, { color: colors.textMuted, textAlign: 'center', marginTop: 4 }]}>
-                💡 Tap on any point to view exact session volume. Dotted blue: Society declared. Solid green: BMC measured.
-              </Text>
-            </Card>
-
-            {/* Section 6B: Monthly Milk Collection — Bar Chart (Jan-Dec 2026 vs 2025) */}
-            <Card style={styles.chartCard}>
-              <View style={styles.chartHeaderRow}>
-                <View>
-                  <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                    📊 Monthly Milk Collection (Jan - Dec)
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Year-over-year monthly totals: FY 2026-27 vs FY 2025-26
-                  </Text>
+                              {isSelected && (
+                                <SvgText
+                                  x={x}
+                                  y={yRec - 8}
+                                  fontSize={10}
+                                  fontWeight="800"
+                                  fill="#166534"
+                                  textAnchor="middle"
+                                >
+                                  {d.receivedLitres}L
+                                </SvgText>
+                              )}
+                            </G>
+                          );
+                        })}
+                      </Svg>
+                    );
+                  })()}
                 </View>
 
-                <View style={styles.chartLegendRow}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendSquare, { backgroundColor: colors.primary }]} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>2026</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendSquare, { backgroundColor: '#CBD5E1' }]} />
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>2025</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Monthly Bar Chart */}
-              <View style={{ alignItems: 'center', marginTop: 12 }}>
-                {(() => {
-                  const svgH = 210;
-                  const padLeft = 44;
-                  const padRight = 14;
-                  const padBottom = 28;
-                  const padTop = 18;
-
-                  const maxVal = Math.max(...monthlyBarData.map(m => Math.max(m.val2026, m.val2025)), 15000);
-                  const plotW = chartWidth - padLeft - padRight;
-                  const plotH = svgH - padTop - padBottom;
-                  const groupW = plotW / monthlyBarData.length;
-                  const barW = Math.max(6, groupW * 0.36);
-
-                  return (
-                    <Svg width={chartWidth} height={svgH}>
-                      {/* Grid Lines */}
-                      <Line x1={padLeft} y1={padTop} x2={chartWidth - padRight} y2={padTop} stroke="#E2E8F0" strokeDasharray="3,3" />
-                      <Line x1={padLeft} y1={padTop + plotH / 2} x2={chartWidth - padRight} y2={padTop + plotH / 2} stroke="#E2E8F0" strokeDasharray="3,3" />
-                      <Line x1={padLeft} y1={padTop + plotH} x2={chartWidth - padRight} y2={padTop + plotH} stroke="#CBD5E1" strokeWidth={1} />
-
-                      {/* Y Labels */}
-                      <SvgText x={padLeft - 6} y={padTop + 4} fontSize={9} fill="#64748B" textAnchor="end">
-                        {Math.round(maxVal / 1000)}k
-                      </SvgText>
-                      <SvgText x={padLeft - 6} y={padTop + plotH / 2 + 4} fontSize={9} fill="#64748B" textAnchor="end">
-                        {Math.round(maxVal / 2000)}k
-                      </SvgText>
-                      <SvgText x={padLeft - 6} y={padTop + plotH} fontSize={9} fill="#64748B" textAnchor="end">
-                        0
-                      </SvgText>
-
-                      {monthlyBarData.map((item, i) => {
-                        const groupX = padLeft + i * groupW;
-                        const h2025 = (item.val2025 / maxVal) * plotH;
-                        const h2026 = (item.val2026 / maxVal) * plotH;
-                        const y2025 = padTop + plotH - h2025;
-                        const y2026 = padTop + plotH - h2026;
-
-                        return (
-                          <G key={item.month}>
-                            {/* 2025 Bar */}
-                            <Rect
-                              x={groupX + 2}
-                              y={y2025}
-                              width={barW}
-                              height={Math.max(2, h2025)}
-                              rx={3}
-                              fill="#CBD5E1"
-                            />
-
-                            {/* 2026 Bar */}
-                            <Rect
-                              x={groupX + barW + 4}
-                              y={y2026}
-                              width={barW}
-                              height={Math.max(2, h2026)}
-                              rx={3}
-                              fill={item.isProjected ? '#93C5FD' : colors.primary}
-                            />
-
-                            {/* Month Label */}
-                            <SvgText
-                              x={groupX + groupW / 2}
-                              y={svgH - 8}
-                              fontSize={9}
-                              fontWeight="600"
-                              fill="#475569"
-                              textAnchor="middle"
-                            >
-                              {item.month}
-                            </SvgText>
-                          </G>
-                        );
-                      })}
-                    </Svg>
-                  );
-                })()}
-              </View>
-            </Card>
-
-            {/* Section 6D & 6E: Discrepancy Gap & Shift Breakdown */}
-            <View style={styles.dualGridRow}>
-              {/* Section 6D: Reported vs Received Discrepancy Breakdown */}
-              <Card style={styles.halfCard}>
-                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 8 }]}>
-                  ⚖️ Reported vs Received Variance
+                <Text style={[Typography.caption2, { color: colors.textMuted, textAlign: 'center', marginTop: 4 }]}>
+                  💡 Tap any data node to inspect exact volume. Dotted blue: Declared • Solid green: Measured flow
                 </Text>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
-                  Reconciliation gap between society weigh scale and BMC intake flow-meter
-                </Text>
-
-                <View style={styles.discrepancyList}>
-                  {dailySeries.slice(0, 5).map(d => (
-                    <View key={d.date} style={[styles.discrepancyRowItem, { borderBottomColor: colors.border }]}>
-                      <View>
-                        <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>{d.label}</Text>
-                        <Text style={[Typography.caption2, { color: colors.textMuted }]}>
-                          Declared: {d.reportedLitres}L • Flow-Meter: {d.receivedLitres}L
-                        </Text>
-                      </View>
-                      <View style={[styles.varianceBadge, { 
-                        backgroundColor: d.differenceLitres === 0 ? '#DCFCE7' : (d.differenceLitres > 0 ? '#FEE2E2' : '#EFF6FF') 
-                      }]}>
-                        <Text style={[styles.varianceBadgeText, { 
-                          color: d.differenceLitres === 0 ? '#166534' : (d.differenceLitres > 0 ? '#991B1B' : '#1E40AF') 
-                        }]}>
-                          {d.differenceLitres === 0 ? '✓ Balanced' : `${d.differenceLitres > 0 ? '-' : '+'}${Math.abs(d.differenceLitres)}L`}
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
               </Card>
+            </View>
 
-              {/* Section 6E: Shift Distribution (Morning vs Evening) */}
-              <Card style={styles.halfCard}>
-                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 8 }]}>
-                  ☀️ Shift Volume Distribution
-                </Text>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 12 }]}>
-                  Proportionate supply split across Morning and Evening collection sessions
-                </Text>
+            {/* 4. Reported vs Received Milk & Shift Distribution */}
+            <View style={styles.subSectionBlock}>
+              <Text style={styles.subSectionTitle}>4. REPORTED VS RECEIVED MILK & SHIFT DISTRIBUTION</Text>
+              <View style={styles.dualResponsiveRow}>
+                {/* 4A: Variance Table */}
+                <Card style={styles.halfCardItem}>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 6 }]}>
+                    ⚖️ Reported vs Received Variance
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10 }]}>
+                    Weigh-scale vs flow-meter reconciliation tracking
+                  </Text>
 
-                <View style={styles.shiftBreakdownContainer}>
-                  <View style={styles.shiftCard}>
-                    <View style={styles.shiftCardTop}>
-                      <Ionicons name="sunny-outline" size={18} color="#D97706" />
-                      <Text style={[Typography.caption1, { color: '#B45309', fontWeight: '800' }]}>MORNING</Text>
+                  <View style={{ gap: 6 }}>
+                    {dailySeries.slice(0, 5).map(d => (
+                      <View key={d.date} style={[styles.discrepancyRowItem, { borderBottomColor: colors.border }]}>
+                        <View>
+                          <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>{d.label}</Text>
+                          <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                            Declared: {d.reportedLitres}L • Flow: {d.receivedLitres}L
+                          </Text>
+                        </View>
+                        <View style={[styles.varianceBadge, { 
+                          backgroundColor: d.differenceLitres === 0 ? '#DCFCE7' : (d.differenceLitres > 0 ? '#FEE2E2' : '#EFF6FF') 
+                        }]}>
+                          <Text style={[styles.varianceBadgeText, { 
+                            color: d.differenceLitres === 0 ? '#166534' : (d.differenceLitres > 0 ? '#991B1B' : '#1E40AF') 
+                          }]}>
+                            {d.differenceLitres === 0 ? '✓ Balanced' : `${d.differenceLitres > 0 ? '-' : '+'}${Math.abs(d.differenceLitres)}L`}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </Card>
+
+                {/* 4B: Shift Distribution */}
+                <Card style={styles.halfCardItem}>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 6 }]}>
+                    ☀️ Shift Volume Distribution
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 10 }]}>
+                    Session proportion split (Morning vs Evening)
+                  </Text>
+
+                  <View style={styles.shiftBreakdownContainer}>
+                    <View style={styles.shiftCard}>
+                      <View style={styles.shiftCardTop}>
+                        <Ionicons name="sunny" size={16} color="#D97706" />
+                        <Text style={[Typography.caption2, { color: '#B45309', fontWeight: '800' }]}>MORNING</Text>
+                      </View>
+                      <Text style={[styles.shiftBigNumber, { color: '#D97706' }]}>58%</Text>
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                        ~{(milkAnalytics.avgDailyLitres * 0.58).toFixed(1)} L/day
+                      </Text>
                     </View>
-                    <Text style={[styles.shiftBigNumber, { color: '#D97706' }]}>58%</Text>
+
+                    <View style={styles.shiftCard}>
+                      <View style={styles.shiftCardTop}>
+                        <Ionicons name="moon" size={16} color="#7C3AED" />
+                        <Text style={[Typography.caption2, { color: '#6D28D9', fontWeight: '800' }]}>EVENING</Text>
+                      </View>
+                      <Text style={[styles.shiftBigNumber, { color: '#7C3AED' }]}>42%</Text>
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                        ~{(milkAnalytics.avgDailyLitres * 0.42).toFixed(1)} L/day
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.splitBar}>
+                    <View style={[styles.splitBarLeft, { flex: 58 }]} />
+                    <View style={[styles.splitBarRight, { flex: 42 }]} />
+                  </View>
+
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 8 }]}>
+                    Morning collection peaks at 06:30 AM; evening session intake completes by 06:45 PM.
+                  </Text>
+                </Card>
+              </View>
+            </View>
+
+            {/* 5. Historical Comparisons & Seasonality */}
+            <View style={styles.subSectionBlock}>
+              <Text style={styles.subSectionTitle}>5. HISTORICAL COMPARISONS & SEASONALITY</Text>
+              <Card style={styles.comparisonSectionCard}>
+                <View style={styles.chartHeaderRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      Historical Performance Comparison
+                    </Text>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                      ~{(milkAnalytics.avgDailyLitres * 0.58).toFixed(1)} L / day
+                      Comparative period evaluation and seasonal milk yield trajectory
                     </Text>
                   </View>
 
-                  <View style={styles.shiftCard}>
-                    <View style={styles.shiftCardTop}>
-                      <Ionicons name="moon-outline" size={18} color="#7C3AED" />
-                      <Text style={[Typography.caption1, { color: '#6D28D9', fontWeight: '800' }]}>EVENING</Text>
-                    </View>
-                    <Text style={[styles.shiftBigNumber, { color: '#7C3AED' }]}>42%</Text>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                      ~{(milkAnalytics.avgDailyLitres * 0.42).toFixed(1)} L / day
-                    </Text>
+                  <View style={styles.chartToggleGroup}>
+                    <Pressable
+                      style={[
+                        styles.toggleBtn,
+                        comparisonHorizon === 'month_over_month' && { backgroundColor: colors.primary }
+                      ]}
+                      onPress={() => setComparisonHorizon('month_over_month')}
+                    >
+                      <Text style={[styles.toggleBtnText, comparisonHorizon === 'month_over_month' && { color: '#FFFFFF' }]}>
+                        MoM
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[
+                        styles.toggleBtn,
+                        comparisonHorizon === 'year_over_year' && { backgroundColor: colors.primary }
+                      ]}
+                      onPress={() => setComparisonHorizon('year_over_year')}
+                    >
+                      <Text style={[styles.toggleBtnText, comparisonHorizon === 'year_over_year' && { color: '#FFFFFF' }]}>
+                        YoY
+                      </Text>
+                    </Pressable>
                   </View>
                 </View>
 
-                {/* Progress bar split */}
-                <View style={styles.splitBar}>
-                  <View style={[styles.splitBarLeft, { flex: 58 }]} />
-                  <View style={[styles.splitBarRight, { flex: 42 }]} />
+                <View style={styles.historicalMetricsGrid}>
+                  {comparisonHorizon === 'month_over_month' ? (
+                    <>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>OCT 2026 (CURRENT)</Text>
+                        <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
+                          {historicalAnalysis.curMonthVal.toLocaleString()} L
+                        </Text>
+                      </View>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>SEP 2026 (PREVIOUS)</Text>
+                        <Text style={[Typography.headline, { color: colors.textSecondary, fontWeight: '900' }]}>
+                          {historicalAnalysis.prevMonthVal.toLocaleString()} L
+                        </Text>
+                      </View>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>ABSOLUTE CHANGE</Text>
+                        <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '900' }]}>
+                          +{historicalAnalysis.monthDiff.toLocaleString()} L
+                        </Text>
+                      </View>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>PERCENT GROWTH</Text>
+                        <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '900' }]}>
+                          +{historicalAnalysis.monthGrowthPct}%
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>FY 2026-27 (CURRENT)</Text>
+                        <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
+                          {historicalAnalysis.curYearVal.toLocaleString()} L
+                        </Text>
+                      </View>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>FY 2025-26 (PREVIOUS)</Text>
+                        <Text style={[Typography.headline, { color: colors.textSecondary, fontWeight: '900' }]}>
+                          {historicalAnalysis.prevYearVal.toLocaleString()} L
+                        </Text>
+                      </View>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>ANNUAL EXPANSION</Text>
+                        <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '900' }]}>
+                          +{historicalAnalysis.yearDiff.toLocaleString()} L
+                        </Text>
+                      </View>
+                      <View style={styles.historyMetricCell}>
+                        <Text style={[Typography.caption2, { color: colors.textSecondary }]}>ANNUAL GROWTH</Text>
+                        <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '900' }]}>
+                          +{historicalAnalysis.yearGrowthPct}%
+                        </Text>
+                      </View>
+                    </>
+                  )}
+                </View>
+
+                <View style={styles.commentaryBox}>
+                  <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+                  <Text style={[Typography.caption2, { color: colors.text, flex: 1, marginLeft: 8 }]}>
+                    {historicalAnalysis.varianceTrend} Volume fluctuations are consistent with regional pastoral calving schedules. Any localized yield drop is treated as an operational event requiring verification.
+                  </Text>
                 </View>
               </Card>
             </View>
 
-            {/* Section 7: Historical Comparison and Analysis */}
-            <Card style={styles.comparisonSectionCard}>
-              <View style={styles.chartHeaderRow}>
-                <View>
-                  <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                    📊 Society Performance & Historical Comparison
-                  </Text>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                    Objective period comparisons, volume trend verification, and flush-cycle analysis
-                  </Text>
+            {/* 6. Discrepancy Analysis & Multi-Month Chart */}
+            <View style={styles.subSectionBlock}>
+              <Text style={styles.subSectionTitle}>6. 12-MONTH INTAKE COMPARISON & DISCREPANCY AUDIT</Text>
+              <Card 
+                style={styles.chartCard}
+                onLayout={(e: LayoutChangeEvent) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (w > 0 && Math.abs(w - barChartCardWidth) > 2) {
+                    setBarChartCardWidth(w);
+                  }
+                }}
+              >
+                <View style={styles.chartHeaderRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                      Monthly Milk Influx (Jan – Dec)
+                    </Text>
+                    <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                      Dual-year volume comparison: FY 2026-27 vs FY 2025-26
+                    </Text>
+                  </View>
+
+                  <View style={styles.chartLegendRow}>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendSquare, { backgroundColor: colors.primary }]} />
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>2026</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendSquare, { backgroundColor: '#CBD5E1' }]} />
+                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>2025</Text>
+                    </View>
+                  </View>
                 </View>
 
-                <View style={styles.chartToggleGroup}>
-                  <Pressable
-                    style={[
-                      styles.toggleBtn,
-                      comparisonHorizon === 'month_over_month' && { backgroundColor: colors.primary }
-                    ]}
-                    onPress={() => setComparisonHorizon('month_over_month')}
-                  >
-                    <Text style={[styles.toggleBtnText, comparisonHorizon === 'month_over_month' && { color: '#FFFFFF' }]}>
-                      MoM
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.toggleBtn,
-                      comparisonHorizon === 'year_over_year' && { backgroundColor: colors.primary }
-                    ]}
-                    onPress={() => setComparisonHorizon('year_over_year')}
-                  >
-                    <Text style={[styles.toggleBtnText, comparisonHorizon === 'year_over_year' && { color: '#FFFFFF' }]}>
-                      YoY
-                    </Text>
-                  </Pressable>
+                {/* Monthly Bar Chart */}
+                <View style={styles.svgContainer}>
+                  {(() => {
+                    const cardInnerW = barChartCardWidth > 0 ? barChartCardWidth - 32 : (width - (isMobile ? 48 : 64));
+                    const svgW = Math.max(280, cardInnerW);
+                    const svgH = isMobile ? 180 : 210;
+                    const padLeft = 40;
+                    const padRight = 14;
+                    const padBottom = 26;
+                    const padTop = 16;
+
+                    const maxVal = Math.max(...monthlyBarData.map(m => Math.max(m.val2026, m.val2025)), 15000);
+                    const plotW = svgW - padLeft - padRight;
+                    const plotH = svgH - padTop - padBottom;
+                    const groupW = plotW / monthlyBarData.length;
+                    const barW = Math.max(5, groupW * 0.36);
+
+                    return (
+                      <Svg width={svgW} height={svgH}>
+                        <Line x1={padLeft} y1={padTop} x2={svgW - padRight} y2={padTop} stroke="#E2E8F0" strokeDasharray="3,3" />
+                        <Line x1={padLeft} y1={padTop + plotH / 2} x2={svgW - padRight} y2={padTop + plotH / 2} stroke="#E2E8F0" strokeDasharray="3,3" />
+                        <Line x1={padLeft} y1={padTop + plotH} x2={svgW - padRight} y2={padTop + plotH} stroke="#CBD5E1" strokeWidth={1} />
+
+                        <SvgText x={padLeft - 6} y={padTop + 4} fontSize={9} fill="#64748B" textAnchor="end">
+                          {Math.round(maxVal / 1000)}k
+                        </SvgText>
+                        <SvgText x={padLeft - 6} y={padTop + plotH / 2 + 4} fontSize={9} fill="#64748B" textAnchor="end">
+                          {Math.round(maxVal / 2000)}k
+                        </SvgText>
+                        <SvgText x={padLeft - 6} y={padTop + plotH} fontSize={9} fill="#64748B" textAnchor="end">
+                          0
+                        </SvgText>
+
+                        {monthlyBarData.map((item, i) => {
+                          const groupX = padLeft + i * groupW;
+                          const h2025 = (item.val2025 / maxVal) * plotH;
+                          const h2026 = (item.val2026 / maxVal) * plotH;
+                          const y2025 = padTop + plotH - h2025;
+                          const y2026 = padTop + plotH - h2026;
+
+                          return (
+                            <G key={item.month}>
+                              <Rect
+                                x={groupX + 2}
+                                y={y2025}
+                                width={barW}
+                                height={Math.max(2, h2025)}
+                                rx={3}
+                                fill="#CBD5E1"
+                              />
+
+                              <Rect
+                                x={groupX + barW + 4}
+                                y={y2026}
+                                width={barW}
+                                height={Math.max(2, h2026)}
+                                rx={3}
+                                fill={item.isProjected ? '#93C5FD' : colors.primary}
+                              />
+
+                              <SvgText
+                                x={groupX + groupW / 2}
+                                y={svgH - 8}
+                                fontSize={9}
+                                fontWeight="600"
+                                fill="#475569"
+                                textAnchor="middle"
+                              >
+                                {item.month}
+                              </SvgText>
+                            </G>
+                          );
+                        })}
+                      </Svg>
+                    );
+                  })()}
                 </View>
-              </View>
+              </Card>
+            </View>
 
-              <View style={styles.historicalMetricsGrid}>
-                {comparisonHorizon === 'month_over_month' ? (
-                  <>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>OCT 2026 (CURRENT)</Text>
-                      <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                        {historicalAnalysis.curMonthVal.toLocaleString()} L
-                      </Text>
-                    </View>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>SEP 2026 (PREVIOUS)</Text>
-                      <Text style={[Typography.headline, { color: colors.textSecondary, fontWeight: '800' }]}>
-                        {historicalAnalysis.prevMonthVal.toLocaleString()} L
-                      </Text>
-                    </View>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>ABSOLUTE CHANGE</Text>
-                      <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '800' }]}>
-                        +{historicalAnalysis.monthDiff.toLocaleString()} L
-                      </Text>
-                    </View>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>PERCENT GROWTH</Text>
-                      <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '800' }]}>
-                        +{historicalAnalysis.monthGrowthPct}%
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>FY 2026-27 (CURRENT)</Text>
-                      <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                        {historicalAnalysis.curYearVal.toLocaleString()} L
-                      </Text>
-                    </View>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>FY 2025-26 (PREVIOUS)</Text>
-                      <Text style={[Typography.headline, { color: colors.textSecondary, fontWeight: '800' }]}>
-                        {historicalAnalysis.prevYearVal.toLocaleString()} L
-                      </Text>
-                    </View>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>ANNUAL EXPANSION</Text>
-                      <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '800' }]}>
-                        +{historicalAnalysis.yearDiff.toLocaleString()} L
-                      </Text>
-                    </View>
-                    <View style={styles.historyMetricCell}>
-                      <Text style={[Typography.caption2, { color: colors.textSecondary }]}>ANNUAL GROWTH</Text>
-                      <Text style={[Typography.headline, { color: '#16A34A', fontWeight: '800' }]}>
-                        +{historicalAnalysis.yearGrowthPct}%
-                      </Text>
-                    </View>
-                  </>
-                )}
-              </View>
-
-              {/* Neutral Analytical Commentary */}
-              <View style={styles.commentaryBox}>
-                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-                <Text style={[Typography.caption2, { color: colors.text, flex: 1, marginLeft: 8 }]}>
-                  {historicalAnalysis.varianceTrend} Volume fluctuations are consistent with regional pastoral calving schedules. Any localized yield drop is treated as a seasonal pattern requiring verification.
+            {/* ========================================================================= */}
+            {/* SECTION 4: OPERATIONAL SUPPLY TELEMETRY (8 Dedicated Operational Facets)  */}
+            {/* ========================================================================= */}
+            <View style={[styles.sectionHeaderContainer, { marginTop: 16 }]}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="radio" size={22} color="#16A34A" />
+                <Text style={[Typography.headline, { color: colors.text, fontWeight: '900', marginLeft: 8 }]}>
+                  Operational Supply Telemetry
                 </Text>
               </View>
-            </Card>
+              <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                Real-time society weigh-scale telemetry, tanker logistics, and chilled flow-meter logs
+              </Text>
+            </View>
 
-            {/* Section 8: Society Financial Details & Monthly Income Chart */}
+            {/* 8 Operational Telemetry Cards Grid */}
+            <View style={styles.telemetryGrid}>
+              {/* Telemetry 1: Latest Supply Activity */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={styles.telemetryCard}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons name="time" size={18} color={colors.primary} />
+                    <View style={[styles.statusBadge, { backgroundColor: '#DCFCE7' }]}>
+                      <Text style={[styles.statusText, { color: '#166534' }]}>{supplyTelemetry.statusBadge}</Text>
+                    </View>
+                  </View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    Latest Supply Session
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    {supplyTelemetry.latestDate} • {supplyTelemetry.sessionTime}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 4 }]}>
+                    Vehicle: {supplyTelemetry.vehicleNumber}
+                  </Text>
+                </Card>
+              </View>
+
+              {/* Telemetry 2: Society-Wise Supply Status */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={styles.telemetryCard}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons name="business" size={18} color="#059669" />
+                    <View style={[styles.statusBadge, { backgroundColor: '#DCFCE7' }]}>
+                      <Text style={[styles.statusText, { color: '#166534' }]}>ACTIVE</Text>
+                    </View>
+                  </View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    Society Operating State
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Route: {supplyTelemetry.route}
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 4 }]}>
+                    Capacity: {society.capacityLitres.toLocaleString()} L • Temp: {supplyTelemetry.chillingTemp}
+                  </Text>
+                </Card>
+              </View>
+
+              {/* Telemetry 3: Daily Milk Quantity */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={styles.telemetryCard}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons name="water" size={18} color="#0284C7" />
+                    <Text style={[Typography.caption2, { color: '#0284C7', fontWeight: '800' }]}>Live Session</Text>
+                  </View>
+                  <Text style={[styles.telemetryBigVal, { color: '#0284C7' }]}>
+                    {supplyTelemetry.dailyQuantity} L
+                  </Text>
+                  <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
+                    Verified Daily Influx
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted }]}>
+                    Morning session chilled at BMC
+                  </Text>
+                </Card>
+              </View>
+
+              {/* Telemetry 4: Expected vs Recorded Supply */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={styles.telemetryCard}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons name="pie-chart-outline" size={18} color="#7C3AED" />
+                    <View style={[styles.miniBadge, { backgroundColor: '#F3E8FF' }]}>
+                      <Text style={[styles.miniBadgeText, { color: '#7C3AED' }]}>{supplyTelemetry.quotaFulfillmentPct}% Quota</Text>
+                    </View>
+                  </View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    Expected vs Recorded
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Target Quota: {supplyTelemetry.targetQuota} L • Actual: {supplyTelemetry.dailyQuantity} L
+                  </Text>
+                  <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700', marginTop: 4 }]}>
+                    ✓ Target fulfilled without deficit
+                  </Text>
+                </Card>
+              </View>
+
+              {/* Telemetry 5: Reported vs Received Quantity */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={styles.telemetryCard}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons name="swap-horizontal" size={18} color={supplyTelemetry.intakeVariance === 0 ? '#16A34A' : '#DC2626'} />
+                    <View style={[styles.miniBadge, { backgroundColor: supplyTelemetry.intakeVariance === 0 ? '#DCFCE7' : '#FEE2E2' }]}>
+                      <Text style={[styles.miniBadgeText, { color: supplyTelemetry.intakeVariance === 0 ? '#166534' : '#991B1B' }]}>
+                        {supplyTelemetry.intakeVariance === 0 ? 'Balanced' : 'Review'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    Flow Meter Intake Telemetry
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Society: {supplyTelemetry.reportedQuantity}L • Flow Meter: {supplyTelemetry.dailyQuantity}L
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 4 }]}>
+                    Live Variance: {supplyTelemetry.intakeVariance === 0 ? '0.0 L Balanced' : `${supplyTelemetry.intakeVariance} L`}
+                  </Text>
+                </Card>
+              </View>
+
+              {/* Telemetry 6: Supply Changes & Discrepancy Alerts (Neutral Tone) */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={[styles.telemetryCard, supplyTelemetry.unresolvedCasesCount > 0 && { borderColor: '#FCA5A5' }]}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons 
+                      name={supplyTelemetry.unresolvedCasesCount > 0 ? "warning" : "shield-checkmark"} 
+                      size={18} 
+                      color={supplyTelemetry.unresolvedCasesCount > 0 ? "#DC2626" : "#16A34A"} 
+                    />
+                    <Text style={[Typography.caption2, { color: supplyTelemetry.unresolvedCasesCount > 0 ? '#DC2626' : '#16A34A', fontWeight: '800' }]}>
+                      {supplyTelemetry.unresolvedCasesCount > 0 ? 'Verification Due' : 'Normal'}
+                    </Text>
+                  </View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    Supply Integrity Status
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    {supplyTelemetry.unresolvedCasesCount > 0 
+                      ? 'Volume variance noted on 11 Oct; currently undergoing technical calibration audit.' 
+                      : 'All collection cycles verify within standard transit tolerances.'}
+                  </Text>
+                </Card>
+              </View>
+
+              {/* Telemetry 7: Missing or Delayed Records Audit */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={styles.telemetryCard}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons name="document-text" size={18} color="#D97706" />
+                    <View style={[styles.miniBadge, { backgroundColor: '#FEF3C7' }]}>
+                      <Text style={[styles.miniBadgeText, { color: '#B45309' }]}>Audit Trail</Text>
+                    </View>
+                  </View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    Record Logging Audit
+                  </Text>
+                  <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Explicit Logging: Missing sessions marked as unlogged rather than assuming 0.0L.
+                  </Text>
+                  <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '700', marginTop: 4 }]}>
+                    ✓ Zero hidden defaults
+                  </Text>
+                </Card>
+              </View>
+
+              {/* Telemetry 8: Historical Supply Trends (7-Day Trail) */}
+              <View style={[styles.telemetryCardWrapper, { width: telemetryColWidth }]}>
+                <Card style={styles.telemetryCard}>
+                  <View style={styles.telemetryCardTop}>
+                    <Ionicons name="trending-up" size={18} color={colors.primary} />
+                    <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800' }]}>7-Day Trail</Text>
+                  </View>
+                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                    Intake Telemetry Log
+                  </Text>
+                  <View style={styles.miniTelemetryPillRow}>
+                    {dailySeries.map(d => (
+                      <View 
+                        key={d.date} 
+                        style={[
+                          styles.miniDayPill, 
+                          { backgroundColor: d.differenceLitres === 0 ? '#DCFCE7' : '#FEE2E2' }
+                        ]}
+                      >
+                        <Text style={[styles.miniDayPillText, { color: d.differenceLitres === 0 ? '#166534' : '#991B1B' }]}>
+                          {d.label.slice(0, 2)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[Typography.caption2, { color: colors.textMuted, marginTop: 4 }]}>
+                    Green: Balanced • Red: Flagged for verification
+                  </Text>
+                </Card>
+              </View>
+            </View>
+
+            {/* ========================================================================= */}
+            {/* SECTION 8: FINANCIAL TELEMETRY & UNION LEDGER                             */}
+            {/* ========================================================================= */}
             <Card style={styles.financeSectionCard}>
               <View style={styles.chartHeaderRow}>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
                     💰 Financial Telemetry & Union Ledger
                   </Text>
@@ -1219,60 +1457,70 @@ export default function SocietyDetailsScreen() {
                 />
               </View>
 
-              <View style={styles.metricsGrid}>
+              <View style={styles.uniformMetricsGrid}>
                 {/* Total Recorded Income */}
-                <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                  <Card style={styles.statMetricCard}>
-                    <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800' }]}>TOTAL INCOME</Text>
-                    <Text style={[styles.statBigNumber, { color: '#059669' }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <Text style={styles.metricCardTitle}>TOTAL RECORDED INCOME</Text>
+                    <Text style={[styles.metricBigNumber, { color: '#059669' }]}>
                       ₹{financialTotals.totalRecordedIncome.toLocaleString('en-IN')}
                     </Text>
-                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>Recorded society ledger</Text>
+                    <Text style={styles.metricCardSubtitle}>Recorded society ledger</Text>
                   </Card>
                 </View>
 
                 {/* Cleared Payments */}
-                <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                  <Card style={styles.statMetricCard}>
-                    <Text style={[Typography.caption2, { color: '#16A34A', fontWeight: '800' }]}>CLEARED DISBURSEMENTS</Text>
-                    <Text style={[styles.statBigNumber, { color: '#16A34A' }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <Text style={styles.metricCardTitle}>CLEARED DISBURSEMENTS</Text>
+                    <Text style={[styles.metricBigNumber, { color: '#16A34A' }]}>
                       ₹{financialTotals.clearedPayments.toLocaleString('en-IN')}
                     </Text>
-                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>Bank/UPI verified</Text>
+                    <Text style={styles.metricCardSubtitle}>Bank & UPI settlements</Text>
                   </Card>
                 </View>
 
                 {/* Pending Payments */}
-                <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                  <Card style={styles.statMetricCard}>
-                    <Text style={[Typography.caption2, { color: '#D97706', fontWeight: '800' }]}>PENDING DISBURSEMENTS</Text>
-                    <Text style={[styles.statBigNumber, { color: '#D97706' }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <Text style={styles.metricCardTitle}>PENDING DISBURSEMENTS</Text>
+                    <Text style={[styles.metricBigNumber, { color: '#D97706' }]}>
                       ₹{financialTotals.pendingPayments.toLocaleString('en-IN')}
                     </Text>
-                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>Awaiting audit approval</Text>
+                    <Text style={styles.metricCardSubtitle}>Awaiting audit approval</Text>
                   </Card>
                 </View>
 
                 {/* Reported to Union */}
-                <View style={[styles.metricCardWrapper, { width: metricColWidth }]}>
-                  <Card style={styles.statMetricCard}>
-                    <Text style={[Typography.caption2, { color: '#2563EB', fontWeight: '800' }]}>REPORTED TO UNION</Text>
-                    <Text style={[styles.statBigNumber, { color: '#2563EB' }]}>
+                <View style={[styles.uniformMetricCardWrapper, { width: metricColWidth }]}>
+                  <Card style={styles.uniformMetricCard}>
+                    <Text style={styles.metricCardTitle}>REPORTED TO UNION</Text>
+                    <Text style={[styles.metricBigNumber, { color: '#2563EB' }]}>
                       ₹{financialTotals.amountReportedToUnion.toLocaleString('en-IN')}
                     </Text>
-                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>In submitted receipts</Text>
+                    <Text style={styles.metricCardSubtitle}>In submitted BMC receipts</Text>
                   </Card>
                 </View>
               </View>
 
-              {/* Monthly Income Bar Chart (SVG) */}
-              <View style={{ marginTop: 14 }}>
+              {/* Monthly Income Bar Chart */}
+              <View 
+                style={{ marginTop: 14 }}
+                onLayout={(e: LayoutChangeEvent) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (w > 0 && Math.abs(w - incomeChartCardWidth) > 2) {
+                    setIncomeChartCardWidth(w);
+                  }
+                }}
+              >
                 <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginBottom: 4 }]}>
                   Monthly Recorded Income (₹ in Thousands)
                 </Text>
-                <View style={{ alignItems: 'center' }}>
+                <View style={styles.svgContainer}>
                   {(() => {
-                    const svgH = 160;
+                    const cardInnerW = incomeChartCardWidth > 0 ? incomeChartCardWidth - 10 : (width - (isMobile ? 48 : 64));
+                    const svgW = Math.max(280, cardInnerW);
+                    const svgH = 150;
                     const padLeft = 40;
                     const padRight = 14;
                     const padBottom = 24;
@@ -1288,15 +1536,15 @@ export default function SocietyDetailsScreen() {
                     ];
 
                     const maxVal = Math.max(...incomeMonths.map(i => i.val), 90000);
-                    const plotW = chartWidth - padLeft - padRight;
+                    const plotW = svgW - padLeft - padRight;
                     const plotH = svgH - padTop - padBottom;
                     const barSlot = plotW / incomeMonths.length;
-                    const barW = Math.min(38, barSlot * 0.55);
+                    const barW = Math.min(36, barSlot * 0.55);
 
                     return (
-                      <Svg width={chartWidth} height={svgH}>
-                        <Line x1={padLeft} y1={padTop} x2={chartWidth - padRight} y2={padTop} stroke="#E2E8F0" strokeDasharray="3,3" />
-                        <Line x1={padLeft} y1={padTop + plotH} x2={chartWidth - padRight} y2={padTop + plotH} stroke="#CBD5E1" strokeWidth={1} />
+                      <Svg width={svgW} height={svgH}>
+                        <Line x1={padLeft} y1={padTop} x2={svgW - padRight} y2={padTop} stroke="#E2E8F0" strokeDasharray="3,3" />
+                        <Line x1={padLeft} y1={padTop + plotH} x2={svgW - padRight} y2={padTop + plotH} stroke="#CBD5E1" strokeWidth={1} />
 
                         <SvgText x={padLeft - 6} y={padTop + 4} fontSize={9} fill="#64748B" textAnchor="end">
                           ₹{Math.round(maxVal / 1000)}k
@@ -1350,10 +1598,10 @@ export default function SocietyDetailsScreen() {
               </View>
             </Card>
 
-            {/* Section 9: Society Reports & Union Submission Status */}
+            {/* Reporting & Union Submission Integration Card */}
             <Card style={styles.reconciliationWorkflowCard}>
               <View style={styles.chartHeaderRow}>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
                     📋 Society Reporting & Union Submission Status
                   </Text>
@@ -1362,7 +1610,6 @@ export default function SocietyDetailsScreen() {
                   </Text>
                 </View>
 
-                {/* Direct Action to BMC Union Report */}
                 <Button
                   title="+ Open in Union Report"
                   size="sm"
@@ -1404,9 +1651,8 @@ export default function SocietyDetailsScreen() {
               </View>
             </Card>
 
-            {/* Section 10: Organized Responsive Data Tables / Lists */}
+            {/* Data Tables & Responsive Record Lists */}
             <Card style={styles.tablesCard}>
-              {/* Segmented Table Tab Selector */}
               <View style={styles.tableTabSelector}>
                 {[
                   { id: 'milk', label: `🥛 Milk Intake (${dailySeries.length})` },
@@ -1432,10 +1678,9 @@ export default function SocietyDetailsScreen() {
                 ))}
               </View>
 
-              {/* Table Tab 1: Milk Intake Records */}
+              {/* Tab 1: Milk Intake Records */}
               {activeTableTab === 'milk' && (
                 <View style={styles.tableContainer}>
-                  {/* Desktop Column Header */}
                   {!isMobile && (
                     <View style={[styles.tableRowHeader, { backgroundColor: '#F8FAFC' }]}>
                       <Text style={[styles.thCell, { flex: 1.2 }]}>Date</Text>
@@ -1447,7 +1692,7 @@ export default function SocietyDetailsScreen() {
                     </View>
                   )}
 
-                  {dailySeries.map((row, idx) => (
+                  {dailySeries.map((row) => (
                     <View 
                       key={row.date} 
                       style={[
@@ -1456,7 +1701,6 @@ export default function SocietyDetailsScreen() {
                       ]}
                     >
                       {isMobile ? (
-                        /* Mobile Stacked Card */
                         <View style={{ gap: 4 }}>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
@@ -1487,7 +1731,6 @@ export default function SocietyDetailsScreen() {
                           </Text>
                         </View>
                       ) : (
-                        /* Desktop Row */
                         <View style={styles.tableRowCells}>
                           <Text style={[styles.tdCell, { flex: 1.2, fontWeight: '700' }]}>{row.date}</Text>
                           <Text style={[styles.tdCell, { flex: 1 }]}>{row.reportedLitres} L</Text>
@@ -1508,7 +1751,7 @@ export default function SocietyDetailsScreen() {
                 </View>
               )}
 
-              {/* Table Tab 2: Financial Ledger */}
+              {/* Tab 2: Financial Ledger */}
               {activeTableTab === 'finance' && (
                 <View style={styles.tableContainer}>
                   {societyIncome.length === 0 ? (
@@ -1579,7 +1822,7 @@ export default function SocietyDetailsScreen() {
                 </View>
               )}
 
-              {/* Table Tab 3: Delivery History */}
+              {/* Tab 3: Delivery History */}
               {activeTableTab === 'reports' && (
                 <View style={styles.tableContainer}>
                   {societyDeliveries.length === 0 ? (
@@ -1620,7 +1863,7 @@ export default function SocietyDetailsScreen() {
               )}
             </Card>
 
-            {/* Quick Action Footer Buttons */}
+            {/* Quick Action Bottom Buttons */}
             <View style={styles.bottomActionRow}>
               <Button
                 title="📥 Confirm Milk Received (Intake)"
@@ -1766,36 +2009,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionHeader: {
-    marginTop: 6,
+
+  // Major Section Headers
+  sectionHeaderContainer: {
+    marginTop: 10,
+    marginBottom: 4,
   },
-  metricsGrid: {
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  // Sub-sections
+  subSectionBlock: {
+    gap: 8,
+    marginTop: 4,
+  },
+  subSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.6,
+    marginLeft: 2,
+  },
+
+  // Consistent Uniform Metrics Grid
+  uniformMetricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  metricCardWrapper: {
+  uniformMetricCardWrapper: {
     flexGrow: 0,
     flexShrink: 0,
   },
-  statMetricCard: {
+  uniformMetricCard: {
     padding: 12,
     borderRadius: 14,
+    minHeight: 118,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  statIconRow: {
+  metricTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
   },
-  statBigNumber: {
-    fontSize: 18,
+  metricBigNumber: {
+    fontSize: 20,
     fontWeight: '900',
     marginVertical: 4,
   },
+  metricCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  metricCardSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  miniBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+
+  // Charts
   chartCard: {
     padding: 16,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   chartHeaderRow: {
     flexDirection: 'row',
@@ -1803,7 +2094,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   chartToggleGroup: {
     flexDirection: 'row',
@@ -1832,8 +2123,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  legendIndicator: {
-    width: 12,
+  legendIndicatorLine: {
+    width: 14,
     height: 3,
     borderRadius: 2,
   },
@@ -1842,19 +2133,25 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 2,
   },
-  dualGridRow: {
+  svgContainer: {
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 8,
+  },
+
+  // Dual Responsive Row
+  dualResponsiveRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  halfCard: {
+  halfCardItem: {
     flex: 1,
     minWidth: 300,
     padding: 16,
     borderRadius: 16,
-  },
-  discrepancyList: {
-    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   discrepancyRowItem: {
     flexDirection: 'row',
@@ -1875,7 +2172,7 @@ const styles = StyleSheet.create({
   shiftBreakdownContainer: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   shiftCard: {
     flex: 1,
@@ -1906,9 +2203,13 @@ const styles = StyleSheet.create({
   splitBarRight: {
     backgroundColor: '#7C3AED',
   },
+
+  // Historical Comparison
   comparisonSectionCard: {
     padding: 16,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   historicalMetricsGrid: {
     flexDirection: 'row',
@@ -1918,10 +2219,12 @@ const styles = StyleSheet.create({
   },
   historyMetricCell: {
     flex: 1,
-    minWidth: 140,
+    minWidth: 130,
     backgroundColor: '#F8FAFC',
     padding: 12,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   commentaryBox: {
     flexDirection: 'row',
@@ -1932,30 +2235,88 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#00529B',
   },
+
+  // Supply Telemetry
+  telemetryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  telemetryCardWrapper: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  telemetryCard: {
+    padding: 12,
+    borderRadius: 14,
+    minHeight: 118,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'space-between',
+  },
+  telemetryCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  telemetryBigVal: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginVertical: 2,
+  },
+  miniTelemetryPillRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 6,
+  },
+  miniDayPill: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniDayPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+
+  // Financial & Workflow
   financeSectionCard: {
     padding: 16,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   reconciliationWorkflowCard: {
     padding: 16,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   workflowGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
     marginTop: 12,
   },
   workflowItem: {
     flex: 1,
-    minWidth: 150,
+    minWidth: 140,
     backgroundColor: '#F8FAFC',
     padding: 12,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
+
+  // Tables
   tablesCard: {
     padding: 16,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   tableTabSelector: {
     flexDirection: 'row',
@@ -2027,6 +2388,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+
+  // Actions & Empty States
   bottomActionRow: {
     gap: 10,
     marginTop: 8,
