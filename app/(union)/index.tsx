@@ -50,14 +50,15 @@ export default function UnionDashboard() {
     reviewBmcReceipt,
   } = useAavinStore();
   const { colors, isDark } = useTheme();
-  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
-  const router = useRouter();
   const { width } = useWindowDimensions();
 
   // Responsive breakpoints
   const isDesktop = width >= 1060;
   const isTablet = width >= 700 && width < 1060;
   const isMobile = width < 700;
+
+  const styles = useMemo(() => getStyles(colors, isDark, isMobile), [colors, isDark, isMobile]);
+  const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(2); // Default to Wed (middle)
@@ -273,41 +274,42 @@ export default function UnionDashboard() {
               </Text>
             </View>
 
-            <View style={[styles.headerControlsRow, isMobile && styles.mobileHeaderControlsRow]}>
-              {/* Filter Tabs */}
-              {!isMobile && (
-                <View style={styles.filterPillsGroup}>
-                  {(['Overview', 'Booths & Low Yield', 'MCP Chilling', 'Herd & Cows', 'Payments'] as const).map((tab) => {
-                    const isActive = activeTabFilter === tab;
-                    return (
-                      <Pressable
-                        key={tab}
-                        onPress={() => setActiveTabFilter(tab)}
-                        style={[styles.filterPill, isActive && styles.filterPillActive]}
-                      >
-                        <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
-                          {tab}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
+            <Pressable
+              style={[styles.newTaskBtn, isMobile && styles.mobileNewTaskBtn]}
+              onPress={() => setShowDirectiveModal(true)}
+            >
+              <Ionicons name="add" size={17} color={isDark ? '#09121E' : '#FFFFFF'} />
+              <Text style={styles.newTaskBtnText}>New Directive</Text>
+            </Pressable>
+          </View>
 
-              {/* Action Pill Button */}
-              <Pressable
-                style={styles.newTaskBtn}
-                onPress={() => setShowDirectiveModal(true)}
-              >
-                <Ionicons name="add" size={17} color="#FFFFFF" />
-                <Text style={styles.newTaskBtnText}>New Directive</Text>
-              </Pressable>
-            </View>
+          {/* Filter Tabs - Horizontally scrollable strip */}
+          <View style={styles.filterPillsWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterPillsScrollContent}
+            >
+              {(['Overview', 'Booths & Low Yield', 'MCP Chilling', 'Herd & Cows', 'Payments'] as const).map((tab) => {
+                const isActive = activeTabFilter === tab;
+                return (
+                  <Pressable
+                    key={tab}
+                    onPress={() => setActiveTabFilter(tab)}
+                    style={[styles.filterPill, isActive && styles.filterPillActive]}
+                  >
+                    <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
+                      {tab}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* URGENT EXECUTIVE AUDIT BANNER */}
           {(stats.activeDiscrepanciesCount > 0 || stats.pendingReceiptsCount > 0) && (
-            <View style={styles.alertNoticeBanner}>
+            <View style={[styles.alertNoticeBanner, isMobile && styles.mobileAlertNoticeBanner]}>
               <View style={styles.alertNoticeLeft}>
                 <View style={styles.alertNoticeIconBox}>
                   <Ionicons name="warning-outline" size={18} color="#DC2626" />
@@ -322,7 +324,7 @@ export default function UnionDashboard() {
                 </View>
               </View>
 
-              <View style={styles.alertBannerButtonsRow}>
+              <View style={[styles.alertBannerButtonsRow, isMobile && styles.mobileAlertBannerButtonsRow]}>
                 {stats.pendingReceiptsCount > 0 && (
                   <Pressable
                     style={styles.signOffBtnMini}
@@ -357,7 +359,7 @@ export default function UnionDashboard() {
               Card 1: Active Societies | Card 2: Today's Milk & Revenue | Card 3: Active Discrepancies
              ========================================================================= */}
           <View style={[styles.topCardsGrid, isDesktop && styles.desktopTopCardsGrid, isTablet && styles.tabletTopCardsGrid]}>
-            
+
             {/* CARD 1: GREEN - ACTIVE SOCIETIES (DCS) */}
             <View style={[styles.cognifyCard, styles.kpiCardItem, isDesktop && styles.desktopKpiCardItem]}>
               <View style={styles.cardTopHeaderRow}>
@@ -378,9 +380,9 @@ export default function UnionDashboard() {
                 <Text style={[styles.cardBigNumber, isDesktop && styles.desktopCardBigNumber]}>
                   {booths.length > 0 ? booths.length : 24}
                 </Text>
-                <View style={styles.trendPillDown}>
+                <View style={styles.trendPillUp}>
                   <Ionicons name="arrow-up" size={isDesktop ? 13 : 10} color="#16A34A" />
-                  <Text style={[styles.trendTextDown, { color: '#16A34A' }]}>100%</Text>
+                  <Text style={[styles.trendTextUp, { color: '#16A34A' }]}>100%</Text>
                 </View>
               </View>
 
@@ -446,37 +448,27 @@ export default function UnionDashboard() {
                 </Pressable>
               </View>
 
-              <Text style={styles.cardKpiLabel} numberOfLines={1}>Low-Yield Booth</Text>
+              <Text style={styles.cardKpiLabel} numberOfLines={1}>Low-Yield Deficit</Text>
 
               <View style={styles.statValueWithTrendRow}>
                 <Text style={[styles.cardBigNumber, isDesktop && styles.desktopCardBigNumber, { color: '#DC2626' }]}>
                   -29.5%
                 </Text>
-                <View style={[styles.trendPillDown, { backgroundColor: '#FEE2E2' }]}>
-                  <Text style={[styles.trendTextDown, { color: '#DC2626' }]}>
-                    Vadipatti
+                <View style={[styles.trendPillDown, { backgroundColor: isDark ? '#3E1818' : '#FEE2E2' }]}>
+                  <Ionicons name="alert-circle" size={isDesktop ? 12 : 9} color="#DC2626" />
+                  <Text style={[styles.trendTextDown, { color: isDark ? '#FCA5A5' : '#DC2626' }]} numberOfLines={1}>
+                    Deficit
                   </Text>
                 </View>
               </View>
 
               <View style={[styles.cardFooterRow, isDesktop && styles.desktopCardFooterRow]}>
-                <Text style={styles.manageCustText} numberOfLines={1}>vs Prev Month</Text>
-                <View style={styles.avatarCluster}>
-                  <Pressable 
-                    style={styles.avatarAddBtn}
-                    onPress={() => {
-                      setDirectiveCategory('Low Yield Inquiry');
-                      setShowDirectiveModal(true);
-                    }}
-                  >
-                    <Ionicons name="alert" size={isDesktop ? 13 : 10} color="#DC2626" />
-                  </Pressable>
-                  <View style={[styles.miniAvatarCircle, { backgroundColor: '#FDE047', zIndex: 2 }]}>
-                    <Text style={styles.avatarInitials}>👨‍💼</Text>
-                  </View>
-                  <View style={[styles.miniAvatarCircle, { backgroundColor: '#FED7AA', marginLeft: -6, zIndex: 3 }]}>
-                    <Text style={styles.avatarInitials}>👩‍🔬</Text>
-                  </View>
+                <View style={styles.dynamicLabelRow}>
+                  <Ionicons name="time-outline" size={isDesktop ? 15 : 12} color={colors.textMuted} />
+                  <Text style={styles.dynamicLabelText} numberOfLines={1}>vs Prev Mo</Text>
+                </View>
+                <View style={[styles.periodPill, { backgroundColor: isDark ? '#3E1818' : '#FEE2E2' }]}>
+                  <Text style={[styles.periodPillText, { color: isDark ? '#FCA5A5' : '#DC2626' }]}>Audit</Text>
                 </View>
               </View>
             </View>
@@ -487,58 +479,124 @@ export default function UnionDashboard() {
               NEW FEATURE 1: TODAY'S TOTAL LITRES & INCOME ANALYSIS (FINANCIAL SUMMARY)
              ========================================================================= */}
           <View style={[styles.cognifyCard, styles.incomeAnalyticsCard]}>
-            <View style={styles.incomeHeaderRow}>
+            <View style={[styles.incomeHeaderRow, isMobile && styles.mobileIncomeHeaderRow]}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <View style={styles.incomeBadgeIcon}>
                     <Ionicons name="cash" size={18} color="#16A34A" />
                   </View>
-                  <Text style={styles.analyticsTitle}>Today's Milk Procurement & Income Analysis</Text>
+                  <Text style={styles.analyticsTitle}>Today's Milk Procurement & Income</Text>
                 </View>
                 <Text style={styles.analyticsSubtitle}>
-                  Realized District Value based on {todayLitres.toFixed(1)} L Intake @ ₹{procurementRatePerLitre.toFixed(2)}/L Aavin Tariff
+                  Realized District Value based on {todayLitres.toFixed(1)} L Intake @ ₹{procurementRatePerLitre.toFixed(2)}/L Tariff
                 </Text>
               </View>
 
-              <View style={styles.incomeStatBadge}>
+              <View style={[styles.incomeStatBadge, isMobile && styles.mobileIncomeStatBadge]}>
                 <Text style={styles.incomeStatBadgeText}>₹{todayIncomeRevenue.toLocaleString('en-IN')}</Text>
                 <Text style={styles.incomeStatBadgeSub}>Gross Procurement Value</Text>
               </View>
             </View>
 
             {/* Income Distribution Breakdown */}
-            <View style={styles.incomeBreakdownGrid}>
+            <View style={[styles.incomeBreakdownGrid, isMobile && styles.mobileIncomeBreakdownGrid]}>
               {/* Box 1: Farmer DBT Payout (85%) */}
-              <View style={[styles.incomeBoxItem, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-                <View style={styles.incomeBoxTop}>
-                  <Ionicons name="people" size={16} color="#16A34A" />
-                  <Text style={[styles.incomeBoxTag, { color: '#15803D' }]}>85% Share</Text>
-                </View>
-                <Text style={styles.incomeBoxValue}>₹{farmerPayoutShare.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeBoxLabel}>Direct Farmer DBT Payout</Text>
-                <Text style={styles.incomeBoxSub}>Direct credit to Canara / SBI accounts</Text>
+              <View style={[styles.incomeBoxItem, isMobile && styles.mobileIncomeBoxItem, { backgroundColor: isDark ? '#0E2819' : '#F0FDF4', borderColor: isDark ? '#166534' : '#BBF7D0' }]}>
+                {isMobile ? (
+                  <>
+                    <View style={styles.mobileIncomeBoxLeft}>
+                      <View style={[styles.mobileIncomeIconBadge, { backgroundColor: isDark ? '#143C22' : '#DCFCE7' }]}>
+                        <Ionicons name="people" size={18} color="#16A34A" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={styles.incomeBoxLabel}>Direct Farmer DBT Payout</Text>
+                        <Text style={styles.incomeBoxSub}>Canara & SBI direct credit</Text>
+                      </View>
+                    </View>
+                    <View style={styles.mobileIncomeBoxRight}>
+                      <Text style={styles.incomeBoxValue}>₹{farmerPayoutShare.toLocaleString('en-IN')}</Text>
+                      <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#143C22' : '#DCFCE7' }]}>
+                        <Text style={[styles.incomeBoxTag, { color: isDark ? '#4ADE80' : '#15803D' }]}>85% Share</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.incomeBoxTop}>
+                      <Ionicons name="people" size={16} color="#16A34A" />
+                      <Text style={[styles.incomeBoxTag, { color: isDark ? '#4ADE80' : '#15803D' }]}>85% Share</Text>
+                    </View>
+                    <Text style={styles.incomeBoxValue}>₹{farmerPayoutShare.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.incomeBoxLabel}>Direct Farmer DBT Payout</Text>
+                    <Text style={styles.incomeBoxSub}>Direct credit to Canara / SBI accounts</Text>
+                  </>
+                )}
               </View>
 
               {/* Box 2: Tanker Logistics (10%) */}
-              <View style={[styles.incomeBoxItem, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-                <View style={styles.incomeBoxTop}>
-                  <Ionicons name="bus" size={16} color="#2563EB" />
-                  <Text style={[styles.incomeBoxTag, { color: '#1D4ED8' }]}>10% Share</Text>
-                </View>
-                <Text style={styles.incomeBoxValue}>₹{logisticsShare.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeBoxLabel}>Insulated Tanker Logistics</Text>
-                <Text style={styles.incomeBoxSub}>Transit allowance & chill transport</Text>
+              <View style={[styles.incomeBoxItem, isMobile && styles.mobileIncomeBoxItem, { backgroundColor: isDark ? '#0E2038' : '#EFF6FF', borderColor: isDark ? '#1E40AF' : '#BFDBFE' }]}>
+                {isMobile ? (
+                  <>
+                    <View style={styles.mobileIncomeBoxLeft}>
+                      <View style={[styles.mobileIncomeIconBadge, { backgroundColor: isDark ? '#132C4E' : '#DBEAFE' }]}>
+                        <Ionicons name="bus" size={18} color="#2563EB" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={styles.incomeBoxLabel}>Insulated Tanker Logistics</Text>
+                        <Text style={styles.incomeBoxSub}>Transit & chill transport</Text>
+                      </View>
+                    </View>
+                    <View style={styles.mobileIncomeBoxRight}>
+                      <Text style={styles.incomeBoxValue}>₹{logisticsShare.toLocaleString('en-IN')}</Text>
+                      <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#132C4E' : '#DBEAFE' }]}>
+                        <Text style={[styles.incomeBoxTag, { color: isDark ? '#60A5FA' : '#1D4ED8' }]}>10% Share</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.incomeBoxTop}>
+                      <Ionicons name="bus" size={16} color="#2563EB" />
+                      <Text style={[styles.incomeBoxTag, { color: isDark ? '#60A5FA' : '#1D4ED8' }]}>10% Share</Text>
+                    </View>
+                    <Text style={styles.incomeBoxValue}>₹{logisticsShare.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.incomeBoxLabel}>Insulated Tanker Logistics</Text>
+                    <Text style={styles.incomeBoxSub}>Transit allowance & chill transport</Text>
+                  </>
+                )}
               </View>
 
               {/* Box 3: Society Handling Commission (5%) */}
-              <View style={[styles.incomeBoxItem, { backgroundColor: '#FAF5FF', borderColor: '#E9D5FF' }]}>
-                <View style={styles.incomeBoxTop}>
-                  <Ionicons name="business" size={16} color="#9333EA" />
-                  <Text style={[styles.incomeBoxTag, { color: '#7E22CE' }]}>5% Share</Text>
-                </View>
-                <Text style={styles.incomeBoxValue}>₹{societyIncentiveShare.toLocaleString('en-IN')}</Text>
-                <Text style={styles.incomeBoxLabel}>DCS Handling Commission</Text>
-                <Text style={styles.incomeBoxSub}>Booth operator testing allowance</Text>
+              <View style={[styles.incomeBoxItem, isMobile && styles.mobileIncomeBoxItem, { backgroundColor: isDark ? '#231438' : '#FAF5FF', borderColor: isDark ? '#6B21A8' : '#E9D5FF' }]}>
+                {isMobile ? (
+                  <>
+                    <View style={styles.mobileIncomeBoxLeft}>
+                      <View style={[styles.mobileIncomeIconBadge, { backgroundColor: isDark ? '#331B50' : '#F3E8FF' }]}>
+                        <Ionicons name="business" size={18} color="#9333EA" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={styles.incomeBoxLabel}>DCS Handling Commission</Text>
+                        <Text style={styles.incomeBoxSub}>Testing & booth allowance</Text>
+                      </View>
+                    </View>
+                    <View style={styles.mobileIncomeBoxRight}>
+                      <Text style={styles.incomeBoxValue}>₹{societyIncentiveShare.toLocaleString('en-IN')}</Text>
+                      <View style={[styles.incomeBoxTagBadge, { backgroundColor: isDark ? '#331B50' : '#F3E8FF' }]}>
+                        <Text style={[styles.incomeBoxTag, { color: isDark ? '#C084FC' : '#7E22CE' }]}>5% Share</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.incomeBoxTop}>
+                      <Ionicons name="business" size={16} color="#9333EA" />
+                      <Text style={[styles.incomeBoxTag, { color: isDark ? '#C084FC' : '#7E22CE' }]}>5% Share</Text>
+                    </View>
+                    <Text style={styles.incomeBoxValue}>₹{societyIncentiveShare.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.incomeBoxLabel}>DCS Handling Commission</Text>
+                    <Text style={styles.incomeBoxSub}>Booth operator testing allowance</Text>
+                  </>
+                )}
               </View>
             </View>
           </View>
@@ -564,25 +622,26 @@ export default function UnionDashboard() {
             </View>
 
             {/* Critical Low-Yield Warning Banner */}
-            <View style={styles.lowYieldWarningBanner}>
-              <Ionicons name="alert-circle" size={24} color="#DC2626" />
-              <View style={{ flex: 1, marginLeft: 10 }}>
+            <View style={[styles.lowYieldWarningBanner, isMobile && styles.mobileLowYieldWarningBanner]}>
+              <View style={styles.lowYieldBannerHeader}>
+                <Ionicons name="alert-circle" size={22} color="#DC2626" />
                 <Text style={styles.lowYieldWarningTitle}>
                   LOWEST PRODUCING BOOTH: {lowestBooth.name}
                 </Text>
-                <Text style={styles.lowYieldWarningDesc}>
-                  Supplied only <Text style={{ fontWeight: '800' }}>{lowestBooth.currentMonthLitres} L</Text> this month vs <Text style={{ fontWeight: '800' }}>{lowestBooth.prevMonthLitres} L</Text> last month ({lowestBooth.changePercent}% Drop). Reason: {lowestBooth.reason}.
-                </Text>
               </View>
+              <Text style={styles.lowYieldWarningDesc}>
+                Supplied only <Text style={{ fontWeight: '800' }}>{lowestBooth.currentMonthLitres} L</Text> this month vs <Text style={{ fontWeight: '800' }}>{lowestBooth.prevMonthLitres} L</Text> last month ({lowestBooth.changePercent}% Drop). Reason: {lowestBooth.reason}.
+              </Text>
 
               <Pressable
-                style={styles.lowYieldInquiryBtn}
+                style={[styles.lowYieldInquiryBtn, isMobile && styles.mobileLowYieldInquiryBtn]}
                 onPress={() => {
                   setDirectiveCategory('Low Yield Inquiry');
                   setDirectiveText(`Executive Inquiry for ${lowestBooth.name}: Explain volume drop of ${lowestBooth.changePercent}% compared to previous month average.`);
                   setShowDirectiveModal(true);
                 }}
               >
+                <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
                 <Text style={styles.lowYieldInquiryBtnText}>Issue Inquiry</Text>
               </Pressable>
             </View>
@@ -592,10 +651,10 @@ export default function UnionDashboard() {
               {boothComparisons.map((b) => {
                 const isNegative = b.changePercent < 0;
                 return (
-                  <View key={b.id} style={styles.boothCompareItem}>
+                  <View key={b.id} style={[styles.boothCompareItem, isMobile && styles.mobileBoothCompareItem]}>
                     <View style={styles.boothCompareLeft}>
-                      <View style={[styles.boothCodeBadge, { backgroundColor: isNegative ? '#FEE2E2' : '#DCFCE7' }]}>
-                        <Text style={[styles.boothCodeBadgeText, { color: isNegative ? '#DC2626' : '#15803D' }]}>
+                      <View style={[styles.boothCodeBadge, { backgroundColor: isNegative ? (isDark ? '#3E1818' : '#FEE2E2') : (isDark ? '#132E1D' : '#DCFCE7') }]}>
+                        <Text style={[styles.boothCodeBadgeText, { color: isNegative ? (isDark ? '#FCA5A5' : '#DC2626') : (isDark ? '#4ADE80' : '#15803D') }]}>
                           {b.code}
                         </Text>
                       </View>
@@ -608,7 +667,7 @@ export default function UnionDashboard() {
                     </View>
 
                     {/* Volume Comparison Meters */}
-                    <View style={styles.boothCompareMeters}>
+                    <View style={[styles.boothCompareMeters, isMobile && styles.mobileBoothCompareMeters]}>
                       <View style={styles.meterCol}>
                         <Text style={styles.meterLabel}>This Month</Text>
                         <Text style={[styles.meterValue, { color: isNegative ? (isDark ? '#F87171' : '#DC2626') : colors.text }]}>
@@ -623,13 +682,13 @@ export default function UnionDashboard() {
                         <Text style={styles.meterValue}>{b.prevMonthLitres.toFixed(1)} L</Text>
                       </View>
 
-                      <View style={[styles.variancePercentBadge, { backgroundColor: isNegative ? '#FEF2F2' : '#F0FDF4' }]}>
-                        <Ionicons 
-                          name={isNegative ? "arrow-down" : "arrow-up"} 
-                          size={12} 
-                          color={isNegative ? "#DC2626" : "#16A34A"} 
+                      <View style={[styles.variancePercentBadge, { backgroundColor: isNegative ? (isDark ? '#3E1818' : '#FEF2F2') : (isDark ? '#132E1D' : '#F0FDF4') }]}>
+                        <Ionicons
+                          name={isNegative ? "arrow-down" : "arrow-up"}
+                          size={12}
+                          color={isNegative ? (isDark ? '#FCA5A5' : "#DC2626") : (isDark ? '#4ADE80' : "#16A34A")}
                         />
-                        <Text style={[styles.variancePercentText, { color: isNegative ? "#DC2626" : "#16A34A" }]}>
+                        <Text style={[styles.variancePercentText, { color: isNegative ? (isDark ? '#FCA5A5' : "#DC2626") : (isDark ? '#4ADE80' : "#16A34A") }]}>
                           {Math.abs(b.changePercent)}%
                         </Text>
                       </View>
@@ -734,10 +793,10 @@ export default function UnionDashboard() {
               ANALYTICS CARDS: RETENTION, BATCHES & TRENDS
              ========================================================================= */}
           <View style={[styles.bottomCardsGrid, isDesktop && styles.desktopBottomCardsGrid, isTablet && styles.tabletBottomCardsGrid]}>
-            
+
             {/* CARD 4: YIELD RETENTION & PHYSICAL TWIN STAGES */}
             <View style={[styles.cognifyCard, styles.analyticsCardItem]}>
-              <View style={styles.analyticsHeaderRow}>
+              <View style={[styles.analyticsHeaderRow, isMobile && styles.mobileAnalyticsHeaderRow]}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.analyticsTitle}>Transit Yield Retention</Text>
                   <Text style={styles.taskProgressBigNum}>{retentionPercent.toFixed(1)}%</Text>
@@ -746,8 +805,8 @@ export default function UnionDashboard() {
                   </Text>
                 </View>
 
-                <View style={styles.taskCategoriesCol}>
-                  <View style={styles.taskCategoryItem}>
+                <View style={[styles.taskCategoriesCol, isMobile && styles.mobileTaskCategoriesRow]}>
+                  <View style={[styles.taskCategoryItem, isMobile && styles.mobileTaskCategoryItem]}>
                     <View style={[styles.categoryMiniIcon, { backgroundColor: isDark ? '#381628' : '#FDF2F8' }]}>
                       <Ionicons name="water" size={13} color="#EC4899" />
                     </View>
@@ -757,7 +816,7 @@ export default function UnionDashboard() {
                     </View>
                   </View>
 
-                  <View style={styles.taskCategoryItem}>
+                  <View style={[styles.taskCategoryItem, isMobile && styles.mobileTaskCategoryItem]}>
                     <View style={[styles.categoryMiniIcon, { backgroundColor: isDark ? '#132840' : '#EFF6FF' }]}>
                       <Ionicons name="analytics" size={13} color="#3B82F6" />
                     </View>
@@ -767,7 +826,7 @@ export default function UnionDashboard() {
                     </View>
                   </View>
 
-                  <View style={styles.taskCategoryItem}>
+                  <View style={[styles.taskCategoryItem, isMobile && styles.mobileTaskCategoryItem]}>
                     <View style={[styles.categoryMiniIcon, { backgroundColor: isDark ? '#132E1D' : '#F0FDF4' }]}>
                       <Ionicons name="thermometer" size={13} color="#22C55E" />
                     </View>
@@ -833,7 +892,7 @@ export default function UnionDashboard() {
             <View style={[styles.cognifyCard, styles.analyticsCardItem]}>
               <View style={styles.analyticsHeaderRow}>
                 <Text style={styles.analyticsTitle}>Batch Reconciliation</Text>
-                
+
                 <View style={styles.sumPercentTogglePill}>
                   <Pressable
                     onPress={() => setStatusMode('sum')}
@@ -1073,12 +1132,12 @@ export default function UnionDashboard() {
               SUPPLY CHAIN TWIN LEDGER
              ========================================================================= */}
           <View style={[styles.cognifyCard, styles.supplyChainContainer]}>
-            <View style={styles.supplyChainHeader}>
+            <View style={[styles.supplyChainHeader, isMobile && styles.mobileSupplyChainHeader]}>
               <View style={styles.chainTitleGroup}>
                 <View style={styles.chainIconCircle}>
                   <Ionicons name="git-network-outline" size={18} color="#0284C7" />
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.chainTitleText}>Supply Chain Stage Reconciliation (Distinct Nodes)</Text>
                   <Text style={styles.chainSubtitleText}>
                     Booth declared dispatches and BMC intake measurements represent separate stages of the same milk batch.
@@ -1088,16 +1147,17 @@ export default function UnionDashboard() {
 
               <View style={[
                 styles.retentionPillBadge,
-                { backgroundColor: netTransitDiscrepancy === 0 ? '#DCFCE7' : '#FEF3C7' }
+                isMobile && styles.mobileRetentionPillBadge,
+                { backgroundColor: netTransitDiscrepancy === 0 ? (isDark ? '#132E1D' : '#DCFCE7') : (isDark ? '#382510' : '#FEF3C7') }
               ]}>
                 <Ionicons
                   name={netTransitDiscrepancy === 0 ? "checkmark-circle" : "alert-circle"}
                   size={14}
-                  color={netTransitDiscrepancy === 0 ? "#15803D" : "#B45309"}
+                  color={netTransitDiscrepancy === 0 ? (isDark ? '#4ADE80' : "#15803D") : (isDark ? '#FBBF24' : "#B45309")}
                 />
                 <Text style={[
                   styles.retentionPillText,
-                  { color: netTransitDiscrepancy === 0 ? "#15803D" : "#B45309" }
+                  { color: netTransitDiscrepancy === 0 ? (isDark ? '#4ADE80' : "#15803D") : (isDark ? '#FBBF24' : "#B45309") }
                 ]}>
                   {retentionPercent.toFixed(1)}% Yield Retention
                 </Text>
@@ -1108,7 +1168,7 @@ export default function UnionDashboard() {
               <View style={[styles.pipelineNodeCard, { borderColor: isDark ? '#0284C7' : '#BAE6FD', backgroundColor: isDark ? '#0D1E34' : '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#0284C7' }]}>
-                    <Text style={styles.nodeMiniBadgeText}>STAGE 1: BOOTHS</Text>
+                    <Text style={styles.nodeMiniBadgeText}>BOOTHS</Text>
                   </View>
                   <Ionicons name="storefront" size={15} color="#0284C7" />
                 </View>
@@ -1117,14 +1177,14 @@ export default function UnionDashboard() {
                 <Text style={styles.nodeCardSub}>{booths.length} Assigned Societies</Text>
               </View>
 
-              <View style={styles.nodeArrowDivider}>
-                <Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
+              <View style={[styles.nodeArrowDivider, isMobile && styles.mobileNodeArrowDivider]}>
+                <Ionicons name={isMobile ? "arrow-down" : "arrow-forward"} size={16} color={colors.textMuted} />
               </View>
 
               <View style={[styles.pipelineNodeCard, { borderColor: isDark ? '#16A34A' : '#BBF7D0', backgroundColor: isDark ? '#0D1E34' : '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#16A34A' }]}>
-                    <Text style={styles.nodeMiniBadgeText}>STAGE 2: BMCS</Text>
+                    <Text style={styles.nodeMiniBadgeText}>BMCS</Text>
                   </View>
                   <Ionicons name="snow" size={15} color="#16A34A" />
                 </View>
@@ -1133,14 +1193,14 @@ export default function UnionDashboard() {
                 <Text style={styles.nodeCardSub}>{bmcs.length} Bulk Coolers</Text>
               </View>
 
-              <View style={styles.nodeArrowDivider}>
-                <Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
+              <View style={[styles.nodeArrowDivider, isMobile && styles.mobileNodeArrowDivider]}>
+                <Ionicons name={isMobile ? "arrow-down" : "arrow-forward"} size={16} color={colors.textMuted} />
               </View>
 
               <View style={[styles.pipelineNodeCard, { borderColor: isDark ? '#9333EA' : '#E9D5FF', backgroundColor: isDark ? '#0D1E34' : '#F8FAFC' }]}>
                 <View style={styles.nodeHeaderSmall}>
                   <View style={[styles.nodeMiniBadge, { backgroundColor: '#9333EA' }]}>
-                    <Text style={styles.nodeMiniBadgeText}>STAGE 3: SLIPS</Text>
+                    <Text style={styles.nodeMiniBadgeText}>SLIPS</Text>
                   </View>
                   <Ionicons name="document-text" size={15} color="#9333EA" />
                 </View>
@@ -1183,7 +1243,7 @@ export default function UnionDashboard() {
                 <Text style={styles.modalMainTitle}>Dispatch Executive Directive</Text>
                 <Text style={styles.modalSubTitle}>Aavin Madurai District Milk Union Headquarters</Text>
               </View>
-              <Pressable 
+              <Pressable
                 onPress={() => setShowDirectiveModal(false)}
                 style={styles.modalCloseBtn}
               >
@@ -1237,7 +1297,7 @@ export default function UnionDashboard() {
                       key={p}
                       onPress={() => setDirectivePriority(p)}
                       style={[
-                        styles.modalSelectorPill, 
+                        styles.modalSelectorPill,
                         isSel && (p === 'Critical GM Order' ? styles.pillRedActive : styles.modalSelectorPillActive)
                       ]}
                     >
@@ -1297,7 +1357,7 @@ export default function UnionDashboard() {
                 <Text style={styles.modalMainTitle}>GM Sign-Off & Seal Receipt</Text>
                 <Text style={styles.modalSubTitle}>Digital Signature for Daily BMC Intake Slip</Text>
               </View>
-              <Pressable 
+              <Pressable
                 onPress={() => setShowSignOffModal(false)}
                 style={styles.modalCloseBtn}
               >
@@ -1319,10 +1379,10 @@ export default function UnionDashboard() {
                       <Text style={[styles.receiptSelectId, isSel && { color: isDark ? colors.primary : '#0284C7' }]}>Slip #{r.id}</Text>
                       <Text style={styles.receiptSelectSub}>BMC: {r.bmcName} • {r.totalReceivedQuantity} L</Text>
                     </View>
-                    <Ionicons 
-                      name={isSel ? "checkmark-circle" : "ellipse-outline"} 
-                      size={20} 
-                      color={isSel ? (isDark ? colors.primary : '#0284C7') : (isDark ? colors.border : '#CBD5E1')} 
+                    <Ionicons
+                      name={isSel ? "checkmark-circle" : "ellipse-outline"}
+                      size={20}
+                      color={isSel ? (isDark ? colors.primary : '#0284C7') : (isDark ? colors.border : '#CBD5E1')}
                     />
                   </Pressable>
                 );
@@ -1364,7 +1424,7 @@ export default function UnionDashboard() {
   );
 }
 
-const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+const getStyles = (colors: ThemeColors, isDark: boolean, isMobile: boolean) => StyleSheet.create({
   outerContainer: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1373,7 +1433,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: isMobile ? 12 : 16,
     paddingTop: 16,
     paddingBottom: 110,
   },
@@ -1389,7 +1449,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
   mainDashboardCanvas: {
     width: '100%',
-    gap: 18,
+    gap: 16,
   },
   desktopDashboardCanvas: {
     maxWidth: 1320,
@@ -1406,38 +1466,38 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   mobileSectionTitleRow: {
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 10,
   },
   titleTextContainer: {
     flex: 1,
   },
   dashboardMainTitle: {
-    fontSize: 26,
+    fontSize: isMobile ? 22 : 26,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.4,
   },
   dashboardSubtitle: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : 13,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 18,
     fontWeight: '500',
   },
-  headerControlsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  mobileNewTaskBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
   },
-  mobileHeaderControlsRow: {
+  filterPillsWrapper: {
     width: '100%',
-    justifyContent: 'space-between',
+    marginBottom: 2,
   },
-  filterPillsGroup: {
+  filterPillsScrollContent: {
     flexDirection: 'row',
     backgroundColor: isDark ? '#15273E' : '#E2E8F0',
     borderRadius: 24,
     padding: 3,
-    gap: 2,
+    gap: 4,
   },
   filterPill: {
     paddingHorizontal: 14,
@@ -1487,6 +1547,12 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     borderRadius: 18,
     padding: 14,
   },
+  mobileAlertNoticeBanner: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 12,
+  },
   alertNoticeLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1511,10 +1577,16 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     fontSize: 11,
     color: isDark ? '#F87171' : '#B91C1C',
     marginTop: 2,
+    lineHeight: 16,
   },
   alertBannerButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  mobileAlertBannerButtonsRow: {
+    width: '100%',
+    justifyContent: 'flex-end',
     gap: 8,
   },
   signOffBtnMini: {
@@ -1551,10 +1623,10 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   /* The Signature Cognify White Card Base */
   cognifyCard: {
     backgroundColor: colors.card,
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 20,
+    padding: isMobile ? 14 : 20,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDark ? 0.25 : 0.04,
@@ -1578,21 +1650,24 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   kpiCardItem: {
     flex: 1,
     minWidth: 0,
-    padding: 12,
+    padding: isMobile ? 10 : 14,
+    justifyContent: 'space-between',
+    minHeight: isMobile ? 130 : 155,
   },
   desktopKpiCardItem: {
     padding: 20,
+    minHeight: 180,
   },
   cardTopHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   kpiIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1607,9 +1682,9 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     borderRadius: 22,
   },
   arrowCircleBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: isDark ? '#15273E' : '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1620,20 +1695,21 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     borderRadius: 18,
   },
   cardKpiLabel: {
-    fontSize: 11,
+    fontSize: isMobile ? 10.5 : 12,
     fontWeight: '700',
     color: colors.textSecondary,
     marginBottom: 4,
+    height: 16,
   },
   statValueWithTrendRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 4,
-    marginBottom: 8,
-    flexWrap: 'wrap',
+    marginBottom: 6,
   },
   cardBigNumber: {
-    fontSize: 22,
+    fontSize: isMobile ? 18 : 22,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.5,
@@ -1645,107 +1721,81 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   trendPillDown: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 1,
+    gap: 2,
     backgroundColor: isDark ? '#3E1818' : '#FEF2F2',
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 8,
   },
   trendTextDown: {
     color: isDark ? '#F87171' : '#EF4444',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   trendPillUp: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 1,
+    gap: 2,
     backgroundColor: isDark ? '#132E1D' : '#F0FDF4',
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 8,
   },
   trendTextUp: {
     color: isDark ? '#4ADE80' : '#10B981',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   cardFooterRow: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   desktopCardFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingTop: 10,
   },
   dynamicLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
+    flex: 1,
+    marginRight: 2,
   },
   dynamicLabelText: {
-    fontSize: 9.5,
+    fontSize: 9,
     color: colors.textMuted,
     fontWeight: '600',
   },
   periodPill: {
     backgroundColor: isDark ? '#15273E' : '#F1F4F8',
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    borderRadius: 6,
+    alignSelf: 'center',
   },
   periodPillText: {
-    fontSize: 9,
+    fontSize: 8.5,
     color: isDark ? colors.textSecondary : '#475569',
     fontWeight: '700',
-  },
-  manageCustText: {
-    fontSize: 9.5,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  avatarCluster: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarAddBtn: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: isDark ? '#15273E' : '#F1F4F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
-  },
-  miniAvatarCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: 10,
   },
 
   /* NEW SECTION 1: Income Analytics Card */
   incomeAnalyticsCard: {
-    gap: 16,
+    gap: 14,
   },
   incomeHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexWrap: 'wrap',
+    gap: 10,
+  },
+  mobileIncomeHeaderRow: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     gap: 10,
   },
   incomeBadgeIcon: {
@@ -1765,6 +1815,10 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     paddingVertical: 8,
     alignItems: 'flex-end',
   },
+  mobileIncomeStatBadge: {
+    width: '100%',
+    alignItems: 'flex-start',
+  },
   incomeStatBadgeText: {
     fontSize: 22,
     fontWeight: '900',
@@ -1781,12 +1835,44 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
+  mobileIncomeBreakdownGrid: {
+    flexDirection: 'column',
+    gap: 8,
+  },
   incomeBoxItem: {
     flex: 1,
     minWidth: 160,
     borderWidth: 1,
     borderRadius: 16,
     padding: 14,
+  },
+  mobileIncomeBoxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  mobileIncomeBoxLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  mobileIncomeIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileIncomeBoxRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  incomeBoxTagBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   incomeBoxTop: {
     flexDirection: 'row',
@@ -1799,20 +1885,20 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     fontWeight: '800',
   },
   incomeBoxValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: colors.text,
     marginVertical: 2,
   },
   incomeBoxLabel: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
     color: colors.text,
   },
   incomeBoxSub: {
-    fontSize: 9.5,
+    fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
 
   /* NEW SECTION 2: Low-Yielding Booths Card */
@@ -1831,31 +1917,46 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     fontWeight: '800',
   },
   lowYieldWarningBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     backgroundColor: isDark ? '#2D1515' : '#FEF2F2',
     borderWidth: 1.5,
     borderColor: isDark ? '#5C1D1D' : '#F87171',
     borderRadius: 18,
     padding: 14,
+    gap: 8,
+  },
+  mobileLowYieldWarningBanner: {
+    padding: 12,
+  },
+  lowYieldBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   lowYieldWarningTitle: {
     fontSize: 12,
     fontWeight: '900',
     color: isDark ? '#FCA5A5' : '#991B1B',
+    flex: 1,
   },
   lowYieldWarningDesc: {
     fontSize: 11,
     color: isDark ? '#F87171' : '#B91C1C',
-    marginTop: 2,
     lineHeight: 16,
   },
   lowYieldInquiryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: '#DC2626',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 12,
-    marginLeft: 8,
+    alignSelf: 'flex-start',
+  },
+  mobileLowYieldInquiryBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
   },
   lowYieldInquiryBtnText: {
     color: '#FFFFFF',
@@ -1863,7 +1964,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     fontWeight: '800',
   },
   boothCompareList: {
-    gap: 10,
+    gap: 8,
   },
   boothCompareItem: {
     flexDirection: 'row',
@@ -1874,6 +1975,12 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     borderBottomColor: colors.border,
     flexWrap: 'wrap',
     gap: 10,
+  },
+  mobileBoothCompareItem: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+    paddingVertical: 10,
   },
   boothCompareLeft: {
     flexDirection: 'row',
@@ -1905,8 +2012,16 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  mobileBoothCompareMeters: {
+    width: '100%',
+    justifyContent: 'space-between',
+    paddingLeft: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: isDark ? '#182C44' : '#F1F5F9',
+  },
   meterCol: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   meterLabel: {
     fontSize: 9.5,
@@ -1958,16 +2073,18 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   fullAccessGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 12,
   },
   accessTileCard: {
     flex: 1,
-    minWidth: 140,
+    minWidth: isMobile ? 140 : 165,
     backgroundColor: isDark ? '#0D1E34' : '#F8FAFC',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 18,
     padding: 14,
+    justifyContent: 'space-between',
+    minHeight: isMobile ? 175 : 190,
   },
   accessTileIcon: {
     width: 40,
@@ -1989,10 +2106,11 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     marginVertical: 2,
   },
   accessTileDesc: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: colors.textSecondary,
-    lineHeight: 14,
-    marginBottom: 10,
+    lineHeight: 15,
+    marginBottom: 8,
+    minHeight: 30,
   },
   accessTileLinkRow: {
     flexDirection: 'row',
@@ -2021,7 +2139,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
   analyticsCardItem: {
     flex: 1,
-    minWidth: 280,
+    minWidth: isMobile ? 260 : 280,
   },
   analyticsHeaderRow: {
     flexDirection: 'row',
@@ -2029,8 +2147,13 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
   },
+  mobileAnalyticsHeaderRow: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+  },
   analyticsTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.2,
@@ -2040,11 +2163,12 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
     fontWeight: '500',
+    lineHeight: 16,
   },
 
   /* Card 4: Task Progress */
   taskProgressBigNum: {
-    fontSize: 38,
+    fontSize: isMobile ? 32 : 38,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -1,
@@ -2053,10 +2177,24 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   taskCategoriesCol: {
     gap: 6,
   },
+  mobileTaskCategoriesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   taskCategoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  mobileTaskCategoryItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   categoryMiniIcon: {
     width: 26,
@@ -2124,7 +2262,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
   },
   statusBarLabel: {
-    width: 82,
+    minWidth: 76,
     fontSize: 12,
     color: colors.textSecondary,
     fontWeight: '600',
@@ -2138,7 +2276,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     overflow: 'hidden',
   },
   statusBarCount: {
-    width: 58,
+    minWidth: 50,
     fontSize: 11,
     fontWeight: '800',
     color: colors.text,
@@ -2298,6 +2436,11 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  mobileSupplyChainHeader: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   chainTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2313,7 +2456,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     justifyContent: 'center',
   },
   chainTitleText: {
-    fontSize: 15,
+    fontSize: isMobile ? 14 : 15,
     fontWeight: '800',
     color: colors.text,
   },
@@ -2321,6 +2464,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 1,
+    lineHeight: 16,
   },
   retentionPillBadge: {
     flexDirection: 'row',
@@ -2329,6 +2473,9 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
+  },
+  mobileRetentionPillBadge: {
+    alignSelf: 'flex-start',
   },
   retentionPillText: {
     fontSize: 11,
@@ -2342,7 +2489,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   mobilePipelineCol: {
     flexDirection: 'column',
     alignItems: 'stretch',
-    gap: 10,
+    gap: 8,
   },
   pipelineNodeCard: {
     flex: 1,
@@ -2392,6 +2539,9 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  mobileNodeArrowDivider: {
+    paddingVertical: 4,
   },
   inspectDiscrepancyBtn: {
     flexDirection: 'row',
