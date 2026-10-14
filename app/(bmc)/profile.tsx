@@ -248,93 +248,7 @@ export default function BmcProfileScreen() {
           </View>
         </View>
 
-        {/* 3. Assigned BMC Facility & Hardware Specifications Card */}
-        <View style={styles.sectionBlock}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons name="hardware-chip-outline" size={18} color={colors.primary} />
-            <Text style={styles.sectionHeaderTitle}>ASSIGNED BMC PLANT & HARDWARE TELEMETRY</Text>
-          </View>
-
-          <Card style={styles.alignedCard}>
-            <View style={styles.plantHeaderRow}>
-              <View style={[styles.plantIconCircle, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="business" size={24} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
-                  {bmc.name}
-                </Text>
-                <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
-                  Station Code: {bmc.code || 'BMC-102'} • Madurai District Federation
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.specsTable, { borderTopColor: colors.border }]}>
-              <View style={styles.specRow}>
-                <View style={styles.specLabelCol}>
-                  <Ionicons name="cube-outline" size={15} color={colors.textSecondary} />
-                  <Text style={[Typography.caption1, { color: colors.textSecondary, marginLeft: 8 }]}>
-                    Chiller Rated Capacity
-                  </Text>
-                </View>
-                <Text style={[Typography.caption1, { color: colors.text, fontWeight: '800' }]}>
-                  10,000 Litres (SS304 Insulated)
-                </Text>
-              </View>
-
-              <View style={styles.specRow}>
-                <View style={styles.specLabelCol}>
-                  <Ionicons name="speedometer-outline" size={15} color="#0284C7" />
-                  <Text style={[Typography.caption1, { color: colors.textSecondary, marginLeft: 8 }]}>
-                    Automated Flow-Meter
-                  </Text>
-                </View>
-                <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800' }]}>
-                  #FM-902 Ultrasonic (Calibrated Oct 2026)
-                </Text>
-              </View>
-
-              <View style={styles.specRow}>
-                <View style={styles.specLabelCol}>
-                  <Ionicons name="refresh-circle-outline" size={15} color="#7C3AED" />
-                  <Text style={[Typography.caption1, { color: colors.textSecondary, marginLeft: 8 }]}>
-                    Tank Agitator Cycle
-                  </Text>
-                </View>
-                <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-                  32 RPM Automated Intermittent Cycle
-                </Text>
-              </View>
-
-              <View style={styles.specRow}>
-                <View style={styles.specLabelCol}>
-                  <Ionicons name="flash-outline" size={15} color="#D97706" />
-                  <Text style={[Typography.caption1, { color: colors.textSecondary, marginLeft: 8 }]}>
-                    Standby Power System
-                  </Text>
-                </View>
-                <Text style={[Typography.caption1, { color: '#B45309', fontWeight: '700' }]}>
-                  62.5 kVA Diesel Generator (Auto-Standby)
-                </Text>
-              </View>
-
-              <View style={[styles.specRow, { borderBottomWidth: 0 }]}>
-                <View style={styles.specLabelCol}>
-                  <Ionicons name="shield-checkmark-outline" size={15} color="#16A34A" />
-                  <Text style={[Typography.caption1, { color: colors.textSecondary, marginLeft: 8 }]}>
-                    Security Access Tier
-                  </Text>
-                </View>
-                <Text style={[Typography.caption1, { color: '#166534', fontWeight: '800' }]}>
-                  Level 3 (Operational Twin & Digital Returns)
-                </Text>
-              </View>
-            </View>
-          </Card>
-        </View>
-
-        {/* 4. Daily Reception & Logistics Operating Schedule */}
+        {/* 3. Daily Reception & Logistics Operating Schedule */}
         <View style={styles.sectionBlock}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="calendar-outline" size={18} color="#D97706" />
@@ -429,7 +343,7 @@ export default function BmcProfileScreen() {
           </Card>
         </View>
 
-        {/* 5. Cold-Chain Alert Preferences & Notifications (Interactive Toggles) */}
+        {/* 4. Cold-Chain Alert Preferences & Notifications (Interactive Toggles) */}
         <View style={styles.sectionBlock}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="notifications-outline" size={18} color="#EA580C" />
@@ -507,7 +421,7 @@ export default function BmcProfileScreen() {
           </Card>
         </View>
 
-        {/* 6. Account Sign Out & Build Metadata */}
+        {/* 5. Account Sign Out & Build Metadata */}
         <View style={styles.sectionBlock}>
           <Button
             title={t('common.logout', 'Sign Out from BMC Portal')}
@@ -696,36 +610,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
   },
-  plantHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  plantIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  specsTable: {
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  specRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F1F5F9',
-    gap: 12,
-  },
-  specLabelCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
+
 
   // Schedule Timeline
   scheduleTimeline: {
