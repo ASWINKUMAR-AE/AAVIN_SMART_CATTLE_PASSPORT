@@ -17,7 +17,9 @@ import {
   VaccinationRecord,
   InseminationRecord,
   TreatmentRecord,
-  UserRole
+  UserRole,
+  SocietyIncomeRecord,
+  BMCReportStatus
 } from '../types/aavin';
 import { 
   SEED_FARMERS, 
@@ -31,11 +33,12 @@ import {
   SEED_BMC_DELIVERIES, 
   SEED_DISCREPANCY_CASES, 
   SEED_BMC_RECEIPTS, 
+  SEED_SOCIETY_INCOME,
   SEED_NOTIFICATIONS 
 } from '../data/seedData';
 import { WorkflowApi } from '../services/workflowApi';
 
-const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v3';
+const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v4';
 
 interface AavinState {
   farmers: Farmer[];
@@ -49,6 +52,7 @@ interface AavinState {
   bmcDeliveries: BMCDelivery[];
   discrepancyCases: DiscrepancyCase[];
   bmcReceipts: BMCReceipt[];
+  societyIncomeRecords: SocietyIncomeRecord[];
   notifications: InAppNotification[];
 }
 
@@ -97,11 +101,52 @@ interface AavinStoreContextType extends AavinState {
   addInvestigationNote: (caseId: string, note: string, author: string, evidenceReference?: string) => void;
   resolveDiscrepancyCase: (caseId: string, resolutionReason: string, resolvedBy: string) => void;
   escalateDiscrepancyCase: (caseId: string, reason: string) => void;
-  createBmcReceipt: (bmcId: string, unionId: string, collectionDate: string, includedDeliveryIds: string[], createdBy: string) => BMCReceipt;
+  createBmcReceipt: (
+    bmcId: string, 
+    unionId: string, 
+    collectionDate: string, 
+    includedDeliveryIds: string[], 
+    createdBy: string,
+    options?: {
+      reportingPeriodType?: 'daily' | 'monthly' | 'custom';
+      periodStartDate?: string;
+      periodEndDate?: string;
+      totalRecordedIncome?: number;
+      supervisorNotes?: string;
+      societySummaries?: any[];
+    }
+  ) => BMCReceipt;
   sendBmcReceiptToUnion: (receiptId: string) => void;
+  addSocietyIncomeRecord: (record: Omit<SocietyIncomeRecord, 'id' | 'createdAt'>) => SocietyIncomeRecord;
+  submitBmcConsolidatedReport: (reportData: {
+    bmcId: string;
+    reportingPeriodType: 'daily' | 'monthly' | 'custom';
+    collectionDate: string;
+    periodStartDate?: string;
+    periodEndDate?: string;
+    includedDeliveryIds: string[];
+    totalDeclaredQuantity: number;
+    totalReceivedQuantity: number;
+    totalRecordedIncome: number;
+    totalAmountReceived?: number;
+    totalAmountPending?: number;
+    societySummaries: Array<{
+      societyId: string;
+      societyName: string;
+      declaredLitres: number;
+      receivedLitres: number;
+      varianceLitres: number;
+      recordedIncome: number;
+      discrepancyCount: number;
+      status: string;
+    }>;
+    supervisorNotes?: string;
+    createdBy: string;
+  }) => BMCReceipt;
+  updateBmcReportStatus: (reportId: string, status: BMCReportStatus, reviewNotes?: string, reviewer?: string) => void;
 
   // Union actions
-  reviewBmcReceipt: (receiptId: string, reviewNotes: string, reviewedBy: string) => void;
+  reviewBmcReceipt: (receiptId: string, reviewNotes: string, reviewedBy: string, status?: BMCReportStatus) => void;
   updateUnionThresholds: (litres: number, percent: number) => void;
 
   // Notification actions
@@ -128,11 +173,39 @@ interface AavinStoreContextType extends AavinState {
     eligibleReceiptTotal: number;
   };
   getBmcStats: (bmcId: string) => {
+    registeredBoothsCount: number;
+    activeBoothsCount: number;
+    inactiveBoothsCount: number;
+    todayCollected: number;
     todayDeclared: number;
     todayReceived: number;
+    todayDispatchedToUnion: number;
     totalDifference: number;
+    totalRecordedIncome: number;
+    totalSubmittedToUnionIncome: number;
     pendingDeliveriesCount: number;
+    reportsAwaitingUnionCount: number;
     activeDiscrepanciesCount: number;
+    resolvedDiscrepanciesCount: number;
+  };
+  getSocietyDetailedStats: (societyId: string, period?: string) => {
+    dailyMilk: number;
+    monthlyTotalMilk: number;
+    yearlyTotalMilk: number;
+    avgDailyQuantity: number;
+    highestDailyQuantity: number;
+    lowestDailyQuantity: number;
+    quantityReceivedByBmc: number;
+    differenceLitres: number;
+    missingRecordsCount: number;
+    unresolvedDiscrepanciesCount: number;
+    totalRecordedIncome: number;
+    paymentsReceived: number;
+    paymentsPending: number;
+    amountReportedToUnion: number;
+    latestSubmissionDate: string;
+    reconciliationStatus: 'reconciled' | 'variance' | 'pending';
+    isActive: boolean;
   };
   getUnionStats: () => {
     totalBoothDispatched: number;
@@ -156,6 +229,7 @@ const initialSeedState: AavinState = {
   bmcDeliveries: SEED_BMC_DELIVERIES,
   discrepancyCases: SEED_DISCREPANCY_CASES,
   bmcReceipts: SEED_BMC_RECEIPTS,
+  societyIncomeRecords: SEED_SOCIETY_INCOME,
   notifications: SEED_NOTIFICATIONS,
 };
 
@@ -998,7 +1072,15 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     unionId: string, 
     collectionDate: string, 
     includedDeliveryIds: string[], 
-    createdBy: string
+    createdBy: string,
+    options?: {
+      reportingPeriodType?: 'daily' | 'monthly' | 'custom';
+      periodStartDate?: string;
+      periodEndDate?: string;
+      totalRecordedIncome?: number;
+      supervisorNotes?: string;
+      societySummaries?: any[];
+    }
   ): BMCReceipt => {
     const bmc = state.bmcs.find(b => b.id === bmcId);
     const deliveries = state.bmcDeliveries.filter(d => includedDeliveryIds.includes(d.id));
@@ -1019,7 +1101,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       unionId,
       collectionDate,
       includedDeliveryIds,
-      totalBoothsCount: deliveries.length,
+      totalBoothsCount: options?.societySummaries?.length || deliveries.length,
       totalDeclaredQuantity: parseFloat(totalDeclared.toFixed(2)),
       totalReceivedQuantity: parseFloat(totalReceived.toFixed(2)),
       netDifference,
@@ -1029,6 +1111,12 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdBy,
       status: 'draft',
       verificationCode,
+      reportingPeriodType: options?.reportingPeriodType || 'daily',
+      periodStartDate: options?.periodStartDate,
+      periodEndDate: options?.periodEndDate,
+      totalRecordedIncome: options?.totalRecordedIncome,
+      supervisorNotes: options?.supervisorNotes,
+      societySummaries: options?.societySummaries,
     };
 
     const updated = {
@@ -1062,17 +1150,189 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     persistState(updated);
   }, [state, persistState]);
 
-  // 6. Union Actions
-  const reviewBmcReceipt = useCallback((receiptId: string, reviewNotes: string, reviewedBy: string) => {
+  const addSocietyIncomeRecord = useCallback((recordData: Omit<SocietyIncomeRecord, 'id' | 'createdAt'>): SocietyIncomeRecord => {
+    const id = `INC-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+    const createdAt = new Date().toISOString();
+    const newRecord: SocietyIncomeRecord = {
+      ...recordData,
+      id,
+      createdAt,
+      auditTrail: [
+        {
+          timestamp: createdAt,
+          user: recordData.enteredBy,
+          action: 'Income record created',
+        },
+        ...(recordData.auditTrail || [])
+      ]
+    };
     const updated = {
       ...state,
-      bmcReceipts: state.bmcReceipts.map(r => r.id === receiptId ? {
-        ...r,
-        status: 'reviewed_by_union' as const,
-        unionReviewNotes: reviewNotes,
-        reviewedBy,
-        reviewedAt: new Date().toISOString(),
-      } : r),
+      societyIncomeRecords: [newRecord, ...state.societyIncomeRecords],
+    };
+    persistState(updated);
+
+    WorkflowApi.recordSocietyIncome(newRecord).catch(err => {
+      console.log('[WorkflowApi] Income record synced locally:', err?.message || err);
+    });
+
+    return newRecord;
+  }, [state, persistState]);
+
+  const submitBmcConsolidatedReport = useCallback((reportData: {
+    bmcId: string;
+    reportingPeriodType: 'daily' | 'monthly' | 'custom';
+    collectionDate: string;
+    periodStartDate?: string;
+    periodEndDate?: string;
+    includedDeliveryIds: string[];
+    totalDeclaredQuantity: number;
+    totalReceivedQuantity: number;
+    totalRecordedIncome: number;
+    totalAmountReceived?: number;
+    totalAmountPending?: number;
+    societySummaries: Array<{
+      societyId: string;
+      societyName: string;
+      declaredLitres: number;
+      receivedLitres: number;
+      varianceLitres: number;
+      recordedIncome: number;
+      discrepancyCount: number;
+      status: string;
+    }>;
+    supervisorNotes?: string;
+    createdBy: string;
+  }): BMCReceipt => {
+    const bmc = state.bmcs.find(b => b.id === reportData.bmcId);
+    const receiptId = `BMCR-${reportData.collectionDate.replace(/-/g, '')}-${String(state.bmcReceipts.length + 1).padStart(3, '0')}`;
+    const verificationCode = `BMCR-VER-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const netDifference = parseFloat((reportData.totalDeclaredQuantity - reportData.totalReceivedQuantity).toFixed(2));
+    const unresolvedCount = reportData.societySummaries.reduce((sum, s) => sum + (s.discrepancyCount || 0), 0);
+
+    const newReceipt: BMCReceipt = {
+      id: receiptId,
+      bmcId: reportData.bmcId,
+      bmcName: bmc?.name || 'Aavin BMC',
+      unionId: state.union.id || 'UNION001',
+      collectionDate: reportData.collectionDate,
+      includedDeliveryIds: reportData.includedDeliveryIds,
+      totalBoothsCount: reportData.societySummaries.length,
+      totalDeclaredQuantity: parseFloat(reportData.totalDeclaredQuantity.toFixed(2)),
+      totalReceivedQuantity: parseFloat(reportData.totalReceivedQuantity.toFixed(2)),
+      netDifference,
+      hasDiscrepancies: unresolvedCount > 0,
+      unresolvedCasesCount: unresolvedCount,
+      createdAt: new Date().toISOString(),
+      createdBy: reportData.createdBy,
+      status: 'sent_to_union',
+      verificationCode,
+      reportingPeriodType: reportData.reportingPeriodType,
+      periodStartDate: reportData.periodStartDate,
+      periodEndDate: reportData.periodEndDate,
+      totalRecordedIncome: parseFloat(reportData.totalRecordedIncome.toFixed(2)),
+      totalAmountReceived: reportData.totalAmountReceived ? parseFloat(reportData.totalAmountReceived.toFixed(2)) : undefined,
+      totalAmountPending: reportData.totalAmountPending ? parseFloat(reportData.totalAmountPending.toFixed(2)) : undefined,
+      societySummaries: reportData.societySummaries,
+      supervisorNotes: reportData.supervisorNotes,
+      revisionNumber: 1,
+    };
+
+    const newNotification: InAppNotification = {
+      id: `NOTIF-CONSOL-UNION-${Date.now()}`,
+      recipientRole: 'union',
+      title: 'Consolidated BMC Report Submitted',
+      message: `${bmc?.name || 'BMC'} submitted consolidated report #${receiptId} (${reportData.totalReceivedQuantity}L, ₹${reportData.totalRecordedIncome.toLocaleString('en-IN')}) for Union approval.`,
+      type: 'system',
+      timestamp: 'Just now',
+      isRead: false,
+      linkRoute: '/(union)/receipt-review',
+    };
+
+    const updated = {
+      ...state,
+      bmcReceipts: [newReceipt, ...state.bmcReceipts],
+      notifications: [newNotification, ...state.notifications],
+    };
+    persistState(updated);
+
+    WorkflowApi.submitBmcConsolidatedReport(newReceipt).catch(err => {
+      console.log('[WorkflowApi] Consolidated report synced locally:', err?.message || err);
+    });
+
+    return newReceipt;
+  }, [state, persistState]);
+
+  const updateBmcReportStatus = useCallback((reportId: string, status: BMCReportStatus, reviewNotes?: string, reviewer?: string) => {
+    const report = state.bmcReceipts.find(r => r.id === reportId);
+    if (!report) return;
+
+    const updatedReceipts = state.bmcReceipts.map(r => r.id === reportId ? {
+      ...r,
+      status,
+      unionReviewNotes: reviewNotes || r.unionReviewNotes,
+      reviewedBy: reviewer || r.reviewedBy,
+      reviewedAt: new Date().toISOString(),
+    } : r);
+
+    const statusTitles: Record<BMCReportStatus, string> = {
+      draft: 'Report Saved as Draft',
+      sent_to_union: 'Report Dispatched to Union',
+      under_review: 'Union Review Underway',
+      reviewed_by_union: '✅ Union Approved BMC Report',
+      returned_for_correction: '⚠️ Report Returned for Correction',
+    };
+
+    const notif: InAppNotification = {
+      id: `NOTIF-STATUS-BMC-${Date.now()}`,
+      recipientRole: 'bmc',
+      recipientId: report.bmcId,
+      title: statusTitles[status] || 'Report Status Updated',
+      message: `Consolidated Report #${reportId} status updated to "${status.replace(/_/g, ' ').toUpperCase()}". ${reviewNotes ? `Notes: ${reviewNotes}` : ''}`,
+      type: status === 'returned_for_correction' ? 'discrepancy_alert' : 'system',
+      timestamp: 'Just now',
+      isRead: false,
+      linkRoute: '/(bmc)/submit-union-report',
+    };
+
+    const updated = {
+      ...state,
+      bmcReceipts: updatedReceipts,
+      notifications: [notif, ...state.notifications],
+    };
+    persistState(updated);
+  }, [state, persistState]);
+
+  // 6. Union Actions
+  const reviewBmcReceipt = useCallback((receiptId: string, reviewNotes: string, reviewedBy: string, status?: BMCReportStatus) => {
+    const finalStatus: BMCReportStatus = status || 'reviewed_by_union';
+    const report = state.bmcReceipts.find(r => r.id === receiptId);
+    
+    const updatedReceipts = state.bmcReceipts.map(r => r.id === receiptId ? {
+      ...r,
+      status: finalStatus,
+      unionReviewNotes: reviewNotes,
+      reviewedBy,
+      reviewedAt: new Date().toISOString(),
+    } : r);
+
+    const newNotification: InAppNotification = {
+      id: `NOTIF-REV-BMC-${Date.now()}`,
+      recipientRole: 'bmc',
+      recipientId: report?.bmcId,
+      title: finalStatus === 'returned_for_correction' ? '⚠️ Report Returned for Correction' : '✅ Report Approved by Union',
+      message: `Union GM has reviewed report #${receiptId}. Decision: ${finalStatus.toUpperCase()}. Notes: ${reviewNotes}`,
+      type: finalStatus === 'returned_for_correction' ? 'discrepancy_alert' : 'system',
+      timestamp: 'Just now',
+      isRead: false,
+      linkRoute: '/(bmc)/submit-union-report',
+    };
+
+    const updated = {
+      ...state,
+      bmcReceipts: updatedReceipts,
+      notifications: [newNotification, ...state.notifications],
     };
     persistState(updated);
 
@@ -1183,24 +1443,158 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state]);
 
   const getBmcStats = useCallback((bmcId: string) => {
+    const assignedBooths = state.booths.filter(b => b.assignedBmcId === bmcId);
+    const assignedBoothIds = assignedBooths.map(b => b.id);
+
+    // Active vs Inactive societies: active if they have milk records or deliveries
+    const activeBoothSet = new Set<string>();
+    state.milkRecords.forEach(r => {
+      if (assignedBoothIds.includes(r.boothId)) activeBoothSet.add(r.boothId);
+    });
+    state.bmcDeliveries.forEach(d => {
+      if (d.bmcId === bmcId) activeBoothSet.add(d.boothId);
+    });
+    const registeredBoothsCount = assignedBooths.length;
+    const activeBoothsCount = Math.max(1, activeBoothSet.size);
+    const inactiveBoothsCount = Math.max(0, registeredBoothsCount - activeBoothsCount);
+
     const deliveries = state.bmcDeliveries.filter(d => d.bmcId === bmcId);
     const pendingDeliveries = deliveries.filter(d => d.status === 'pending_arrival');
     const confirmedDeliveries = deliveries.filter(d => d.status !== 'pending_arrival');
+
+    // Today's milk collected at societies
+    const today = '2026-10-12';
+    const todayCollected = state.milkRecords
+      .filter(r => assignedBoothIds.includes(r.boothId) && r.collectionDate === today)
+      .reduce((sum, r) => sum + r.quantityLitres, 0);
 
     const todayDeclared = deliveries.reduce((sum, d) => sum + d.declaredDispatchQuantity, 0);
     const todayReceived = confirmedDeliveries.reduce((sum, d) => sum + (d.measuredReceivedQuantity || 0), 0);
     const totalDifference = confirmedDeliveries.reduce((sum, d) => sum + (d.difference || 0), 0);
 
+    // Total milk dispatched / reported to union
+    const bmcReceiptsList = state.bmcReceipts.filter(r => r.bmcId === bmcId);
+    const submittedReceipts = bmcReceiptsList.filter(r => r.status === 'sent_to_union' || r.status === 'under_review' || r.status === 'reviewed_by_union');
+    const todayDispatchedToUnion = submittedReceipts.reduce((sum, r) => sum + r.totalReceivedQuantity, 0);
+
+    // Financial totals
+    const bmcIncomeRecords = state.societyIncomeRecords.filter(inc => inc.bmcId === bmcId || assignedBoothIds.includes(inc.societyId));
+    const totalRecordedIncome = bmcIncomeRecords.reduce((sum, inc) => sum + inc.amountInr, 0);
+
+    const totalSubmittedToUnionIncome = submittedReceipts.reduce((sum, r) => sum + (r.totalRecordedIncome || 0), 0);
+
+    const reportsAwaitingUnionCount = bmcReceiptsList.filter(r => r.status === 'sent_to_union' || r.status === 'under_review').length;
+
     const activeDiscrepancies = state.discrepancyCases.filter(
       c => c.bmcId === bmcId && (c.status === 'open' || c.status === 'under_investigation' || c.status === 'escalated_to_union')
     );
+    const resolvedDiscrepancies = state.discrepancyCases.filter(
+      c => c.bmcId === bmcId && c.status === 'resolved'
+    );
 
     return {
+      registeredBoothsCount,
+      activeBoothsCount,
+      inactiveBoothsCount,
+      todayCollected: parseFloat(todayCollected.toFixed(2)),
       todayDeclared: parseFloat(todayDeclared.toFixed(2)),
       todayReceived: parseFloat(todayReceived.toFixed(2)),
+      todayDispatchedToUnion: parseFloat(todayDispatchedToUnion.toFixed(2)),
       totalDifference: parseFloat(totalDifference.toFixed(2)),
+      totalRecordedIncome: parseFloat(totalRecordedIncome.toFixed(2)),
+      totalSubmittedToUnionIncome: parseFloat(totalSubmittedToUnionIncome.toFixed(2)),
       pendingDeliveriesCount: pendingDeliveries.length,
+      reportsAwaitingUnionCount,
       activeDiscrepanciesCount: activeDiscrepancies.length,
+      resolvedDiscrepanciesCount: resolvedDiscrepancies.length,
+    };
+  }, [state]);
+
+  const getSocietyDetailedStats = useCallback((societyId: string, period?: string) => {
+    const today = '2026-10-12';
+    const societyRecords = state.milkRecords.filter(r => r.boothId === societyId);
+    const deliveries = state.bmcDeliveries.filter(d => d.boothId === societyId);
+    const incomeRecords = state.societyIncomeRecords.filter(i => i.societyId === societyId);
+    const activeDiscrepancies = state.discrepancyCases.filter(
+      c => c.boothId === societyId && (c.status === 'open' || c.status === 'under_investigation' || c.status === 'escalated_to_union')
+    );
+
+    // Group milk by day to compute daily metrics
+    const dailyMap: Record<string, number> = {};
+    societyRecords.forEach(r => {
+      dailyMap[r.collectionDate] = (dailyMap[r.collectionDate] || 0) + r.quantityLitres;
+    });
+    const dailyTotals = Object.values(dailyMap);
+
+    const dailyMilk = dailyMap[today] || 0;
+    const monthlyTotalMilk = societyRecords
+      .filter(r => r.collectionDate.startsWith('2026-10'))
+      .reduce((sum, r) => sum + r.quantityLitres, 0);
+    const yearlyTotalMilk = societyRecords
+      .filter(r => r.collectionDate.startsWith('2026'))
+      .reduce((sum, r) => sum + r.quantityLitres, 0);
+
+    const avgDailyQuantity = dailyTotals.length > 0
+      ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length
+      : 0;
+    const highestDailyQuantity = dailyTotals.length > 0 ? Math.max(...dailyTotals) : 0;
+    const lowestDailyQuantity = dailyTotals.length > 0 ? Math.min(...dailyTotals) : 0;
+
+    const quantityReceivedByBmc = deliveries
+      .filter(d => d.measuredReceivedQuantity !== undefined)
+      .reduce((sum, d) => sum + (d.measuredReceivedQuantity || 0), 0);
+
+    const totalDeclared = deliveries.reduce((sum, d) => sum + d.declaredDispatchQuantity, 0);
+    const differenceLitres = parseFloat((totalDeclared - quantityReceivedByBmc).toFixed(2));
+
+    // Missing records count: days in period with 0 records (e.g. out of last 7 days)
+    const expectedDays = ['2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12'];
+    const missingRecordsCount = expectedDays.filter(d => !dailyMap[d]).length;
+
+    // Financial totals
+    const totalRecordedIncome = incomeRecords.reduce((sum, i) => sum + i.amountInr, 0);
+    const paymentsReceived = incomeRecords
+      .filter(i => i.status === 'verified' || i.category === 'procurement_payment')
+      .reduce((sum, i) => sum + i.amountInr, 0);
+    const paymentsPending = incomeRecords
+      .filter(i => i.status === 'recorded')
+      .reduce((sum, i) => sum + i.amountInr, 0);
+
+    // Amount reported to Union through submitted receipts
+    const relevantReceipts = state.bmcReceipts.filter(r => 
+      r.status === 'sent_to_union' || r.status === 'under_review' || r.status === 'reviewed_by_union'
+    );
+    let amountReportedToUnion = 0;
+    relevantReceipts.forEach(r => {
+      const match = r.societySummaries?.find(s => s.societyId === societyId);
+      if (match) amountReportedToUnion += match.recordedIncome;
+    });
+
+    const latestSubmissionDate = deliveries.length > 0
+      ? deliveries[0].collectionDate
+      : societyRecords.length > 0 ? societyRecords[0].collectionDate : 'None';
+
+    const reconciliationStatus: 'reconciled' | 'variance' | 'pending' = 
+      deliveries.length === 0 ? 'pending' : (activeDiscrepancies.length > 0 || Math.abs(differenceLitres) > 5 ? 'variance' : 'reconciled');
+
+    return {
+      dailyMilk: parseFloat(dailyMilk.toFixed(2)),
+      monthlyTotalMilk: parseFloat(monthlyTotalMilk.toFixed(2)),
+      yearlyTotalMilk: parseFloat(yearlyTotalMilk.toFixed(2)),
+      avgDailyQuantity: parseFloat(avgDailyQuantity.toFixed(2)),
+      highestDailyQuantity: parseFloat(highestDailyQuantity.toFixed(2)),
+      lowestDailyQuantity: parseFloat(lowestDailyQuantity.toFixed(2)),
+      quantityReceivedByBmc: parseFloat(quantityReceivedByBmc.toFixed(2)),
+      differenceLitres,
+      missingRecordsCount,
+      unresolvedDiscrepanciesCount: activeDiscrepancies.length,
+      totalRecordedIncome: parseFloat(totalRecordedIncome.toFixed(2)),
+      paymentsReceived: parseFloat(paymentsReceived.toFixed(2)),
+      paymentsPending: parseFloat(paymentsPending.toFixed(2)),
+      amountReportedToUnion: parseFloat(amountReportedToUnion.toFixed(2)),
+      latestSubmissionDate,
+      reconciliationStatus,
+      isActive: dailyTotals.length > 0 || deliveries.length > 0,
     };
   }, [state]);
 
@@ -1253,6 +1647,9 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         escalateDiscrepancyCase,
         createBmcReceipt,
         sendBmcReceiptToUnion,
+        addSocietyIncomeRecord,
+        submitBmcConsolidatedReport,
+        updateBmcReportStatus,
         reviewBmcReceipt,
         updateUnionThresholds,
         markNotificationAsRead,
@@ -1261,6 +1658,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getFarmerStats,
         getBoothStats,
         getBmcStats,
+        getSocietyDetailedStats,
         getUnionStats,
       }}
     >
