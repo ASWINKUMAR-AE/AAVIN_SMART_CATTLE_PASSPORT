@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  FlatList, 
-  Alert, 
-  Modal, 
-  TextInput, 
+import {
+  StyleSheet,
+  View,
+  Text,
+  FlatList,
+  Alert,
+  Modal,
+  TextInput,
   Pressable,
-  useWindowDimensions 
+  useWindowDimensions
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
@@ -171,7 +171,7 @@ export default function BMCReceiveMilkScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="Receive Milk Deliveries"
         subtitle={`Intake Flow Meter Station • ${bmc.name}`}
         showBack
@@ -289,8 +289,8 @@ export default function BMCReceiveMilkScreen() {
         }
         renderItem={({ item }) => {
           const isPending = item.status === 'pending_arrival' || item.measuredReceivedQuantity === undefined;
-          const diff = item.difference !== undefined 
-            ? item.difference 
+          const diff = item.difference !== undefined
+            ? item.difference
             : (item.measuredReceivedQuantity !== undefined ? item.declaredDispatchQuantity - item.measuredReceivedQuantity : undefined);
           const absDiff = diff !== undefined ? Math.abs(diff) : 0;
           const isMismatch = !isPending && (item.status === 'mismatch_investigation' || absDiff > union.mismatchThresholdLitres);
@@ -392,8 +392,8 @@ export default function BMCReceiveMilkScreen() {
                 <View style={styles.metricBlock}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Received</Text>
                   <Text style={[Typography.headline, { color: item.measuredReceivedQuantity !== undefined ? colors.text : colors.textMuted, fontWeight: '900', marginTop: 2 }]}>
-                    {item.measuredReceivedQuantity !== undefined 
-                      ? `${item.measuredReceivedQuantity.toFixed(1)} L` 
+                    {item.measuredReceivedQuantity !== undefined
+                      ? `${item.measuredReceivedQuantity.toFixed(1)} L`
                       : 'Not recorded'}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>
@@ -406,11 +406,11 @@ export default function BMCReceiveMilkScreen() {
                 {/* Difference */}
                 <View style={styles.metricBlock}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Difference</Text>
-                  <Text 
+                  <Text
                     style={[
-                      Typography.headline, 
-                      { 
-                        color: diff !== undefined 
+                      Typography.headline,
+                      {
+                        color: diff !== undefined
                           ? (absDiff > union.mismatchThresholdLitres ? '#DC2626' : '#16A34A')
                           : colors.textMuted,
                         fontWeight: '900',
@@ -418,13 +418,13 @@ export default function BMCReceiveMilkScreen() {
                       }
                     ]}
                   >
-                    {diff !== undefined 
-                      ? (diff === 0 ? '0.00 L' : `${diff > 0 ? '-' : '+'}${absDiff.toFixed(1)} L`) 
+                    {diff !== undefined
+                      ? (diff === 0 ? '0.00 L' : `${diff > 0 ? '-' : '+'}${absDiff.toFixed(1)} L`)
                       : '—'}
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>
-                    {diff !== undefined 
-                      ? (diff === 0 ? 'Balanced' : (absDiff > union.mismatchThresholdLitres ? 'Shortfall' : 'Within Tol.')) 
+                    {diff !== undefined
+                      ? (diff === 0 ? 'Balanced' : (absDiff > union.mismatchThresholdLitres ? 'Shortfall' : 'Within Tol.'))
                       : 'Unmeasured'}
                   </Text>
                 </View>
@@ -554,18 +554,18 @@ export default function BMCReceiveMilkScreen() {
                   const isDiff = Math.abs(diff) > union.mismatchThresholdLitres;
                   return (
                     <View style={[styles.diffPreview, { backgroundColor: isDiff ? '#FEF2F2' : '#F0FDF4', borderColor: isDiff ? '#FCA5A5' : '#BBF7D0' }]}>
-                      <Ionicons 
-                        name={isDiff ? 'alert-circle' : 'checkmark-circle'} 
-                        size={20} 
-                        color={isDiff ? '#DC2626' : '#16A34A'} 
+                      <Ionicons
+                        name={isDiff ? 'alert-circle' : 'checkmark-circle'}
+                        size={20}
+                        color={isDiff ? '#DC2626' : '#16A34A'}
                       />
                       <View style={{ marginLeft: 8, flex: 1 }}>
                         <Text style={[Typography.subhead, { color: isDiff ? '#B91C1C' : '#166534', fontWeight: '800' }]}>
                           Calculated Difference: {diff.toFixed(2)} Litres
                         </Text>
                         <Text style={[Typography.caption2, { color: isDiff ? '#991B1B' : '#166534' }]}>
-                          {isDiff 
-                            ? `⚠️ Variance exceeds threshold (±${union.mismatchThresholdLitres.toFixed(1)} L). Discrepancy Case will be logged automatically.` 
+                          {isDiff
+                            ? `⚠️ Variance exceeds threshold (±${union.mismatchThresholdLitres.toFixed(1)} L). Discrepancy Case will be logged automatically.`
                             : '✓ Balanced intake. Delivery will be verified as matched.'}
                         </Text>
                       </View>
