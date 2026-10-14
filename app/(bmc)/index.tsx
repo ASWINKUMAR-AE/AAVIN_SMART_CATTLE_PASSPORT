@@ -8,7 +8,8 @@ import {
   RefreshControl, 
   TextInput,
   useWindowDimensions,
-  Platform 
+  Platform,
+  ImageBackground 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
@@ -283,87 +284,42 @@ export default function BMCDashboard() {
           </View>
         )}
 
-        {/* Signature Hero Dark Navy Card */}
-        <View style={styles.heroNavyCard}>
-          <View style={styles.heroCardHeaderRow}>
-            <View style={styles.heroHeaderPill}>
-              <Text style={styles.heroHeaderPillText}>BMC Intake Volume ›</Text>
+        {/* Signature Hero Dark Navy Card with Assets bmc.png Background & Dark Overlay */}
+        <ImageBackground
+          source={require('../../assets/bmc.png')}
+          style={styles.heroNavyCard}
+          imageStyle={styles.heroBgImage}
+          resizeMode="cover"
+        >
+          {/* Dark Color Layer above image */}
+          <View style={styles.darkOverlayLayer}>
+            <View style={styles.heroCardHeaderRow}>
+              <View style={styles.heroHeaderPill}>
+                <Text style={styles.heroHeaderPillText}>BMC Intake Volume ›</Text>
+              </View>
+              <View style={[styles.heroStatusBadge, { backgroundColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
+                <Text style={styles.heroStatusBadgeText}>
+                  {stats.totalDifference > 0 ? '⚠️ VARIANCE DETECTED' : '✓ BALANCED'}
+                </Text>
+              </View>
             </View>
-            <View style={[styles.heroStatusBadge, { backgroundColor: stats.totalDifference > 0 ? '#DC2626' : '#16A34A' }]}>
-              <Text style={styles.heroStatusBadgeText}>
-                {stats.totalDifference > 0 ? '⚠️ VARIANCE DETECTED' : '✓ BALANCED'}
-              </Text>
-            </View>
-          </View>
 
-          <Text style={styles.heroBalanceNumber}>
-            {stats.todayReceived.toFixed(1)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
-          </Text>
-
-          <View style={styles.heroSubRow}>
-            <View style={[styles.growthPill, { backgroundColor: stats.totalDifference > 0 ? 'rgba(220, 38, 38, 0.2)' : 'rgba(22, 163, 74, 0.2)' }]}>
-              <Text style={[styles.growthPillText, { color: stats.totalDifference > 0 ? '#F87171' : '#4ADE80' }]}>
-                {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L Diff` : '100% Reconciled'}
-              </Text>
-            </View>
-            <Text style={styles.heroSubText}>
-              Society Declared: {stats.todayDeclared.toFixed(1)} L • Income: ₹{stats.totalRecordedIncome.toLocaleString('en-IN')}
+            <Text style={styles.heroBalanceNumber}>
+              {stats.todayReceived.toFixed(1)} <Text style={{ fontSize: 20, fontWeight: '600' }}>Litres</Text>
             </Text>
+
+            <View style={styles.heroSubRow}>
+              <View style={[styles.growthPill, { backgroundColor: stats.totalDifference > 0 ? 'rgba(220, 38, 38, 0.2)' : 'rgba(22, 163, 74, 0.2)' }]}>
+                <Text style={[styles.growthPillText, { color: stats.totalDifference > 0 ? '#F87171' : '#4ADE80' }]}>
+                  {stats.totalDifference > 0 ? `-${stats.totalDifference.toFixed(1)} L Diff` : '100% Reconciled'}
+                </Text>
+              </View>
+              <Text style={styles.heroSubText}>
+                Society Declared: {stats.todayDeclared.toFixed(1)} L • Income: ₹{stats.totalRecordedIncome.toLocaleString('en-IN')}
+              </Text>
+            </View>
           </View>
-
-          {/* Quick Action Circle Buttons */}
-          <View style={styles.heroActionsRow}>
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/receive-milk')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Intake</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/society-income')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="cash-outline" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Income</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/society-comparison')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="bar-chart-outline" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Compare</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/reports')}
-            >
-              <View style={styles.circleBtn}>
-                <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Reports</Text>
-            </Pressable>
-
-            <Pressable 
-              style={styles.heroCircleAction}
-              onPress={() => router.push('/(bmc)/submit-union-report')}
-            >
-              <View style={[styles.circleBtn, { backgroundColor: '#1E40AF' }]}>
-                <Ionicons name="paper-plane" size={17} color="#FFFFFF" />
-              </View>
-              <Text style={styles.circleBtnLabel}>Union</Text>
-            </Pressable>
-          </View>
-        </View>
+        </ImageBackground>
 
         {/* Section 2: Requirement #2 — Ten Summary Metric Cards */}
         <View style={styles.sectionTitleRow}>
@@ -633,14 +589,25 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   heroNavyCard: {
-    backgroundColor: '#0D1E36',
     borderRadius: 24,
-    padding: 18,
+    marginBottom: 4,
+    overflow: 'hidden',
     shadowColor: '#071325',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
+  },
+  heroBgImage: {
+    borderRadius: 24,
+    width: '100%',
+    height: '100%',
+  },
+  darkOverlayLayer: {
+    backgroundColor: 'rgba(8, 20, 38, 0.82)',
+    padding: 18,
+    borderRadius: 24,
+    width: '100%',
   },
   heroCardHeaderRow: {
     flexDirection: 'row',
@@ -679,7 +646,7 @@ const styles = StyleSheet.create({
   heroSubRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 2,
   },
   growthPill: {
     paddingHorizontal: 8,
@@ -695,34 +662,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 12,
     fontWeight: '600',
-  },
-  heroActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.12)',
-    paddingTop: 14,
-  },
-  heroCircleAction: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  circleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#162C4E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  circleBtnLabel: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
   },
   sectionTitleRow: {
     flexDirection: 'row',
