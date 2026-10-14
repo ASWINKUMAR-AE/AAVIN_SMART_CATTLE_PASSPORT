@@ -207,7 +207,7 @@ export default function LoginScreen() {
 
                 return (
                   <Pressable
-                    key={acc.id}
+                    key={`${acc.id}-${acc.username}`}
                     onPress={() => handleFillDemoCredential(acc)}
                     style={[
                       styles.accountRowItem,
