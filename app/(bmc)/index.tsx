@@ -636,6 +636,11 @@ export default function BMCDashboard() {
             onPress={() => router.push('/(bmc)/receive-milk')}
           />
           <Button
+            title="📑 Daily Summary & Operational Closure"
+            variant="secondary"
+            onPress={() => router.push('/(bmc)/daily-summary')}
+          />
+          <Button
             title="📊 Multi-Society Comparison & Analytics"
             variant="secondary"
             onPress={() => router.push('/(bmc)/society-comparison')}
