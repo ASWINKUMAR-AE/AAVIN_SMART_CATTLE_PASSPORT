@@ -96,10 +96,6 @@ export default function FarmerProfileScreen() {
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>{assignedBooth?.name || 'Melur Co-op Society'}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Booth Code:</Text>
-            <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{assignedBooth?.code}</Text>
-          </View>
-          <View style={styles.row}>
             <Text style={[Typography.caption1, { color: colors.textSecondary }]}>Operator In-Charge:</Text>
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '600' }]}>{assignedBooth?.operatorName} ({assignedBooth?.phone})</Text>
           </View>

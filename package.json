@@ -9,6 +9,7 @@
     "db:init": "node scripts/init-db.js",
     "db:reset": "node scripts/init-db.js --reset",
     "expo": "npx expo start --host lan",
+    "mobile": "expo start --go --tunnel --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
