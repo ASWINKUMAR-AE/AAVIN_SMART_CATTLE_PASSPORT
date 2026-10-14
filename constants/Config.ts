@@ -20,7 +20,7 @@ const getDefaultApiUrl = () => {
   }
 
   // 2. Default to detected local LAN IP
-  return 'http://192.168.0.12:4000/api/v1';
+  return 'http://10.110.44.105:4000/api/v1';
 };
 
 export const Config = {

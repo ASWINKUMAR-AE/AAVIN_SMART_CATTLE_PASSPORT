@@ -238,15 +238,14 @@ export function FloatingAavinTabBar({
     return null;
   }
 
-  const bottomOffset = Math.max(insets.bottom, 12);
+  const bottomPadding = Math.max(insets.bottom, 12);
 
   return (
     <View
       style={[
         styles.outerContainer,
         {
-          bottom: bottomOffset,
-          marginHorizontal: horizontalMargin,
+          paddingBottom: bottomPadding,
         },
       ]}
       pointerEvents="box-none"
@@ -255,7 +254,6 @@ export function FloatingAavinTabBar({
         style={[
           styles.barWrapper,
           { height: TAB_BAR_HEIGHT },
-          isScrolled && styles.barWrapperScrolled,
         ]}
       >
         {/* Tab Touch Targets & Content */}
@@ -345,48 +343,40 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    bottom: 0,
     zIndex: 999,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   barWrapper: {
-    width: '100%',
+    width: '92%',
+    maxWidth: 520,
+    alignSelf: 'center',
     position: 'relative',
     backgroundColor: AAVIN_COLORS.white,
-    borderRadius: 24,
-    // Shadow styling matching dairy/clean executive aesthetic
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     ...Platform.select({
       ios: {
         shadowColor: AAVIN_COLORS.navy,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
+        shadowOpacity: 0.15,
         shadowRadius: 16,
       },
       android: {
-        elevation: 10,
+        elevation: 12,
       },
       default: {
-        boxShadow: '0px 6px 18px rgba(18, 52, 81, 0.12)',
-        transition: 'box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+        boxShadow: '0px 6px 24px rgba(18, 52, 81, 0.14)',
       },
     }),
   },
   barWrapperScrolled: {
-    ...Platform.select({
-      ios: {
-        shadowColor: AAVIN_COLORS.navy,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 16,
-      },
-      default: {
-        boxShadow: '0px 12px 32px rgba(18, 52, 81, 0.24), 0px 4px 14px rgba(94, 168, 238, 0.20)',
-        transform: 'translateY(-2px)',
-      },
-    }),
+    backgroundColor: 'transparent',
   },
   tabsRow: {
     flex: 1,
@@ -394,6 +384,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: '100%',
     zIndex: 10,
+    borderRadius: 50,
+    overflow: 'hidden',
   },
   tabItem: {
     flex: 1,
@@ -401,8 +393,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    marginHorizontal: 3,
-    borderRadius: 18,
+    marginHorizontal: 2,
+    borderRadius: 50,
+    paddingVertical: 4,
   },
   tabItemFocused: {
     backgroundColor: AAVIN_COLORS.skyBlueLight,
