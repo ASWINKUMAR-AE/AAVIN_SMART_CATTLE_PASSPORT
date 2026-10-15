@@ -69,7 +69,10 @@ class WorkflowContextView(APIView):
                     'numberOfCows': f.number_of_cows} for f in farmers]})
         if user.role == User.Role.BMC:
             bmc = get_object_or_404(BMC.objects.select_related('user'), pk=user.pk)
-            return success({'society': None, 'bmc': {'id': str(bmc.pk), 'name': bmc.user.full_name}, 'farmers': []})
+            societies = bmc.societies.select_related('user').order_by('user__full_name', 'pk')
+            return success({'society': None, 'bmc': {'id': str(bmc.pk), 'name': bmc.user.full_name}, 'farmers': [],
+                'societies': [{'id': str(s.pk), 'name': s.user.full_name, 'phone': s.user.phone,
+                    'isActive': s.user.is_active} for s in societies]})
         raise PermissionDenied('Only Society and BMC accounts can access this workflow.')
 
 

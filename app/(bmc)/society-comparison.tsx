@@ -28,6 +28,7 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { goBackOrReplace } from '../../services/navigation';
 
 type TimeGranularity = 'day' | 'month' | 'quarter' | 'year';
 type ComparisonMetric = 'milk_qty' | 'avg_daily' | 'discrepancy' | 'income' | 'union_submitted';
@@ -226,8 +227,8 @@ export default function SocietyComparisonScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Society Comparison & Analytics"
-        subtitle={`${bmc.name} • Comparative Performance Intelligence`}
+        title="Compare societies"
+        subtitle={`${bmc.name} • Milk supply and performance`}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -235,11 +236,13 @@ export default function SocietyComparisonScreen() {
         <View style={styles.topNavRow}>
           <Pressable 
             style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]} 
-            onPress={() => router.back()}
+            onPress={() => goBackOrReplace(router, '/(bmc)/operations')}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={18} color={colors.text} />
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginLeft: 6 }]}>
-              Dashboard
+              Back
             </Text>
           </Pressable>
           <Text style={[Typography.caption1, { color: colors.textSecondary }]}>

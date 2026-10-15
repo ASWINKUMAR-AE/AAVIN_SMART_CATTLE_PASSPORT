@@ -1,9 +1,11 @@
 import { api } from './api';
 import { BoothReceipt, BMCDelivery, MilkRecord, Vendor } from '../types/aavin';
 
+export interface LinkedSociety { id: string; name: string; phone: string; isActive: boolean }
 export interface WorkflowContext {
   society: { id: string; name: string; assignedBmcId: string } | null;
   bmc: { id: string; name: string };
+  societies?: LinkedSociety[];
   farmers: { id: string; name: string; assignedBoothId: string; farmerIdCode: string; village: string; numberOfCows: number }[];
 }
 export interface Attendance { id: string; farmerId: string; farmerName: string; collectionDate: string; session: 'morning' | 'evening' }

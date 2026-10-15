@@ -96,6 +96,12 @@ const ROUTE_META_MAP: Record<
   },
 
   // BMC Staff
+  dashboard: {
+    outline: 'grid-outline',
+    filled: 'grid',
+    labelKey: 'nav.dashboard',
+    fallbackLabel: 'Dashboard',
+  },
   'receive-milk': {
     outline: 'cube-outline',
     filled: 'cube',
@@ -107,12 +113,6 @@ const ROUTE_META_MAP: Record<
     filled: 'document-text',
     labelKey: 'nav.verifyMilk',
     fallbackLabel: 'Verify Milk',
-  },
-  investigations: {
-    outline: 'alert-circle-outline',
-    filled: 'alert-circle',
-    labelKey: 'nav.alerts',
-    fallbackLabel: 'Alerts',
   },
 
   // Union Management
@@ -182,6 +182,7 @@ export interface FloatingAavinTabBarProps {
   navigation: any;
   insets?: any;
   hideOnScroll?: boolean;
+  hideOnKeyboard?: boolean;
   barHeight?: number;
 }
 
@@ -190,6 +191,7 @@ export function FloatingAavinTabBar({
   descriptors,
   navigation,
   hideOnScroll = true,
+  hideOnKeyboard = true,
   barHeight = TAB_BAR_HEIGHT,
 }: FloatingAavinTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -214,6 +216,11 @@ export function FloatingAavinTabBar({
     'milk-entry': ['milk-history', 'record-milk'],
     'bmc-analytics': ['bmc-monitoring'],
     'society-analytics': ['bmc-monitoring'],
+    'my-societies': ['dashboard'],
+    operations: ['dashboard'],
+    'society-comparison': ['dashboard'],
+    'society-income': ['dashboard'],
+    'submit-union-report': ['dashboard'],
   };
 
   const parentTabNames = SUBROUTE_PARENT_MAP[activeRoute?.name];
@@ -227,10 +234,9 @@ export function FloatingAavinTabBar({
     ? parentTabIndex
     : 0;
 
-  const horizontalMargin = 16;
-
-  // Track keyboard events to hide bar during text entry
+  // Screens can keep navigation available during text entry.
   useEffect(() => {
+    if (!hideOnKeyboard) return;
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       () => setKeyboardVisible(true)
@@ -243,9 +249,9 @@ export function FloatingAavinTabBar({
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [hideOnKeyboard]);
 
-  if (isKeyboardVisible || (hideOnScroll && !barsVisible)) {
+  if ((hideOnKeyboard && isKeyboardVisible) || (hideOnScroll && !barsVisible)) {
     return null;
   }
 

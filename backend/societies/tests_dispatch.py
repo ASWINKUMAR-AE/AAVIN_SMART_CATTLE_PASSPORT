@@ -181,6 +181,31 @@ class DispatchTests(APITestCase):
         self.assertEqual(self.client.patch('/api/v1/workflow/vendors/' + vendor_id, {'name': 'Hacked'}, format='json').status_code, 404)
         self.assertEqual(self.get('vendors').data['data']['count'], 0)
 
+    def test_bmc_context_lists_only_linked_societies_without_requiring_deliveries(self):
+        inactive = User.objects.create_user('9800000190', 'Test!874', full_name='Inactive Society',
+                                          role='society', parent=self.bmc, is_active=False)
+        self.auth(self.bmc)
+        rows = self.get('context').data['data']['societies']
+        self.assertEqual([row['id'] for row in rows], [str(inactive.pk), str(self.society.pk)])
+        self.assertEqual(rows[0]['isActive'], False)
+        self.assertEqual(rows[1]['name'], self.society.full_name)
+        self.assertEqual(rows[1]['phone'], self.society.phone)
+        self.assertEqual(rows[1]['isActive'], True)
+        self.assertNotIn(str(self.other_society.pk), [row['id'] for row in rows])
+        self.auth(self.other_bmc)
+        self.assertEqual([row['id'] for row in self.get('context').data['data']['societies']], [str(self.other_society.pk)])
+        self.auth(self.society)
+        self.assertNotIn('societies', self.get('context').data['data'])
+
+    def test_bmc_linked_society_list_follows_reassignment(self):
+        self.society.parent = self.other_bmc
+        self.society.save()
+        self.auth(self.bmc)
+        self.assertEqual(self.get('context').data['data']['societies'], [])
+        self.auth(self.other_bmc)
+        self.assertEqual({row['id'] for row in self.get('context').data['data']['societies']},
+                         {str(self.society.pk), str(self.other_society.pk)})
+
     def test_link_change_and_inactive_bmc(self):
         receipt, _ = self.create_receipt()
         self.society.parent = self.other_bmc
