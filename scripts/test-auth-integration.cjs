@@ -128,7 +128,7 @@ function storeHarness(savedState) {
   let sent;
   const {AccountsApi}=load('services/accountsApi.ts',{'./api':{api:{post:async(url,data)=>{sent={url,data};return {data:{data:{user:account('farmer')}}};},get:async()=>({data:{data:{farmers:[account('farmer')]}}})}}});
   await AccountsApi.registerFarmer({phone:'9842000001',fullName:'Farmer',parentId:'society-uuid',personalDetails:account('farmer').personalDetails});
-  assert.equal(sent.url,'/auth/register');assert.equal(sent.data.role,'farmer');assert.equal('password' in sent.data,false);assert.equal(sent.data.personalDetails.numberOfCows,0);
+  assert.equal(sent.url,'/farmers');assert.equal(sent.data.role,'farmer');assert.equal('password' in sent.data,false);assert.equal(sent.data.personalDetails.numberOfCows,0);
   assert.equal((await AccountsApi.listFarmers())[0].id,'farmer-uuid');
 
   // Cattle payloads and server UUIDs survive login, account reload and society refresh.

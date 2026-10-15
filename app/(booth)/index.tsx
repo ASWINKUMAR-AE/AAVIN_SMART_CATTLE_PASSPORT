@@ -3,8 +3,7 @@ import { BoothText as Text } from '../../components/booth/BoothText';
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, Pressable, RefreshControl, ImageBackground, useWindowDimensions, Text as NativeText } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAavinStore } from '../../store/AavinStoreContext';
-import { useMilkCollections, useCollectionRefresh } from '../../context/MilkCollectionsContext';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
 import { indiaDate } from '../../services/milkCollectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,37 +17,24 @@ export default function BoothDashboard() {
   const { width, fontScale } = useWindowDimensions();
   const styles = createStyles(width, fontScale);
   const { user } = useAuth();
-  const { 
-    booths, 
-    bmcs, 
-    farmers, 
-    getBoothStats, 
-    boothReceipts,
-    bmcDeliveries,
-    discrepancyCases 
-  } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
-
-  const { records: milkRecords, summary, error, loading, refresh } = useMilkCollections();
-  useCollectionRefresh();
+  const { context, milkRecords, boothReceipts, error, loading, refresh } = useDispatchWorkflow();
+  useDispatchRefresh();
   const [refreshing, setRefreshing] = useState(false);
-
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
-  const boothDisplayName = user?.fullName || booth.name;
-  const assignedBmc = bmcs.find(b => b.id === booth.assignedBmcId) || bmcs[0];
-
-  const stats = getBoothStats(booth.id);
+  const boothId = user?.id || '';
+  const booth = context?.society || { id: boothId, name: user?.fullName || '', assignedBmcId: '' };
+  const boothDisplayName = booth.name;
+  const assignedBmc = context?.bmc || { id: '', name: 'Loading linked BMC…' };
   const boothRecords = milkRecords.filter(r => r.boothId === booth.id);
   const todayRecords = boothRecords.filter(r => r.collectionDate === indiaDate());
-  const assignedFarmers = farmers.filter(f => f.assignedBoothId === booth.id);
-
-  // Check today's receipt status
+  const assignedFarmers = context?.farmers || [];
   const todayReceipt = boothReceipts.find(r => r.boothId === booth.id && r.collectionDate === indiaDate());
-
-  // Any discrepancy cases involving this booth
-  const boothDiscrepancies = discrepancyCases.filter(c => c.boothId === booth.id && c.status === 'open');
+  const total = (records: typeof milkRecords) => records.reduce((sum, record) => sum + record.quantityLitres, 0).toFixed(2);
+  const summary = context ? { todaySupply: total(todayRecords), shifts: {
+    morning: total(todayRecords.filter(r => r.session === 'morning')),
+    evening: total(todayRecords.filter(r => r.session === 'evening')),
+  }} : null;
 
   const onRefresh = async () => { setRefreshing(true); try { await refresh(); } finally { setRefreshing(false); } };
 
@@ -65,21 +51,6 @@ export default function BoothDashboard() {
       >
         {!summary && <Text style={{ color: colors.textSecondary }}>{loading ? 'Loading collections…' : 'Collections unavailable. Pull down to retry.'}</Text>}
         {error && <Text style={{ color: colors.hold }}>{error}</Text>}
-        {/* Discrepancy Alert for Society Staff */}
-        {boothDiscrepancies.length > 0 && (
-          <View style={[styles.discrepancyBanner, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
-            <Ionicons name="alert-circle" size={24} color="#DC2626" />
-            <View style={{ marginLeft: 10, flex: 1 }}>
-              <Text style={[Typography.headline, { color: '#B91C1C', fontWeight: '800' }]}>
-                ⚠️ ACTIVE BMC TRANSIT DISCREPANCY
-              </Text>
-              <Text style={[Typography.caption1, { color: '#991B1B', marginTop: 2 }]}>
-                Collection variance: {boothDiscrepancies[0].differenceLitres} L variance reported at {assignedBmc.name}.
-              </Text>
-            </View>
-          </View>
-        )}
-
         {/* Signature Hero Dark Navy Card with Assets soc.png Background & Dark Overlay */}
         <ImageBackground
           source={require('../../assets/soc.png')}

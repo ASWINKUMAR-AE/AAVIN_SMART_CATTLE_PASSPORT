@@ -1,5 +1,7 @@
 # Django authentication API
 
+Role-specific account routes and model ownership are documented in [domain models](domain-models.md). Existing authentication routes remain compatible.
+
 Base URL: `http://localhost:4000/api/v1/auth`. Paths have no trailing slash.
 
 Successful responses use `{"success":true,"message":"...","data":{},"timestamp":"..."}`. Validation and authentication errors use `success:false`, `message`, `errors`, and `timestamp`.
@@ -70,7 +72,7 @@ Farmer registrations accept an optional, nonempty `cows` array:
 
 Only Society-created Farmers accept cattle. The backend assigns `farmer_id` from the newly created account; clients cannot choose a different owner. Tags must contain exactly 12 digits and be unique across the database and within the request. Breed is required, milk capacity must be positive with at most two decimal places, and name is optional. Invalid cattle reject the whole registration; database failures roll back the account, profile, and all cows. When cattle are supplied, `personalDetails.numberOfCows` is derived from the array length.
 
-Each cow is a separate `accounts_cow` row linked to `accounts_user.id`. `user.cows` is returned in registration, login, current-user lookup, and the Society's farmer directory. Each entry contains `id` (cow UUID), `farmerId` (farmer UUID), `pashuAadhaar`, `breed`, `milkCapacity` (decimal string), `name`, and `createdAt`. Accounts with no cattle return an empty array. Society listing permissions also protect nested cow records.
+Each cow is a separate `accounts_cow` row linked to `farmers_farmer.user_id` (the same UUID as its authentication account). `user.cows` is returned in registration, login, current-user lookup, and the Society's farmer directory. Each entry contains `id` (cow UUID), `farmerId` (farmer UUID), `pashuAadhaar`, `breed`, `milkCapacity` (decimal string), `name`, and `createdAt`. Accounts with no cattle return an empty array. Society listing permissions also protect nested cow records.
 
 The frontend restores these records into its cache using server IDs, preserves local clinical data for matching tags, and replaces the current society's cached cattle on refresh. Birth dates, health history, RFID/breed changes, and cattle verification are outside this API. Existing locally enrolled cattle require a separate reviewed import; this migration does not copy device storage.
 
@@ -92,7 +94,7 @@ The farmer editor can also append cattle using `newCows`, with the same fields a
 
 ## Farmer milk collections
 
-All paths below use `/api/v1` and JWT authentication. The Django app label is `collections`; its Python package is `milk_collections` to avoid shadowing the standard library. Records are stored in `collections_farmermilkcollection`, separate from farmer profiles and cattle.
+All paths below use `/api/v1` and JWT authentication. These endpoints are owned by the `societies` domain. Records retain the existing `collections_farmermilkcollection` table, with typed foreign keys to `farmers.Farmer` and `societies.Society`. See [model and endpoint ownership](domain-models.md).
 
 `POST /milk-collections` requires an active Society account:
 

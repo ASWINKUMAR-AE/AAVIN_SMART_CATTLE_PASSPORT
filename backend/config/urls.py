@@ -1,8 +1,15 @@
 from django.contrib import admin
 from django.urls import include, path
-from accounts.views import FarmerDetailView, FarmerListView, health, ready
+from accounts.views import health, ready
 
-urlpatterns = [path("admin/", admin.site.urls), path("api/v1/auth/", include("accounts.urls")),
-               path("api/v1/", include("milk_collections.urls")),
-               path("api/v1/farmers", FarmerListView.as_view()),
-               path("api/v1/farmers/<uuid:farmer_id>", FarmerDetailView.as_view()), path("health", health), path("ready", ready)]
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/v1/auth/', include('accounts.urls')),
+    path('api/v1/', include('farmers.urls')),
+    path('api/v1/', include('societies.urls')),
+    path('api/v1/', include('bmcs.account_urls')),
+    path('api/v1/', include('unions.urls')),
+    path('api/v1/workflow/', include('societies.workflow_urls')),
+    path('api/v1/workflow/', include('bmcs.urls')),
+    path('health', health), path('ready', ready),
+]

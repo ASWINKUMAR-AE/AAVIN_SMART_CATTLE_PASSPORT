@@ -1,10 +1,11 @@
 import { BoothScreen } from '../../components/booth/BoothScreen';
 import { BoothText as Text } from '../../components/booth/BoothText';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Pressable, RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAavinStore } from '../../store/AavinStoreContext';
-import { useCollectionRefresh, useMilkCollections } from '../../context/MilkCollectionsContext';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
+import { submissionKey } from '../../services/dispatchApi';
+import { apiErrorMessage } from '../../services/accountMapping';
 import { indiaDate } from '../../services/milkCollectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,16 +19,20 @@ export default function ReviewDailyCollectionScreen() {
   const { width, fontScale } = useWindowDimensions();
   const styles = createStyles(width, fontScale);
   const { user } = useAuth();
-  useCollectionRefresh();
-  const { booths, bmcs, farmers, boothReceipts, createBoothReceipt } = useAavinStore();
+  useDispatchRefresh();
+  const { context, milkRecords, attendance, boothReceipts, createReceipt, loading, error, refresh } = useDispatchWorkflow();
+  const farmers = context?.farmers || [];
+  const summary = context;
+  const generateKey = useRef(submissionKey());
+  const generatingRef = useRef(false);
+  const accountRef = useRef(user?.id); accountRef.current = user?.id;
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ collectionDate?: string }>();
-  const { records: milkRecords, loading, error, summary, refresh } = useMilkCollections();
 
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
-  const assignedBmc = bmcs.find(b => b.id === booth.assignedBmcId) || bmcs[0];
+  const boothId = user?.id || '';
+  const booth = context?.society || { id: boothId, name: user?.fullName || '', assignedBmcId: '' };
+  const assignedBmc = context?.bmc || { id: '', name: 'Loading linked BMC…' };
 
   const requestedDate = params.collectionDate;
   const validDate = typeof requestedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) &&
@@ -54,30 +59,31 @@ export default function ReviewDailyCollectionScreen() {
   // Exact eligible total without double counting
   const eligibleReceiptTotal = parseFloat((farmerWiseTotal + combinedVendorTotal).toFixed(2));
 
-  const uniqueParticipatingFarmerIds = new Set(farmerWiseRecords.map(r => r.farmerId).filter(Boolean));
+  const uniqueParticipatingFarmerIds = new Set(attendance.filter(a => a.collectionDate === todayStr).map(a => a.farmerId));
   const assignedFarmers = farmers.filter(f => f.assignedBoothId === booth.id);
   const missingFarmers = assignedFarmers.filter(f => !uniqueParticipatingFarmerIds.has(f.id));
 
-  const [notes] = useState('Daily morning collection verified. Dispatched via insulated tanker.');
+  const [notes] = useState('Daily collection verified.');
   const [generating, setGenerating] = useState(false);
 
-  const handleGenerateReceipt = () => {
+  const handleGenerateReceipt = async () => {
+    if (generatingRef.current || loading || error || !context?.society) return;
+    const account = user?.id;
     if (todayRecords.length === 0) {
       Alert.alert('No Eligible Records', 'There are no unreceipted milk entries recorded for today.');
       return;
     }
 
-    setGenerating(true);
+    generatingRef.current = true; setGenerating(true);
     try {
-      const receipt = createBoothReceipt(
-        booth.id,
-        assignedBmc.id,
-        todayStr,
-        'morning',
-        todayRecords.map(r => r.id),
-        user?.fullName || 'Society Operator',
-        notes
-      );
+      const receipt = await createReceipt({
+        collectionDate: todayStr, session: 'full_day', includedRecordIds: todayRecords.map(r => r.id),
+        notes, submissionKey: generateKey.current,
+      });
+      if (accountRef.current !== account) return;
+      generateKey.current = submissionKey();
+      await refresh();
+      if (accountRef.current !== account) return;
 
       Alert.alert(
         'Digital Dispatch Receipt Generated!',
@@ -90,9 +96,9 @@ export default function ReviewDailyCollectionScreen() {
         ]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not generate receipt.');
+      if (accountRef.current === account) Alert.alert('Error', apiErrorMessage(err));
     } finally {
-      setGenerating(false);
+      generatingRef.current = false; if (accountRef.current === account) setGenerating(false);
     }
   };
 
@@ -278,7 +284,7 @@ export default function ReviewDailyCollectionScreen() {
               </Text>
             </View>
             <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 8 }]}>
-              The following registered society farmers have not yet supplied milk this morning:
+              The following registered society farmers have not yet supplied milk on this date:
             </Text>
             {missingFarmers.map(mf => (
               <View key={mf.id} style={[styles.missingItem, { borderBottomColor: colors.border }]}>
@@ -350,9 +356,10 @@ export default function ReviewDailyCollectionScreen() {
         {/* Generate Receipt CTA */}
         {todayRecords.length > 0 ? (
           <Button
-            title={generating ? "Generating Digital Waybill..." : `Confirm Total (${eligibleReceiptTotal} L) & Send Receipt`}
+            title={generating ? "Generating Digital Waybill..." : `Confirm Total (${eligibleReceiptTotal} L) & Generate Receipt`}
             size="lg"
             loading={generating}
+            disabled={generating || loading || !!error || !context?.society}
             onPress={handleGenerateReceipt}
             icon="receipt-outline"
             style={{ marginTop: 6 }}

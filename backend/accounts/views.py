@@ -69,31 +69,3 @@ def ready(request):
         return JsonResponse({"success": True, "database": "connected"})
     except Exception:
         return JsonResponse({"success": False, "message": "Database unavailable"}, status=503)
-
-
-class FarmerListView(APIView):
-    def get(self, request):
-        from .models import User
-        from rest_framework.exceptions import PermissionDenied
-        if request.user.role != User.Role.SOCIETY:
-            raise PermissionDenied('Only Society accounts can list their Farmers.')
-        farmers = User.objects.filter(role=User.Role.FARMER, parent=request.user).select_related('parent', 'farmer_profile').prefetch_related('cows').order_by('date_joined', 'id')
-        return success({'farmers': UserSerializer(farmers, many=True).data})
-
-
-class FarmerDetailView(APIView):
-    def patch(self, request, farmer_id):
-        from django.db import transaction
-        from django.shortcuts import get_object_or_404
-        from rest_framework.exceptions import PermissionDenied
-        from .models import User
-        from .serializers import FarmerUpdateSerializer
-        if request.user.role != User.Role.SOCIETY:
-            raise PermissionDenied('Only Society accounts can update their Farmers.')
-        with transaction.atomic():
-            farmer = get_object_or_404(User.objects.select_for_update(), pk=farmer_id,
-                                      role=User.Role.FARMER, parent=request.user)
-            serializer = FarmerUpdateSerializer(farmer, data=request.data, partial=True,
-                                                 context={'request': request, 'farmer': farmer})
-            serializer.is_valid(raise_exception=True)
-            return success({'user': UserSerializer(serializer.save()).data}, 'Farmer updated')

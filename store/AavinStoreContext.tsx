@@ -107,18 +107,6 @@ interface AavinStoreContextType extends AavinState {
   recordMilk: (record: Omit<MilkRecord, 'id' | 'createdAt' | 'status'>) => MilkRecord;
   updateMilkRecord: (recordId: string, newQty: number, reason: string, user: string) => void;
 
-  // Booth actions
-  createBoothReceipt: (
-    boothId: string,
-    bmcId: string,
-    collectionDate: string,
-    session: 'morning' | 'evening' | 'full_day',
-    includedRecordIds: string[],
-    createdBy: string,
-    notes?: string
-  ) => BoothReceipt;
-  sendBoothReceiptToBmc: (receiptId: string) => void;
-
   // BMC actions
   receiveBmcDelivery: (deliveryId: string, measuredQuantity: number, receivedBy: string) => { difference: number; isMismatch: boolean };
   addInvestigationNote: (caseId: string, note: string, author: string, evidenceReference?: string) => void;
@@ -763,119 +751,6 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       } : r),
     };
     persistState(updated);
-  }, [state, persistState]);
-
-  // 4. Society Actions
-  const createBoothReceipt = useCallback((
-    boothId: string,
-    bmcId: string,
-    collectionDate: string,
-    session: 'morning' | 'evening' | 'full_day',
-    includedRecordIds: string[],
-    createdBy: string,
-    notes?: string
-  ): BoothReceipt => {
-    const booth = state.booths.find(b => b.id === boothId);
-    const bmc = state.bmcs.find(b => b.id === bmcId);
-
-    const records = state.milkRecords.filter(r => includedRecordIds.includes(r.id));
-    const totalQuantity = records.reduce((sum, r) => sum + r.quantityLitres, 0);
-
-    const farmerWiseRecords = records.filter(r => r.measurementMethod === 'farmer_wise');
-    const combinedRecords = records.filter(r => r.measurementMethod === 'combined');
-
-    let basis: 'farmer_wise' | 'combined' | 'mixed' = 'farmer_wise';
-    if (combinedRecords.length > 0 && farmerWiseRecords.length === 0) basis = 'combined';
-    else if (combinedRecords.length > 0 && farmerWiseRecords.length > 0) basis = 'mixed';
-
-    const uniqueFarmers = new Set(farmerWiseRecords.map(r => r.farmerId).filter(Boolean));
-
-    const receiptId = `BR-${collectionDate.replace(/-/g, '')}-${String(state.boothReceipts.length + 1).padStart(3, '0')}`;
-    const verificationCode = `VER-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const newReceipt: BoothReceipt = {
-      id: receiptId,
-      boothId,
-      boothName: booth?.name || 'Aavin Society',
-      bmcId,
-      bmcName: bmc?.name || 'Aavin BMC',
-      collectionDate,
-      session,
-      dispatchQuantity: parseFloat(totalQuantity.toFixed(2)),
-      measurementBasis: basis,
-      includedRecordIds,
-      totalRecordsCount: records.length,
-      totalFarmersCount: uniqueFarmers.size,
-      createdAt: new Date().toISOString(),
-      createdBy,
-      status: 'confirmed',
-      verificationCode,
-      notes,
-    };
-
-    // Mark milk records as included in receipt
-    const updatedMilkRecords = state.milkRecords.map(r =>
-      includedRecordIds.includes(r.id) ? { ...r, status: 'included_in_receipt' as const, receiptId } : r
-    );
-
-    const updated = {
-      ...state,
-      boothReceipts: [newReceipt, ...state.boothReceipts],
-      milkRecords: updatedMilkRecords,
-    };
-    persistState(updated);
-    return newReceipt;
-  }, [state, persistState]);
-
-  const sendBoothReceiptToBmc = useCallback((receiptId: string) => {
-    const receipt = state.boothReceipts.find(r => r.id === receiptId);
-    if (!receipt) return;
-
-    // Check if already sent
-    const existingDelivery = state.bmcDeliveries.find(d => d.boothReceiptId === receiptId);
-    if (existingDelivery) return;
-
-    const newDelivery: BMCDelivery = {
-      id: `DEL-${Date.now()}`,
-      boothReceiptId: receipt.id,
-      boothId: receipt.boothId,
-      boothName: receipt.boothName,
-      bmcId: receipt.bmcId,
-      collectionDate: receipt.collectionDate,
-      dispatchTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      declaredDispatchQuantity: receipt.dispatchQuantity,
-      status: 'pending_arrival',
-    };
-
-    const newNotification: InAppNotification = {
-      id: `NOTIF-DEL-BMC-${Date.now()}`,
-      recipientRole: 'bmc',
-      recipientId: receipt.bmcId,
-      title: 'New Dispatch Awaiting Receipt',
-      message: `${receipt.boothName} dispatched ${receipt.dispatchQuantity.toFixed(2)} Litres (Receipt #${receipt.id}). Ready for measurement entry.`,
-      type: 'delivery_pending',
-      timestamp: 'Just now',
-      isRead: false,
-      linkRoute: '/(bmc)/receive-milk',
-    };
-
-    const updated = {
-      ...state,
-      boothReceipts: state.boothReceipts.map(r => r.id === receiptId ? { ...r, status: 'sent_to_bmc' as const } : r),
-      bmcDeliveries: [newDelivery, ...state.bmcDeliveries],
-      notifications: [newNotification, ...state.notifications],
-    };
-    persistState(updated);
-
-    // Sync to backend
-    WorkflowApi.generateBoothReceipt({
-      boothId: receipt.boothId,
-      collectionDate: receipt.collectionDate,
-      session: receipt.session,
-      notes: receipt.notes,
-    }).catch(err => {
-      console.log('[WorkflowApi] Society receipt dispatched locally. Offline/mock mode:', err?.message || err);
-    });
   }, [state, persistState]);
 
   // 5. BMC Actions (Crucial Core Workflow!)
@@ -1680,8 +1555,6 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addTreatmentRecord,
         recordMilk,
         updateMilkRecord,
-        createBoothReceipt,
-        sendBoothReceiptToBmc,
         receiveBmcDelivery,
         addInvestigationNote,
         resolveDiscrepancyCase,

@@ -133,13 +133,13 @@ class AccountTests(APITestCase):
         return {'phone': '9842000099', 'fullName': 'New Farmer', 'role': 'farmer', 'personalDetails': details}
 
     def test_registration_persists_complete_profile_and_phone_password(self):
-        from .models import FarmerProfile
+        from farmers.models import Farmer
         self.authenticate_as(self.society)
         payload = self.profile_payload()
         response = self.client.post('/api/v1/auth/register', payload, format='json')
         self.assertEqual(response.status_code, 201, response.data)
         user = User.objects.get(phone=payload['phone'])
-        profile = FarmerProfile.objects.get(user=user)
+        profile = Farmer.objects.get(user=user)
         self.assertEqual(profile.farmer_id_code, 'FARM-MDU-999')
         self.assertEqual(profile.number_of_cows, 0)
         self.assertEqual(profile.verification_status, 'pending')
@@ -190,9 +190,9 @@ class AccountTests(APITestCase):
     def test_profile_failure_rolls_back_account(self):
         from unittest.mock import patch
         from django.db import IntegrityError
-        from .models import FarmerProfile
+        from farmers.models import Farmer
         self.authenticate_as(self.society)
-        with patch.object(FarmerProfile, 'save', side_effect=IntegrityError('test failure')):
+        with patch.object(Farmer, 'save', side_effect=IntegrityError('test failure')):
             response = self.client.post('/api/v1/auth/register', self.profile_payload(), format='json')
         self.assertEqual(response.status_code, 400)
         self.assertFalse(User.objects.filter(phone='9842000099').exists())
@@ -236,7 +236,7 @@ class AccountTests(APITestCase):
 
     def test_registration_saves_cows_and_returns_them_on_login_me_and_listing(self):
         from decimal import Decimal
-        from .models import Cow, FarmerProfile
+        from farmers.models import Cow, Farmer
         self.authenticate_as(self.society)
         payload = self.profile_payload(numberOfCows=99)
         payload['cows'] = [self.cow_payload(farmerId=str(self.farmer.pk)),
@@ -244,14 +244,14 @@ class AccountTests(APITestCase):
         response = self.client.post('/api/v1/auth/register', payload, format='json')
         self.assertEqual(response.status_code, 201, response.data)
         user = User.objects.get(phone=payload['phone'])
-        self.assertEqual(FarmerProfile.objects.get(user=user).number_of_cows, 2)
-        self.assertEqual(Cow.objects.filter(farmer=user).count(), 2)
+        self.assertEqual(Farmer.objects.get(user=user).number_of_cows, 2)
+        self.assertEqual(Cow.objects.filter(farmer_id=user.pk).count(), 2)
         cow = Cow.objects.get(pashu_aadhaar='123456789012')
         self.assertEqual(cow.milk_capacity, Decimal('12.50'))
         self.assertEqual(cow.name, 'Lakshmi')
         saved = response.data['data']['user']['cows']
         self.assertEqual({item['farmerId'] for item in saved}, {str(user.pk)})
-        self.assertEqual({item['id'] for item in saved}, {str(item.pk) for item in user.cows.all()})
+        self.assertEqual({item['id'] for item in saved}, {str(item.pk) for item in user.farmer.cows.all()})
         self.assertTrue(all(item['createdAt'] for item in saved))
         listed = self.client.get('/api/v1/farmers').data['data']['farmers']
         self.assertEqual(next(item for item in listed if item['id'] == str(user.pk))['cows'], saved)
@@ -263,7 +263,7 @@ class AccountTests(APITestCase):
         self.assertEqual(self.client.get('/api/v1/auth/me').data['data']['user']['cows'], saved)
 
     def test_invalid_cows_do_not_create_farmer_or_profile(self):
-        from .models import Cow, FarmerProfile
+        from farmers.models import Cow, Farmer
         self.authenticate_as(self.society)
         cases = [[], [self.cow_payload(pashuAadhaar='123')],
                  [self.cow_payload(pashuAadhaar='12345678901x')],
@@ -277,12 +277,12 @@ class AccountTests(APITestCase):
                 self.assertEqual(response.status_code, 400, response.data)
                 self.assertIn('cows', response.data['errors'])
                 self.assertFalse(User.objects.filter(phone=payload['phone']).exists())
-                self.assertEqual(FarmerProfile.objects.count(), 0)
+                self.assertEqual(Farmer.objects.filter(has_personal_details=True).count(), 0)
                 self.assertEqual(Cow.objects.count(), 0)
 
     def test_existing_tag_cannot_be_registered_to_another_farmer(self):
-        from .models import Cow
-        Cow.objects.create(farmer=self.farmer, pashu_aadhaar='123456789012', breed='HF Cross', milk_capacity=10)
+        from farmers.models import Cow
+        Cow.objects.create(farmer_id=self.farmer.pk, pashu_aadhaar='123456789012', breed='HF Cross', milk_capacity=10)
         self.authenticate_as(self.society)
         payload = {**self.profile_payload(), 'cows': [self.cow_payload()]}
         response = self.client.post('/api/v1/auth/register', payload, format='json')
@@ -294,7 +294,7 @@ class AccountTests(APITestCase):
     def test_cow_save_failure_rolls_back_farmer_profile_and_all_cows(self):
         from unittest.mock import patch
         from django.db import IntegrityError
-        from .models import Cow, FarmerProfile
+        from farmers.models import Cow, Farmer
         self.authenticate_as(self.society)
         payload = {**self.profile_payload(), 'cows': [self.cow_payload(), self.cow_payload(pashuAadhaar='123456789013')]}
         original_save = Cow.save
@@ -306,25 +306,25 @@ class AccountTests(APITestCase):
             response = self.client.post('/api/v1/auth/register', payload, format='json')
         self.assertEqual(response.status_code, 400, response.data)
         self.assertFalse(User.objects.filter(phone=payload['phone']).exists())
-        self.assertEqual(FarmerProfile.objects.count(), 0)
+        self.assertEqual(Farmer.objects.filter(has_personal_details=True).count(), 0)
         self.assertEqual(Cow.objects.count(), 0)
 
     def test_cows_are_only_registered_for_farmers_and_listed_to_their_society(self):
-        from .models import Cow
+        from farmers.models import Cow
         self.authenticate_as(self.union)
         response = self.register('bmc', cows=[self.cow_payload()])
         self.assertEqual(response.status_code, 400, response.data)
-        Cow.objects.create(farmer=self.farmer, pashu_aadhaar='123456789012', breed='Jersey Cross', milk_capacity=12)
+        Cow.objects.create(farmer_id=self.farmer.pk, pashu_aadhaar='123456789012', breed='Jersey Cross', milk_capacity=12)
         other = User.objects.create_user('9842000010', PASSWORD, full_name='Other Society', role='society', parent=self.bmc)
         self.authenticate_as(other)
         self.assertEqual(self.client.get('/api/v1/farmers').data['data']['farmers'], [])
         with self.assertRaises(ValidationError):
-            Cow(farmer=self.society, pashu_aadhaar='123456789013', breed='Jersey Cross', milk_capacity=12).full_clean()
+            Cow(farmer_id=self.society.pk, pashu_aadhaar='123456789013', breed='Jersey Cross', milk_capacity=12).full_clean()
 
     def create_profile_and_cow(self):
-        from .models import Cow, FarmerProfile
-        FarmerProfile.objects.create(user=self.farmer, farmer_id_code='FARM-EDIT', address='Old Street', village='Melur')
-        return Cow.objects.create(farmer=self.farmer, pashu_aadhaar='123456789012', breed='Jersey Cross', milk_capacity=12, name='Old name')
+        from farmers.models import Cow, Farmer
+        Farmer.objects.filter(user=self.farmer).update(farmer_id_code='FARM-EDIT', address='Old Street', village='Melur', has_personal_details=True)
+        return Cow.objects.create(farmer_id=self.farmer.pk, pashu_aadhaar='123456789012', breed='Jersey Cross', milk_capacity=12, name='Old name')
 
     def test_society_updates_profile_cows_and_kyc_persistently(self):
         cow = self.create_profile_and_cow()
@@ -338,7 +338,7 @@ class AccountTests(APITestCase):
         self.assertEqual(self.farmer.phone, '9842000088')
         self.assertTrue(self.farmer.check_password(PASSWORD))
         self.assertEqual(self.farmer.parent, self.society)
-        profile = self.farmer.farmer_profile
+        profile = self.farmer.farmer
         self.assertEqual(profile.address, 'New Street')
         self.assertEqual(profile.village, 'Melur')
         self.assertEqual(profile.verification_status, 'verified')
@@ -375,10 +375,10 @@ class AccountTests(APITestCase):
     def test_cow_ownership_and_save_failure_do_not_partially_update_farmer(self):
         from unittest.mock import patch
         from django.db import IntegrityError
-        from .models import Cow
+        from farmers.models import Cow
         cow = self.create_profile_and_cow()
         other = User.objects.create_user('9842000011', PASSWORD, full_name='Other Farmer', role='farmer', parent=self.society)
-        other_cow = Cow.objects.create(farmer=other, pashu_aadhaar='123456789013', breed='Jersey', milk_capacity=10)
+        other_cow = Cow.objects.create(farmer_id=other.pk, pashu_aadhaar='123456789013', breed='Jersey', milk_capacity=10)
         self.authenticate_as(self.society)
         response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {'cows':[{'id':str(other_cow.pk),'name':'Wrong owner'}]}, format='json')
         self.assertEqual(response.status_code, 400, response.data)
@@ -388,7 +388,7 @@ class AccountTests(APITestCase):
         self.assertEqual(response.status_code, 400, response.data)
         self.farmer.refresh_from_db()
         self.assertEqual(self.farmer.full_name, 'Farmer One')
-        self.assertEqual(self.farmer.farmer_profile.verification_status, 'pending')
+        self.assertEqual(self.farmer.farmer.verification_status, 'pending')
 
     def test_legacy_farmer_needs_complete_profile_for_kyc(self):
         self.authenticate_as(self.society)
@@ -399,7 +399,7 @@ class AccountTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.data)
 
     def test_edit_farmer_can_add_cows_and_update_existing_in_one_save(self):
-        from .models import Cow
+        from farmers.models import Cow
         cow = self.create_profile_and_cow()
         self.authenticate_as(self.society)
         response = self.client.patch(f'/api/v1/farmers/{self.farmer.pk}', {
@@ -409,7 +409,7 @@ class AccountTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data['data']['user']['personalDetails']['numberOfCows'], 2)
         self.assertEqual(len(response.data['data']['user']['cows']), 2)
-        self.assertEqual(Cow.objects.get(pashu_aadhaar='123456789013').farmer, self.farmer)
+        self.assertEqual(Cow.objects.get(pashu_aadhaar='123456789013').farmer.user, self.farmer)
         cow.refresh_from_db()
         self.assertEqual(cow.name, 'Updated existing')
         self.assertEqual(len(self.client.get('/api/v1/farmers').data['data']['farmers'][0]['cows']), 2)
@@ -426,12 +426,12 @@ class AccountTests(APITestCase):
             cow.refresh_from_db();self.farmer.refresh_from_db()
             self.assertEqual(cow.name, 'Old name')
             self.assertEqual(self.farmer.full_name, 'Farmer One')
-            self.assertEqual(self.farmer.cows.count(), 1)
+            self.assertEqual(self.farmer.farmer.cows.count(), 1)
 
     def test_new_cow_database_failure_rolls_back_edit_and_additions(self):
         from unittest.mock import patch
         from django.db import IntegrityError
-        from .models import Cow
+        from farmers.models import Cow
         cow = self.create_profile_and_cow()
         self.authenticate_as(self.society)
         original_save = Cow.save
@@ -448,4 +448,4 @@ class AccountTests(APITestCase):
         cow.refresh_from_db();self.farmer.refresh_from_db()
         self.assertEqual(cow.name,'Old name')
         self.assertEqual(self.farmer.full_name,'Farmer One')
-        self.assertEqual(self.farmer.cows.count(),1)
+        self.assertEqual(self.farmer.farmer.cows.count(),1)

@@ -25,7 +25,7 @@ async function main() {
     platform: 'browser', nodePaths: [path.join(root, 'node_modules')], loader: { '.png': 'dataurl' },
     define: { 'process.env.NODE_ENV': '"development"', __DEV__: 'true' }, plugins: [{ name: 'isolated-ui', setup(build) {
       build.onResolve({ filter: /^react-native$/ }, () => ({ path: fixture('native.jsx') }));
-      build.onResolve({ filter: /context\/(Auth|Theme|Language|Scroll|MilkCollections)Context$|store\/AavinStoreContext$|services\/(accountsApi|milkCollectionsApi)$|^expo-router$|^react-native-safe-area-context$/ },
+      build.onResolve({ filter: /context\/(Auth|Theme|Language|Scroll|MilkCollections|Dispatch)Context$|store\/AavinStoreContext$|services\/(accountsApi|milkCollectionsApi|dispatchApi)$|^expo-router$|^react-native-safe-area-context$/ },
         () => ({ path: fixture('mocks.jsx') }));
       build.onResolve({ filter: /^@expo\/vector-icons$|^react-native-svg$|^expo-haptics$|ui\/PressableScale$|^\.\/PressableScale$/ },
         () => ({ path: fixture('platform.jsx') }));

@@ -13,7 +13,7 @@ export const AccountsApi = {
     return response.data.data.user;
   },
   async registerFarmer(payload: { phone: string; fullName: string; parentId: string; personalDetails: PersonalDetails; cows?: CowRegistration[] }): Promise<BackendUser> {
-    const response = await api.post('/auth/register', { ...payload, role: 'farmer' });
+    const response = await api.post('/farmers', { ...payload, role: 'farmer' });
     return response.data.data.user;
   },
   async listFarmers(): Promise<BackendUser[]> {

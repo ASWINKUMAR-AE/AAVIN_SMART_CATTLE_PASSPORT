@@ -15,7 +15,7 @@ This backend implements phone/password login, JWT access and refresh tokens, rol
 
 A BMC can have any number of Societies. When a Union registers a Society, it supplies the ID of an active BMC belonging to that Union. When a BMC registers a Society, the Society automatically belongs to that BMC. Registration requires authentication; there is no public signup or Union registration API.
 
-The existing login and Society Farmer registration forms are connected to Django without layout changes. Society accounts use the existing Booth screens. The Society Farmers directory loads its own registered accounts from PostgreSQL. Cattle enrollment is persisted in PostgreSQL and restored on login and society directory refresh. Society farmer profile edits, cow name/milk-capacity edits, and farmer KYC verification also persist through the API. Milk, payments, clinical records, cattle verification, and AI features remain local/demo workflows outside this integration. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
+The existing login and Society Farmer registration forms are connected to Django without layout changes. Society accounts use the existing Booth screens. The Society Farmers directory loads its own registered accounts from PostgreSQL. Cattle enrollment is persisted in PostgreSQL and restored on login and society directory refresh. Society farmer profile edits, cow name/milk-capacity edits, and farmer KYC verification also persist through the API. Farmer milk, vendor batches, attendance, dispatch receipts, and the linked BMC inbox also use Django. Payments, clinical records, cattle verification, and AI features retain their local/demo workflows. The previous Node/MySQL code and QR portal are preserved under `legacy/`.
 
 ## Backend setup
 
@@ -134,9 +134,9 @@ backend/.venv/bin/python backend/manage.py check
 backend/.venv/bin/python backend/manage.py test --settings=config.test_settings
 ```
 
-The 34 automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
+The automated tests use an isolated in-memory SQLite database, never the cloud database. They cover all role creation permissions, phone login, inactive users, password hashing and validation, duplicate phones, parent restrictions, more than 15 Societies under a BMC, JWT refresh and revocation, and manual Union creation through the Admin form.
 
-See [API details](docs/api.md), [architecture](docs/architecture.md), and [database notes](database/README.md).
+See [domain models and endpoint ownership](docs/domain-models.md), [API details](docs/api.md), [architecture](docs/architecture.md), and [database notes](database/README.md).
 
 ## Bruno API collection
 
@@ -152,14 +152,14 @@ The default frontend API is `https://aavin.todayworld.in/api/v1`. Set `EXPO_PUBL
 
 ### Cattle enrollment
 
-Both Farmer enrollment forms submit a `cows` array with each cow's `pashuAadhaar` (12 digits), `breed`, `milkCapacity` (positive litres/day, up to two decimal places), and optional `name`. `accounts_cow` stores one row per cow; `farmer_id` references the Farmer UUID in `accounts_user`. Pashu Aadhaar tags are globally unique. The backend saves the account, profile, and cows in one transaction, and derives the profile cattle count from the supplied array.
+Both Farmer enrollment forms submit a `cows` array with each cow's `pashuAadhaar` (12 digits), `breed`, `milkCapacity` (positive litres/day, up to two decimal places), and optional `name`. `accounts_cow` stores one row per cow; `farmer_id` references the typed Farmer record in `farmers_farmer`, which shares the authentication account UUID. Pashu Aadhaar tags are globally unique. The backend saves the account, profile, and cows in one transaction, and derives the profile cattle count from the supplied array.
 
 Registration, login, `/api/v1/auth/me`, and the Society-scoped `/api/v1/farmers` list return saved cows with their UUIDs and farmer IDs. Account-only registrations can still omit `cows`. Previously local cattle are preserved on the device but not automatically imported; clinical data remains local.
 
-Apply `accounts.0003_cow` before starting the updated API:
+Apply all migrations before starting the updated API:
 
 ```bash
-backend/.venv/bin/python backend/manage.py migrate accounts 0003_cow
+backend/.venv/bin/python backend/manage.py migrate
 ```
 
 For the hosted Docker service, deploy the updated backend image and run `python manage.py migrate` with its database environment before serving traffic. The frontend requires the updated API to persist cattle.

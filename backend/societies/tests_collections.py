@@ -9,8 +9,9 @@ from django.db.models.deletion import ProtectedError
 from rest_framework.test import APITestCase, APITransactionTestCase, APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
-from .models import FarmerMilkCollection, CollectionNotification
-from .serializers import india_today
+from .models import FarmerMilkCollection
+from farmers.models import CollectionNotification
+from .collection_serializers import india_today
 
 
 class CollectionTests(APITestCase):
@@ -38,7 +39,7 @@ class CollectionTests(APITestCase):
         self.assertEqual(data['quantityLitres'], '12.34')
         self.assertEqual(data['farmerName'], 'Farmer One')
         record = FarmerMilkCollection.objects.get()
-        self.assertEqual(record.society, self.society)
+        self.assertEqual(record.society.user, self.society)
         self.assertEqual(record.created_by, self.society)
         self.auth(self.farmer)
         self.assertEqual(self.client.get(self.url).data['data']['count'], 1)
@@ -94,14 +95,14 @@ class CollectionTests(APITestCase):
 
     def test_database_uniqueness_positive_and_shift_constraints(self):
         self.create()
-        base = dict(farmer=self.farmer, society=self.society, created_by=self.society, collection_date=india_today(), session='morning', quantity_litres=Decimal('1'))
+        base = dict(farmer_id=self.farmer.pk, society_id=self.society.pk, created_by=self.society, collection_date=india_today(), session='morning', quantity_litres=Decimal('1'))
         for values in [{}, {'session': 'evening', 'quantity_litres': Decimal('0')}, {'session': 'invalid'}]:
             with self.assertRaises(IntegrityError), transaction.atomic():
                 FarmerMilkCollection.objects.create(**{**base, **values})
         self.assertEqual(FarmerMilkCollection.objects.count(), 1)
 
     def test_notification_failure_rolls_back_collection(self):
-        with patch('milk_collections.views.CollectionNotification.objects.create', side_effect=RuntimeError('failed')):
+        with patch('societies.collections.CollectionNotification.objects.create', side_effect=RuntimeError('failed')):
             with self.assertRaises(RuntimeError):
                 self.create()
         self.assertFalse(FarmerMilkCollection.objects.exists())
@@ -136,7 +137,7 @@ class CollectionTests(APITestCase):
         self.assertEqual(self.create().status_code, 409)
         with self.assertRaises(ProtectedError):
             self.farmer.delete()
-        self.assertEqual(record.society, self.society)
+        self.assertEqual(record.society.user, self.society)
 
     def test_india_date_and_month_boundaries(self):
         with patch('django.utils.timezone.now', return_value=datetime(2026, 10, 31, 19, 0, tzinfo=timezone.utc)):

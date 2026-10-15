@@ -1,9 +1,9 @@
 import { BoothScreen } from '../../components/booth/BoothScreen';
 import { BoothText as Text } from '../../components/booth/BoothText';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, FlatList, Pressable, TextInput, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAavinStore } from '../../store/AavinStoreContext';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -18,12 +18,13 @@ export default function SentReceiptsScreen() {
   const { width, height, fontScale } = useWindowDimensions();
   const styles = createStyles(width, fontScale, height);
   const { user } = useAuth();
-  const { boothReceipts, bmcDeliveries, booths, discrepancyCases } = useAavinStore();
+  const { boothReceipts, bmcDeliveries, context, loading, error, refresh } = useDispatchWorkflow();
+  useDispatchRefresh();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
+  const boothId = user?.id || '';
+  const booth = context?.society || { id: boothId, name: user?.fullName || '' };
 
   // All receipts from this booth
   const myReceipts = boothReceipts.filter(r => r.boothId === booth.id);
@@ -34,6 +35,8 @@ export default function SentReceiptsScreen() {
 
   // Selected receipt for "More View" popup modal
   const [selectedReceiptForModal, setSelectedReceiptForModal] = useState<BoothReceipt | null>(null);
+
+  useEffect(() => { setSelectedReceiptForModal(null); setSearchQuery(''); }, [user?.id]);
 
   // Stats calculation
   const totalDispatchedLitres = myReceipts.reduce((sum, r) => sum + r.dispatchQuantity, 0);
@@ -105,8 +108,11 @@ export default function SentReceiptsScreen() {
         showBack
       />
 
+      {error && <Text style={{ color: colors.hold }}>{error}</Text>}
       {/* Compact Receipts List */}
       <FlatList
+        refreshing={loading}
+        onRefresh={refresh}
         ListHeaderComponent={<>
       {/* Top Search & Action Bar */}
       <View style={[styles.topBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>

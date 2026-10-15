@@ -53,3 +53,14 @@ export const useMilkCollections = () => ({ records: store.milkRecords, notificat
   summary: { today: '2026-10-12', todaySupply: '12345.67', monthSupply: '24000.00', last7DaysSupply: '24000.00',
     shifts: { morning: '7890.10', evening: '4455.57' }, dailyTrend: [] },
   save: async () => {}, refresh: async () => {}, refreshNotifications: async () => {}, markRead: async () => {} });
+
+export const useDispatchRefresh = () => {};
+export const useDispatchWorkflow = () => ({
+  context: { society: booths[0], bmc: bmcs[0], farmers },
+  vendors: store.vendors, milkRecords: store.milkRecords, boothReceipts: receipts, bmcDeliveries: store.bmcDeliveries,
+  attendance: store.milkRecords.filter(r => r.farmerId).map(r => ({ id: r.id, farmerId: r.farmerId, collectionDate: r.collectionDate, session: r.session })),
+  loading: false, error: null, refresh: async () => {},
+  createVendor: async () => store.vendors[0], createVendorMilk: async () => store.milkRecords[0], createReceipt: async () => receipts[0], sendReceipt: async () => {},
+});
+export const submissionKey = () => '00000000-0000-4000-8000-000000000001';
+export const DispatchApi = { createReceipt: async () => receipts[0], send: async () => ({}), createVendor: async () => store.vendors[0], createVendorMilk: async () => store.milkRecords[0] };

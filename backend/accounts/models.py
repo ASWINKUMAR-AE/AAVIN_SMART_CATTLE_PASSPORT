@@ -1,9 +1,9 @@
 import uuid
-from decimal import Decimal
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, RegexValidator
-from django.db import models
+from django.core.validators import RegexValidator
+from django.db import models, transaction
+from django.apps import apps
 
 phone_validator = RegexValidator(r"^\+?[0-9]{10,15}$", "Enter a phone number with 10–15 digits, optionally prefixed by +.")
 
@@ -63,58 +63,35 @@ class User(AbstractUser):
             if not self.parent_id or self.parent.role != expected[self.role]:
                 raise ValidationError({"parent": f"A {self.role} must belong to a {expected[self.role]}."})
         if self.pk and not self._state.adding:
+            previous = type(self).objects.filter(pk=self.pk).values_list('role', flat=True).first()
+            if previous is not None and previous != self.role:
+                raise ValidationError({'role': 'An existing account role cannot be changed.'})
             if self.members.exclude(role={self.Role.UNION: self.Role.BMC, self.Role.BMC: self.Role.SOCIETY, self.Role.SOCIETY: self.Role.FARMER}.get(self.role, "")).exists():
                 raise ValidationError({"role": "This role is incompatible with existing child accounts."})
 
+    def save(self, *args, **kwargs):
+        # Keep auth and its role record atomic, including admin-created accounts.
+        using = kwargs.get('using') or self._state.db or 'default'
+        self.clean()
+        with transaction.atomic(using=using):
+            super().save(*args, **kwargs)
+            self.sync_role_account(using)
+
+    def sync_role_account(self, using):
+        mapping = {
+            self.Role.UNION: ('unions', 'Union', None),
+            self.Role.BMC: ('bmcs', 'BMC', 'union'),
+            self.Role.SOCIETY: ('societies', 'Society', 'bmc'),
+            self.Role.FARMER: ('farmers', 'Farmer', 'society'),
+        }
+        app, name, parent_field = mapping[self.role]
+        model = apps.get_model(app, name)
+        defaults = {f'{parent_field}_id': self.parent_id} if parent_field else {}
+        record, created = model.objects.using(using).get_or_create(user_id=self.pk, defaults=defaults)
+        if not created and parent_field and getattr(record, f'{parent_field}_id') != self.parent_id:
+            setattr(record, f'{parent_field}_id', self.parent_id)
+            record.full_clean()
+            record.save(using=using, update_fields=[parent_field])
+
     def __str__(self):
         return f"{self.full_name} ({self.role})"
-
-
-class FarmerProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='farmer_profile')
-    farmer_id_code = models.CharField(max_length=64, unique=True)
-    address = models.TextField()
-    village = models.CharField(max_length=150)
-    community = models.CharField(max_length=150, blank=True)
-    number_of_cows = models.PositiveIntegerField(default=0)
-    verification_status = models.CharField(max_length=10, choices=[('pending', 'Pending'), ('verified', 'Verified')], default='pending')
-    bank_account_name = models.CharField(max_length=150, blank=True)
-    bank_name = models.CharField(max_length=150, blank=True)
-    bank_account_number = models.CharField(max_length=64, blank=True)
-    bank_ifsc = models.CharField(max_length=11, blank=True)
-    upi_id = models.CharField(max_length=150, blank=True)
-
-    def clean(self):
-        self.farmer_id_code = self.farmer_id_code.strip().upper()
-        if self.user.role != User.Role.FARMER:
-            raise ValidationError({'user': 'Personal details belong to a Farmer account.'})
-
-    def __str__(self):
-        return self.farmer_id_code
-
-
-class Cow(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    farmer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cows',
-                               limit_choices_to={'role': User.Role.FARMER})
-    pashu_aadhaar = models.CharField(max_length=12, unique=True, validators=[
-        RegexValidator(r'^[0-9]{12}$', 'Pashu Aadhaar must contain exactly 12 digits.')])
-    breed = models.CharField(max_length=150)
-    milk_capacity = models.DecimalField(max_digits=8, decimal_places=2,
-                                        validators=[MinValueValidator(Decimal('0.01'))])
-    name = models.CharField(max_length=150, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['created_at', 'id']
-        constraints = [
-            models.CheckConstraint(condition=models.Q(milk_capacity__gt=0), name='accounts_cow_positive_milk'),
-            models.CheckConstraint(condition=models.Q(pashu_aadhaar__regex=r'^[0-9]{12}$'), name='accounts_cow_valid_tag'),
-        ]
-
-    def clean(self):
-        if self.farmer_id and self.farmer.role != User.Role.FARMER:
-            raise ValidationError({'farmer': 'Cows must belong to a Farmer account.'})
-
-    def __str__(self):
-        return f'{self.pashu_aadhaar} ({self.breed})'

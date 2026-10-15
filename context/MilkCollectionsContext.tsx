@@ -128,7 +128,7 @@ export function MilkCollectionsProvider({ children }: { children: React.ReactNod
               setRecords(previous => [record, ...previous.filter(r => r.id !== record.id)]);
               void refresh();
               // Only confirm this request if the saved values exactly match.
-              if (err?.response?.status !== 409 && record.quantityLitres === Number(input.quantityLitres) && (record.notes || '') === (input.notes || '').trim()) return record;
+              if (err?.response?.status !== 409 && record.quantityLitres === Number(input.quantityLitres) && (record.notes || '') === (input.notes || '').trim() && (record.vendorId || '') === (input.vendorId || '')) return record;
               throw new Error('A collection already exists for this farmer, date, and shift. Review the saved entry.');
             }
           } catch (lookupError) {

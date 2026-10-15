@@ -3,7 +3,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 from django.utils import timezone
 from rest_framework import serializers
-from .models import FarmerMilkCollection, CollectionNotification
+from .models import FarmerMilkCollection
 
 
 def india_today():
@@ -12,6 +12,7 @@ def india_today():
 
 class CreateCollectionSerializer(serializers.Serializer):
     farmerId = serializers.UUIDField()
+    vendorId = serializers.UUIDField(required=False, allow_null=True)
     quantityLitres = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0.01'))
     collectionDate = serializers.DateField()
     session = serializers.ChoiceField(choices=['morning', 'evening'])
@@ -32,10 +33,30 @@ class CreateCollectionSerializer(serializers.Serializer):
 
 
 class CollectionSerializer(serializers.ModelSerializer):
+    vendorId = serializers.UUIDField(source='vendor_id', allow_null=True)
+    vendorName = serializers.CharField(source='vendor.name', default=None)
+    route = serializers.SerializerMethodField()
+    measurementMethod = serializers.SerializerMethodField()
+    receiptId = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_route(self, obj):
+        return 'vendor' if obj.vendor_id else 'direct'
+
+    def get_measurementMethod(self, obj):
+        return 'farmer_wise'
+
+    def get_receiptId(self, obj):
+        item = getattr(obj, 'dispatch_item', None)
+        return str(item.receipt_id) if item else None
+
+    def get_status(self, obj):
+        return 'included_in_receipt' if getattr(obj, 'dispatch_item', None) else 'recorded'
+
     farmerId = serializers.UUIDField(source='farmer_id')
-    farmerName = serializers.CharField(source='farmer.full_name')
+    farmerName = serializers.CharField(source='farmer.user.full_name')
     boothId = serializers.UUIDField(source='society_id')
-    boothName = serializers.CharField(source='society.full_name')
+    boothName = serializers.CharField(source='society.user.full_name')
     createdBy = serializers.CharField(source='created_by.full_name')
     collectionDate = serializers.DateField(source='collection_date')
     quantityLitres = serializers.DecimalField(source='quantity_litres', max_digits=10, decimal_places=2)
@@ -43,27 +64,6 @@ class CollectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FarmerMilkCollection
-        fields = ['id', 'farmerId', 'farmerName', 'boothId', 'boothName', 'createdBy', 'collectionDate', 'quantityLitres', 'session', 'notes', 'createdAt']
+        fields = ['id', 'farmerId', 'farmerName', 'boothId', 'boothName', 'createdBy', 'collectionDate', 'quantityLitres', 'session', 'notes', 'createdAt', 'vendorId', 'vendorName', 'route', 'measurementMethod', 'receiptId', 'status']
 
 
-class NotificationSerializer(serializers.ModelSerializer):
-    recipientId = serializers.UUIDField(source='recipient_id')
-    referenceId = serializers.UUIDField(source='collection_id')
-    isRead = serializers.BooleanField(source='is_read')
-    timestamp = serializers.DateTimeField(source='created_at')
-    recipientRole = serializers.SerializerMethodField()
-    type = serializers.SerializerMethodField()
-    linkRoute = serializers.SerializerMethodField()
-
-    def get_recipientRole(self, obj):
-        return 'farmer'
-
-    def get_type(self, obj):
-        return 'milk_recorded'
-
-    def get_linkRoute(self, obj):
-        return '/(farmer)/milk-history'
-
-    class Meta:
-        model = CollectionNotification
-        fields = ['id', 'recipientId', 'recipientRole', 'referenceId', 'title', 'message', 'isRead', 'timestamp', 'type', 'linkRoute']

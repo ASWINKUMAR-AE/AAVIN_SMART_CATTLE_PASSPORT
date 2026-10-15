@@ -1,9 +1,11 @@
 import { BoothScreen } from '../../components/booth/BoothScreen';
 import { BoothText as Text } from '../../components/booth/BoothText';
-import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Pressable, Share, useWindowDimensions } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, ScrollView, Alert, Pressable, Share, RefreshControl, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useAavinStore } from '../../store/AavinStoreContext';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
+import { apiErrorMessage } from '../../services/accountMapping';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
 import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
@@ -16,12 +18,16 @@ export default function ReceiptPreviewScreen() {
   const styles = createStyles(width, fontScale);
   const params = useLocalSearchParams();
   const receiptId = params.receiptId as string;
-  const { boothReceipts, sendBoothReceiptToBmc, milkRecords, bmcDeliveries, bmcs } = useAavinStore();
+  const { boothReceipts, milkRecords, bmcDeliveries, sendReceipt, refresh, loading, error } = useDispatchWorkflow();
+  useDispatchRefresh();
+  const { user } = useAuth();
+  const accountRef = useRef(user?.id); accountRef.current = user?.id;
+  const sendingRef = useRef(false);
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
-  // Find target receipt or fallback to first
-  const receipt = boothReceipts.find(r => r.id === receiptId) || boothReceipts[0];
+  // Resolve only the requested receipt.
+  const receipt = boothReceipts.find(r => r.id === receiptId);
   const [sending, setSending] = useState(false);
   const [showBatchList, setShowBatchList] = useState(false);
   const [sealChecklist, setSealChecklist] = useState({
@@ -37,7 +43,7 @@ export default function ReceiptPreviewScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="receipt-outline" size={48} color={colors.textMuted} />
           <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 12 }]}>
-            No dispatch receipt found matching the requested ID.
+            {loading ? 'Loading dispatch receipt…' : error || 'No dispatch receipt found matching the requested ID.'}
           </Text>
           <Button
             title="Go to Sent Receipts"
@@ -61,15 +67,20 @@ export default function ReceiptPreviewScreen() {
   const delivery = bmcDeliveries.find(d => d.boothReceiptId === receipt.id);
   const isAlreadySent = receipt.status === 'sent_to_bmc' || !!delivery;
 
-  const handleSendToBmc = () => {
+  const handleSendToBmc = async () => {
+    if (sendingRef.current || loading || error) return;
+    const account = user?.id;
     if (!sealChecklist.valveSealed || !sealChecklist.sampleStored || !sealChecklist.tempLogged) {
       Alert.alert('Pre-Dispatch Verification', 'Please complete all tanker sealing safety checks before transmitting the waybill.');
       return;
     }
 
-    setSending(true);
+    sendingRef.current = true; setSending(true);
     try {
-      sendBoothReceiptToBmc(receipt.id);
+      await sendReceipt(receipt.id);
+      if (accountRef.current !== account) return;
+      await refresh();
+      if (accountRef.current !== account) return;
       Alert.alert(
         'Receipt Transmitted to BMC!',
         `Digital dispatch receipt (${receipt.dispatchQuantity.toFixed(2)} L) is now LIVE in ${receipt.bmcName}'s intake dashboard.\n\nStatus updated to IN TRANSIT.`,
@@ -85,9 +96,9 @@ export default function ReceiptPreviewScreen() {
         ]
       );
     } catch (err: any) {
-      Alert.alert('Transmission Failed', err.message || 'Could not send receipt to BMC.');
+      if (accountRef.current === account) Alert.alert('Transmission Failed', apiErrorMessage(err));
     } finally {
-      setSending(false);
+      sendingRef.current = false; if (accountRef.current === account) setSending(false);
     }
   };
 
@@ -125,13 +136,15 @@ export default function ReceiptPreviewScreen() {
 
   return (
     <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
+      {error && <Text style={{ color: colors.hold }}>{error}</Text>}
       <DemoHeader 
         title="Send Dispatch Receipt"
         subtitle={`${receipt.collectionDate} • ${receipt.bmcName}`}
         showBack
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}>
         {/* Transit Lifecycle Stepper */}
         <Card style={styles.stepperCard}>
           <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', letterSpacing: 0.5, marginBottom: 10 }]}>
@@ -508,6 +521,7 @@ export default function ReceiptPreviewScreen() {
               title={sending ? "Transmitting Waybill to BMC..." : `Transmit Consignment to BMC (${receipt.bmcName})`}
               size="lg"
               loading={sending}
+              disabled={sending || loading || !!error}
               onPress={handleSendToBmc}
               icon="send"
               style={{ marginTop: 4 }}

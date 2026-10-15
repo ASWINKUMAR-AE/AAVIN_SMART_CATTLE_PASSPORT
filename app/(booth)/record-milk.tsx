@@ -15,6 +15,8 @@ import { AccountsApi } from '../../services/accountsApi';
 import { mapFarmer, apiErrorMessage } from '../../services/accountMapping';
 import { Farmer } from '../../types/aavin';
 import { useMilkCollections } from '../../context/MilkCollectionsContext';
+import { submissionKey } from '../../services/dispatchApi';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
 import { indiaDate } from '../../services/milkCollectionsApi';
 import { CollectionRoute, MeasurementMethod } from '../../types/aavin';
 
@@ -22,7 +24,28 @@ export default function RecordMilkScreen() {
   const { width, fontScale } = useWindowDimensions();
   const styles = createStyles(width, fontScale);
   const { user } = useAuth();
-  const { vendors, booths, cows } = useAavinStore();
+  const { booths, cows } = useAavinStore();
+  const { vendors, createVendor, createVendorMilk, refresh: refreshWorkflow, error: workflowError, loading: workflowLoading } = useDispatchWorkflow();
+  useDispatchRefresh();
+  const vendorSubmission = useRef(submissionKey());
+  const [vendorForm, setVendorForm] = useState(false);
+  const [vendorDraft, setVendorDraft] = useState({ code: '', name: '', phone: '', routeName: '', vehicleNumber: '', vehicleType: '' });
+  const [vendorSaving, setVendorSaving] = useState(false);
+  const vendorSavingRef = useRef(false);
+  const handleCreateVendor = async () => {
+    if (vendorSavingRef.current) return;
+    if (!vendorDraft.code.trim() || !vendorDraft.name.trim()) { setErrorMsg('Enter a vendor code and name.'); return; }
+    const account = boothId;
+    vendorSavingRef.current = true; setVendorSaving(true);
+    try {
+      const vendor = await createVendor(vendorDraft);
+      if (accountRef.current !== account) return;
+      setSelectedVendorId(vendor.id); setVendorForm(false);
+      setVendorDraft({ code: '', name: '', phone: '', routeName: '', vehicleNumber: '', vehicleType: '' });
+      await refreshWorkflow();
+    } catch (err) { if (accountRef.current === account) setErrorMsg(apiErrorMessage(err)); }
+    finally { vendorSavingRef.current = false; if (accountRef.current === account) setVendorSaving(false); }
+  };
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ farmerId?: string }>();
@@ -55,7 +78,7 @@ export default function RecordMilkScreen() {
 
   // Delivery Route
   const [route, setRoute] = useState<CollectionRoute>('direct');
-  const [selectedVendorId, setSelectedVendorId] = useState(vendors[0]?.id || 'VEND001');
+  const [selectedVendorId, setSelectedVendorId] = useState('');
 
   // Intake Data
   const [quantityLitres, setQuantityLitres] = useState('');
@@ -75,7 +98,7 @@ export default function RecordMilkScreen() {
 
   // Selected entities
   const selectedFarmer = assignedFarmers.find(f => f.id === selectedFarmerId);
-  const selectedVendor = vendors.find(v => v.id === selectedVendorId) || vendors[0];
+  const selectedVendor = vendors.find(v => v.id === selectedVendorId);
 
   // Active withdrawal check
   const farmerCows = cows.filter(c => c.farmerId === selectedFarmerId);
@@ -109,8 +132,8 @@ export default function RecordMilkScreen() {
   const handleSubmit = async () => {
     if (submittingRef.current) return;
     setErrorMsg(null);
-    if (measurementMethod !== 'farmer_wise') { setErrorMsg('Combined vendor intake is not available yet. Select an individual farmer.'); return; }
-    if (!selectedFarmer || farmersLoading || farmersError) { setErrorMsg('Select a farmer from the current society list.'); return; }
+    if (measurementMethod === 'farmer_wise' && (!selectedFarmer || farmersLoading || farmersError)) { setErrorMsg('Select a farmer from the current society list.'); return; }
+    if ((measurementMethod === 'combined' || route === 'vendor') && !selectedVendor) { setErrorMsg('Select a saved route vendor.'); return; }
     const cleanQty = quantityLitres.trim();
     if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(cleanQty) || Number(cleanQty) <= 0) {
       setErrorMsg('Enter collected litres greater than zero, with at most two decimal places.'); return;
@@ -123,12 +146,17 @@ export default function RecordMilkScreen() {
     const account = boothId;
     submittingRef.current = true; setSubmitting(true);
     try {
-      const record = await save({ farmerId: selectedFarmer.id, quantityLitres: cleanQty, collectionDate, session, notes: notes.trim() });
+      const record = measurementMethod === 'combined'
+        ? await createVendorMilk({ vendorId: selectedVendor!.id, quantityLitres: cleanQty, collectionDate, session, notes: notes.trim(), submissionKey: vendorSubmission.current })
+        : await save({ farmerId: selectedFarmer!.id, vendorId: route === 'vendor' ? selectedVendor!.id : undefined, quantityLitres: cleanQty, collectionDate, session, notes: notes.trim() });
       if (accountRef.current !== account) return;
-      Alert.alert('Milk Collection Saved', `${record.quantityLitres.toFixed(2)} litres recorded for ${record.farmerName} on ${record.collectionDate} (${record.session}). The farmer can view this collection and notification in their app.`,
+      vendorSubmission.current = submissionKey();
+      setQuantityLitres(''); setNotes('');
+      void refreshWorkflow();
+      Alert.alert('Milk Collection Saved', `${record.quantityLitres.toFixed(2)} litres recorded for ${record.farmerName || record.vendorName} on ${record.collectionDate} (${record.session}). ${measurementMethod === 'combined' ? 'Vendor batch saved without individual farmer allocation.' : 'The farmer can view this collection and notification in their app.'}`,
         [{ text: 'Record Another', onPress: () => { setQuantityLitres(''); setNotes(''); } },
          { text: 'View Collection', onPress: () => router.push({ pathname: '/(booth)/review-collection', params: { collectionDate: record.collectionDate } }) }]);
-    } catch (err: any) { if (accountRef.current === account) setErrorMsg(err.message || 'Could not save collection.'); }
+    } catch (err: any) { if (accountRef.current === account) setErrorMsg(apiErrorMessage(err)); }
     finally { submittingRef.current = false; if (accountRef.current === account) setSubmitting(false); }
   };
 
@@ -154,7 +182,18 @@ export default function RecordMilkScreen() {
         {farmersLoading && <Text style={{ color: colors.textSecondary }}>Loading assigned farmers…</Text>}
         {farmersError && <Text style={{ color: colors.hold }}>{farmersError} Leave and reopen this screen to retry.</Text>}
         {!farmersLoading && !farmersError && assignedFarmers.length === 0 && <Text style={{ color: colors.textSecondary }}>No active farmers assigned. Register a farmer before recording milk.</Text>}
-        {measurementMethod === 'combined' && <Text style={{ color: colors.hold }}>Combined vendor intake is not available. Use individual farmer collection.</Text>}
+        {workflowError && <Text style={{ color: colors.hold }}>{workflowError}</Text>}
+        <Card style={styles.sectionCard}>
+          <Button title={vendorForm ? 'Close Vendor Form' : '+ Add Route Vendor'} variant="outline" onPress={() => setVendorForm(!vendorForm)} />
+          {vendorForm && <View style={{ gap: 10, marginTop: 12 }}>
+            {(['code', 'name', 'phone', 'routeName', 'vehicleNumber', 'vehicleType'] as const).map(field => (
+              <TextField key={field} label={{ code: 'Vendor Code', name: 'Vendor Name', phone: 'Phone', routeName: 'Route Name', vehicleNumber: 'Vehicle Number', vehicleType: 'Vehicle Type' }[field]}
+                value={vendorDraft[field]} onChangeText={value => setVendorDraft(draft => ({ ...draft, [field]: value }))} />
+            ))}
+            <Button title="Save Vendor" onPress={handleCreateVendor} loading={vendorSaving} disabled={vendorSaving} />
+          </View>}
+          {!workflowLoading && vendors.length === 0 && <Text style={{ color: colors.textSecondary, marginTop: 8 }}>Add a route vendor before recording vendor milk.</Text>}
+        </Card>
         {/* 1. Intake Mode Toggle Card */}
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
@@ -418,7 +457,7 @@ export default function RecordMilkScreen() {
                 </Pressable>
 
                 <Pressable
-                  onPress={() => Alert.alert('Not available', 'Route vendor collection is not supported in this version. Use direct farmer collection.')}
+                  onPress={() => setRoute('vendor')}
                   style={[
                     styles.routeToggleBtn,
                     {
@@ -696,7 +735,7 @@ export default function RecordMilkScreen() {
 
         {enteredQty > 0 && <Card style={styles.sectionCard}>
           <Text style={{ color: colors.text, fontWeight: '700' }}>Collection preview</Text>
-          <Text style={{ color: colors.textSecondary }}>{selectedFarmer?.name || 'Select a farmer'} • {enteredQty.toFixed(2)} litres</Text>
+          <Text style={{ color: colors.textSecondary }}>{measurementMethod === 'combined' ? selectedVendor?.name || 'Select a vendor' : selectedFarmer?.name || 'Select a farmer'} • {enteredQty.toFixed(2)} litres</Text>
           <Text style={{ color: colors.textSecondary }}>{collectionDate} • {session === 'morning' ? 'Morning' : 'Evening'} shift</Text>
         </Card>}
 
@@ -706,7 +745,7 @@ export default function RecordMilkScreen() {
             title={submitting ? "Saving Intake Entry..." : "Submit Milk Intake Record"}
             size="lg"
             loading={submitting}
-            disabled={!selectedFarmer || farmersLoading || !!farmersError || measurementMethod !== 'farmer_wise'}
+            disabled={submitting || workflowLoading || !!workflowError || (measurementMethod === 'combined' ? !selectedVendor : !selectedFarmer || farmersLoading || !!farmersError || (route === 'vendor' && !selectedVendor))}
             onPress={handleSubmit}
             icon="checkmark-circle-outline"
             style={{ marginTop: 4 }}

@@ -9,6 +9,7 @@ export function daysBefore(date: string, days: number): string {
 }
 export interface CollectionInput {
   farmerId: string;
+  vendorId?: string;
   quantityLitres: string;
   collectionDate: string;
   session: 'morning' | 'evening';
@@ -16,6 +17,11 @@ export interface CollectionInput {
 }
 export interface CollectionRecord extends Pick<MilkRecord, 'id' | 'farmerId' | 'farmerName' | 'boothId' | 'createdBy' | 'collectionDate' | 'session' | 'notes' | 'createdAt'> {
   boothName: string;
+  route?: 'direct' | 'vendor';
+  vendorId?: string;
+  vendorName?: string;
+  status?: MilkRecord['status'];
+  receiptId?: string;
   quantityLitres: string;
 }
 export interface CollectionSummary {
@@ -28,8 +34,8 @@ export interface CollectionSummary {
 }
 interface Page<T> { results: T[]; count: number; page: number; pageSize: number; hasNext: boolean; unreadCount?: number }
 export function mapCollection(record: CollectionRecord): MilkRecord {
-  return { ...record, quantityLitres: Number(record.quantityLitres), route: 'direct', measurementMethod: 'farmer_wise',
-    individualAllocation: 'measured', status: 'recorded', backendSynced: true };
+  return { ...record, quantityLitres: Number(record.quantityLitres), route: record.route || 'direct', measurementMethod: 'farmer_wise',
+    individualAllocation: 'measured', status: record.status || 'recorded', backendSynced: true };
 }
 async function allPages<T extends { id: string }>(url: string, params = {}): Promise<T[]> {
   const records: T[] = [];

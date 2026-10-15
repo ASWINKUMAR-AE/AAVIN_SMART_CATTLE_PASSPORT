@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
+import { indiaDate, daysBefore } from '../../services/milkCollectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -26,7 +28,9 @@ export type DeliveryFilterStatus = 'all' | 'pending' | 'matched' | 'mismatch' | 
 
 export default function BMCReceiveMilkScreen() {
   const { user } = useAuth();
-  const { bmcDeliveries, bmcs, receiveBmcDelivery, union } = useAavinStore();
+  const { receiveBmcDelivery, union } = useAavinStore();
+  const { bmcDeliveries, context, loading, error, refresh } = useDispatchWorkflow();
+  useDispatchRefresh();
   const { colors } = useTheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -34,8 +38,8 @@ export default function BMCReceiveMilkScreen() {
 
   const { statusFilter } = useLocalSearchParams<{ statusFilter?: string }>();
 
-  const bmcId = user?.associatedId || 'BMC001';
-  const bmc = bmcs.find(b => b.id === bmcId) || bmcs[0];
+  const bmcId = user?.id || '';
+  const bmc = context?.bmc || { id: bmcId, name: user?.fullName || '' };
 
   // Filters State
   const [activeFilter, setActiveFilter] = useState<DeliveryFilterStatus>('all');
@@ -60,15 +64,15 @@ export default function BMCReceiveMilkScreen() {
 
   // Deliveries filtered by BMC
   const allBmcDeliveries = useMemo(() => {
-    return bmcDeliveries.filter(d => d.bmcId === bmc.id || !d.bmcId);
+    return bmcDeliveries.filter(d => d.bmcId === bmc.id);
   }, [bmcDeliveries, bmc.id]);
 
   // Filtered Deliveries Pipeline
   const filteredDeliveries = useMemo(() => {
     return allBmcDeliveries.filter(item => {
       // Date Filter
-      if (dateFilter === 'today' && item.collectionDate !== '2026-10-12') return false;
-      if (dateFilter === 'yesterday' && item.collectionDate !== '2026-10-11') return false;
+      if (dateFilter === 'today' && item.collectionDate !== indiaDate()) return false;
+      if (dateFilter === 'yesterday' && item.collectionDate !== daysBefore(indiaDate(), 1)) return false;
 
       // Status Filter
       const isPending = item.status === 'pending_arrival' || item.measuredReceivedQuantity === undefined;
@@ -117,12 +121,16 @@ export default function BMCReceiveMilkScreen() {
   }, [allBmcDeliveries, union.mismatchThresholdLitres]);
 
   const handleOpenReceiveModal = (delivery: BMCDelivery) => {
+    if (delivery.backendSynced) {
+      Alert.alert('Dispatch received', 'This receipt is saved in your BMC inbox. Quantity confirmation is not available yet.');
+      return;
+    }
     setSelectedDelivery(delivery);
     setMeasuredQty(delivery.measuredReceivedQuantity?.toString() || delivery.declaredDispatchQuantity.toString());
   };
 
   const handleConfirmMeasurement = () => {
-    if (!selectedDelivery) return;
+    if (!selectedDelivery || selectedDelivery.backendSynced) return;
 
     const qty = parseFloat(measuredQty);
     if (isNaN(qty) || qty <= 0) {
@@ -276,7 +284,10 @@ export default function BMCReceiveMilkScreen() {
       </View>
 
       {/* Deliveries List */}
+      {error && <Text style={{ color: colors.hold }}>{error}</Text>}
       <FlatList
+        refreshing={loading}
+        onRefresh={refresh}
         data={filteredDeliveries}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
@@ -359,7 +370,7 @@ export default function BMCReceiveMilkScreen() {
                     <Text style={[Typography.caption2, { color: colors.border, marginHorizontal: 4 }]}>•</Text>
                     <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
                     <Text style={[Typography.caption2, { color: colors.textSecondary, marginLeft: 2 }]}>
-                      {item.dispatchTime}
+                      {new Date(item.dispatchTime).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
                 </View>
@@ -462,7 +473,8 @@ export default function BMCReceiveMilkScreen() {
                 <View style={styles.cardActionsRow}>
                   {isPending ? (
                     <Button
-                      title="Confirm Milk Received"
+                      title={item.backendSynced ? "Awaiting Quantity Confirmation" : "Confirm Milk Received"}
+                      disabled={item.backendSynced}
                       onPress={() => handleOpenReceiveModal(item)}
                       style={{ minWidth: 150 }}
                     />

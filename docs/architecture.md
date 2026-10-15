@@ -1,11 +1,39 @@
 # Current architecture
 
-The unchanged Expo frontend calls a Django REST Framework API on port 4000. Django stores authentication accounts in the separate cloud PostgreSQL database `aavin`, connecting with SSL required.
+The Expo frontend calls Django REST Framework on port 4000. PostgreSQL stores
+phone/password authentication, role accounts, farmer/cattle details, milk intake,
+attendance, dispatch receipts, and the linked BMC inbox.
 
-`backend/config/` contains settings, URL routing, and WSGI/ASGI entry points. `backend/accounts/` contains the custom phone-based user model, serializers, authentication endpoints, Admin forms, and tests. Schema changes use Django migrations.
+The backend has five domain owners:
 
-The four account roles are Union, BMC, Society, and Farmer. Account parent relationships are Union → BMC → Society → Farmer. Each account has one parent, except Union accounts. No child-count limit applies. The creator is tracked separately from the parent because a Union may create a Society beneath one of its BMC accounts.
+| Domain | Models and responsibility |
+| --- | --- |
+| `accounts` (Auth) | Django `User`, credentials, phone, JWT sessions, role registration, shared account transport. |
+| `unions` | `Union`, the root of the account hierarchy. |
+| `bmcs` | `BMC`, Union membership, incoming `BMCDelivery`. |
+| `societies` | `Society`, BMC membership, farmer/vendor milk, vendors, attendance, dispatch receipts and items. |
+| `farmers` | `Farmer`, Society membership, personal/bank/KYC fields, `Cow`, private collection notifications. |
 
-Django hashes passwords. JWT access tokens protect account creation and current-user lookup. Refresh-token blacklisting supports revocation. Registration checks role permissions and parent ownership on the server, and only manually created Union accounts form the root of the hierarchy.
+`Union → BMC → Society → Farmer` uses explicit foreign keys between typed models.
+Each role record has a one-to-one authentication account and shares its UUID.
+Authentication `parent` is retained for the existing API contract and synchronized
+atomically with the typed relationship. Existing account roles cannot change.
 
-The login and Society Farmer registration screens now use Django accounts, and the Society Farmers directory loads server records. The backend `society` role maps to the existing frontend `booth` route. Farmer personal details are stored in a separate one-to-one model, while name and phone remain on the user. Cattle enrollment is stored in `accounts_cow` with a many-to-one foreign key to the Farmer account. Farmer, profile, and cattle creation are atomic. Login, account lookup, and Society listings return cattle for cache hydration. Other frontend workflows, including clinical records, retain their existing local data. The previous milk, cattle, logistics, payment, and AI APIs are archived in `legacy/node-backend/`; they are not exposed by this initial Django authentication backend.
+Business ownership points to typed Farmer, Society, and BMC models. Audit creators
+and notification recipients point to authentication accounts. Querysets enforce
+ownership at the server; caller-supplied IDs cannot widen access.
+
+Existing frontend response shapes and URLs remain compatible. Farmer enrollment
+uses the canonical `/api/v1/farmers` endpoint; `/api/v1/auth/register` continues to
+create the appropriate role record for existing clients. See [all endpoint owners](domain-models.md).
+
+The old `accounts.FarmerProfile`, `accounts.Cow`, `collections.*`, and `dispatch.*`
+models no longer register at runtime. The retired top-level `dispatch` package is removed; its migrations live under
+`accounts/migration_history/dispatch` with the original label, so existing
+databases can upgrade. The role transition migration copies farmer
+profiles, adopts existing business tables, rebinds their foreign keys, maps Django
+permissions, and removes the old profile table. User UUIDs, password hashes, JWT
+references, and business IDs stay unchanged.
+
+Clinical records, payments, cattle verification, and AI workflows retain local/demo
+behavior. The earlier Node/MySQL backend remains an archive under `legacy/`.

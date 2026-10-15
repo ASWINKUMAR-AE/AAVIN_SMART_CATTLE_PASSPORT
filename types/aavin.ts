@@ -220,6 +220,7 @@ export type BMCDeliveryStatus =
   | 'escalated_to_union';
 
 export interface BMCDelivery {
+  backendSynced?: boolean;
   id: string; // e.g. DEL-2026-001
   boothReceiptId: string;
   boothId: string;

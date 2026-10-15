@@ -7,9 +7,12 @@ from rest_framework import serializers
 from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.views import APIView
 from accounts.models import User
+from .models import Vendor, FarmerAttendance
+from farmers.models import Farmer, CollectionNotification
+from accounts.pagination import page_data
 from accounts.responses import success
-from .models import FarmerMilkCollection, CollectionNotification
-from .serializers import CreateCollectionSerializer, CollectionSerializer, NotificationSerializer, india_today
+from .models import FarmerMilkCollection
+from .collection_serializers import CreateCollectionSerializer, CollectionSerializer, india_today
 
 
 class DuplicateCollection(APIException):
@@ -19,12 +22,12 @@ class DuplicateCollection(APIException):
 
 def scoped_collections(user):
     if user.role == User.Role.SOCIETY:
-        query = FarmerMilkCollection.objects.filter(society=user)
+        query = FarmerMilkCollection.objects.filter(society_id=user.pk)
     elif user.role == User.Role.FARMER:
-        query = FarmerMilkCollection.objects.filter(farmer=user)
+        query = FarmerMilkCollection.objects.filter(farmer_id=user.pk)
     else:
         raise PermissionDenied('Only Society and Farmer accounts can access milk collections.')
-    return query.select_related('farmer', 'society', 'created_by')
+    return query.select_related('farmer__user', 'society__user', 'created_by', 'vendor', 'dispatch_item')
 
 
 def filtered_collections(request):
@@ -44,14 +47,6 @@ def filtered_collections(request):
     return query
 
 
-def page_data(request, query, serializer):
-    page = serializers.IntegerField(min_value=1).run_validation(request.query_params.get('page', 1))
-    size = serializers.IntegerField(min_value=1, max_value=100).run_validation(request.query_params.get('pageSize', 50))
-    count = query.count()
-    return {'results': serializer(query[(page - 1) * size:page * size], many=True).data,
-            'count': count, 'page': page, 'pageSize': size, 'hasNext': page * size < count}
-
-
 class CollectionListView(APIView):
     def get(self, request):
         return success(page_data(request, filtered_collections(request), CollectionSerializer))
@@ -65,14 +60,19 @@ class CollectionListView(APIView):
         try:
             with transaction.atomic():
                 # Serialize concurrent intake and reassignment using the farmer row.
-                farmer = get_object_or_404(User.objects.select_for_update(), pk=data['farmerId'],
-                                          role=User.Role.FARMER, parent=request.user, is_active=True)
+                farmer = get_object_or_404(Farmer.objects.select_for_update(), pk=data['farmerId'],
+                                          society_id=request.user.pk, user__is_active=True)
                 if FarmerMilkCollection.objects.filter(farmer=farmer, collection_date=data['collectionDate'], session=data['session']).exists():
                     raise DuplicateCollection()
-                record = FarmerMilkCollection.objects.create(farmer=farmer, society=request.user,
+                vendor = None
+                if data.get('vendorId'):
+                    vendor = get_object_or_404(Vendor, pk=data['vendorId'], society_id=request.user.pk, is_active=True)
+                record = FarmerMilkCollection.objects.create(farmer=farmer, society_id=request.user.pk,
                     created_by=request.user, collection_date=data['collectionDate'], session=data['session'],
-                    quantity_litres=data['quantityLitres'], notes=data['notes'])
-                CollectionNotification.objects.create(recipient=farmer, collection=record,
+                    quantity_litres=data['quantityLitres'], notes=data['notes'], vendor=vendor)
+                FarmerAttendance.objects.create(farmer=farmer, society_id=request.user.pk, collection=record,
+                    collection_date=record.collection_date, session=record.session)
+                CollectionNotification.objects.create(recipient_id=farmer.pk, collection=record,
                     title='Milk Supply Recorded', message=f"Your {record.session} supply of {record.quantity_litres:.2f} litres on {record.collection_date} was recorded at {request.user.full_name}.")
         except IntegrityError:
             if FarmerMilkCollection.objects.filter(farmer_id=data['farmerId'], collection_date=data['collectionDate'], session=data['session']).exists():
@@ -98,20 +98,3 @@ class CollectionSummaryView(APIView):
                             'quantityLitres': format(daily.get(start + timedelta(days=i), Decimal('0')), '.2f')} for i in range(7)]})
 
 
-class NotificationListView(APIView):
-    def get(self, request):
-        query = CollectionNotification.objects.filter(recipient=request.user)
-        return success({**page_data(request, query, NotificationSerializer), 'unreadCount': query.filter(is_read=False).count()})
-
-
-class NotificationReadView(APIView):
-    def post(self, request, notification_id):
-        notification = get_object_or_404(CollectionNotification, pk=notification_id, recipient=request.user)
-        CollectionNotification.objects.filter(pk=notification.pk, recipient=request.user).update(is_read=True)
-        return success(message='Notification marked read')
-
-
-class NotificationsReadAllView(APIView):
-    def post(self, request):
-        CollectionNotification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
-        return success(message='Notifications marked read')
