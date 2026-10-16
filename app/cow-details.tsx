@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,6 +8,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAavinStore } from '../store/AavinStoreContext';
@@ -19,19 +20,52 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { CowMilkAnalyticsChart } from '../components/charts/CowMilkAnalyticsChart';
+import { CowsApi } from '../services/cowsApi';
 
 export default function UniversalCowDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { user, activeRole } = useAuth();
   const { colors, isDark } = useTheme();
-  const { cows, farmers, booths, milkRecords } = useAavinStore();
+  const { cows, farmers, booths, milkRecords, cacheFarmer } = useAavinStore();
 
   // Search by tagId or cowId or param
   const queryTag = (params.tagId as string) || (params.cowId as string) || (params.id as string);
 
-  // Find exact cow
-  const cow = queryTag
+  // Dynamic backend fetch state
+  const [backendCow, setBackendCow] = useState<any>(null);
+  const [backendFarmer, setBackendFarmer] = useState<any>(null);
+  const [isFetchingBackend, setIsFetchingBackend] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!queryTag) return;
+    let isMounted = true;
+    const fetchFromDatabase = async () => {
+      try {
+        setIsFetchingBackend(true);
+        const data = await CowsApi.scanCow(queryTag);
+        if (isMounted && data?.cow) {
+          setBackendCow(data.cow);
+          if (data.farmer) {
+            setBackendFarmer(data.farmer);
+            if (cacheFarmer) {
+              cacheFarmer(data.farmer, [data.cow]);
+            }
+          }
+        }
+      } catch (err) {
+        // Tag not found or network offline; fallback to local store
+      } finally {
+        if (isMounted) setIsFetchingBackend(false);
+      }
+    };
+
+    fetchFromDatabase();
+    return () => { isMounted = false; };
+  }, [queryTag]);
+
+  // Find exact cow from backend data or local store
+  const cow = backendCow || (queryTag
     ? cows.find(
         (c) =>
           c.tagId === queryTag ||
@@ -41,7 +75,29 @@ export default function UniversalCowDetailsScreen() {
       (queryTag.length >= 10
         ? cows.find((c) => c.tagId === queryTag || c.tagId.includes(queryTag))
         : undefined)
-    : cows[0];
+    : cows[0]);
+
+  // Loading indicator while queryTag is actively querying backend DB
+  if (isFetchingBackend && !cow) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <DemoHeader
+          title={queryTag ? `Tag #${queryTag}` : 'Cattle Registry'}
+          subtitle="Fetching from Aavin District Database..."
+          showBack
+        />
+        <View style={[styles.unregisteredContainer, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[Typography.headline, { color: colors.text, marginTop: 16, fontWeight: '700' }]}>
+            Scanning Database for Tag #{queryTag}
+          </Text>
+          <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 8, textAlign: 'center' }]}>
+            Retrieving Pashu Aadhaar ear tag credentials and registered farmer data...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   // If a specific tag was scanned but is not registered in the database, or no cows exist
   if (!cow) {
@@ -114,8 +170,8 @@ export default function UniversalCowDetailsScreen() {
     );
   }
 
-  const farmer = farmers.find((f) => f.id === cow.farmerId);
-  const booth = booths.find((b) => b.id === farmer?.assignedBoothId);
+  const farmer = backendFarmer || farmers.find((f) => f.id === cow.farmerId);
+  const booth = (backendCow?.society as any) || booths.find((b) => b.id === farmer?.assignedBoothId) || { id: '', name: 'Melur Primary Milk Producers Cooperative Society' };
   const allFarmerCows = cows.filter((c) => c.farmerId === cow.farmerId);
 
   // Active section tab
@@ -448,7 +504,7 @@ export default function UniversalCowDetailsScreen() {
                 No abnormal clinical events recorded. General herd health optimal.
               </Text>
             ) : (
-              cow.medicalHistory.map((med) => (
+              cow.medicalHistory.map((med: any) => (
                 <View key={med.id} style={[styles.timelineItem, { borderLeftColor: colors.primary }]}>
                   <View style={styles.timelineHeader}>
                     <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
@@ -486,7 +542,7 @@ export default function UniversalCowDetailsScreen() {
               </Text>
             </View>
 
-            {cow.vaccinationHistory.map((vac) => (
+            {cow.vaccinationHistory.map((vac: any) => (
               <View key={vac.id} style={[styles.timelineItem, { borderLeftColor: '#16A34A' }]}>
                 <View style={styles.timelineHeader}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
@@ -520,7 +576,7 @@ export default function UniversalCowDetailsScreen() {
                 No active or past drug therapies on record. Clean antimicrobial history.
               </Text>
             ) : (
-              cow.treatmentRecords.map((trt) => (
+              cow.treatmentRecords.map((trt: any) => (
                 <View key={trt.id} style={[styles.timelineItem, { borderLeftColor: '#DC2626' }]}>
                   <View style={styles.timelineHeader}>
                     <Text style={[Typography.subhead, { color: '#DC2626', fontWeight: '800' }]}>

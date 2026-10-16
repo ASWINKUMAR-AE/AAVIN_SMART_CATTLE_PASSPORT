@@ -380,3 +380,6 @@ export interface InAppNotification {
   linkRoute?: string;
   referenceId?: string;
 }
+
+export * from '../services/monitoring/monitoringTypes';
+

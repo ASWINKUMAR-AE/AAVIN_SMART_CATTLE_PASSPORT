@@ -38,6 +38,16 @@ import {
 } from '../data/seedData';
 import { indiaDate, daysBefore } from '../services/milkCollectionsApi';
 import { WorkflowApi } from '../services/workflowApi';
+import {
+  MonitoringBatch,
+  FarmerBatchMonitoringResult,
+  FarmerDailyMonitoringSummary,
+  MilkMonitoringAlert,
+  MilkMonitoringConfig,
+  DEFAULT_MONITORING_CONFIG,
+} from '../services/monitoring/monitoringTypes';
+import { BatchMilkMonitoringService } from '../services/monitoring/batchMilkMonitoringService';
+import { LowSupplyAlertService } from '../services/monitoring/lowSupplyAlertService';
 
 const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v6';
 
@@ -55,6 +65,8 @@ interface AavinState {
   bmcReceipts: BMCReceipt[];
   societyIncomeRecords: SocietyIncomeRecord[];
   notifications: InAppNotification[];
+  monitoringAlerts: MilkMonitoringAlert[];
+  monitoringConfig: MilkMonitoringConfig;
 }
 
 // Preserve local clinical records while refreshing the fields stored by the backend.
@@ -226,6 +238,32 @@ interface AavinStoreContextType extends AavinState {
     activeDiscrepanciesCount: number;
     resolvedDiscrepanciesCount: number;
   };
+
+  // Morning & Evening Milk Monitoring actions
+  runBatchMonitoring: (societyId: string, batch: MonitoringBatch, date?: string) => Promise<FarmerBatchMonitoringResult[]>;
+  reviewMonitoringAlert: (alertId: string, reason: string, notes: string, reviewer: string) => void;
+  resolveMonitoringAlert: (alertId: string, resolutionNotes: string, reviewer: string) => void;
+  escalateMonitoringAlert: (alertId: string, notes: string, reviewer: string) => void;
+  updateMonitoringConfig: (config: Partial<MilkMonitoringConfig>) => void;
+  getSocietyMonitoringSummary: (societyId: string, date: string) => {
+    morning: FarmerBatchMonitoringResult[];
+    evening: FarmerBatchMonitoringResult[];
+    daily: FarmerDailyMonitoringSummary[];
+    alerts: MilkMonitoringAlert[];
+  };
+  getUnionMonitoringAlerts: (unionId?: string) => {
+    alerts: MilkMonitoringAlert[];
+    stats: {
+      totalAlerts: number;
+      morningWarnings: number;
+      eveningWarnings: number;
+      criticalAlerts: number;
+      persistentShortfalls: number;
+      missingRecords: number;
+      awaitingSocietyReview: number;
+      escalatedToUnion: number;
+    };
+  };
 }
 
 const initialSeedState: AavinState = {
@@ -242,6 +280,8 @@ const initialSeedState: AavinState = {
   bmcReceipts: SEED_BMC_RECEIPTS,
   societyIncomeRecords: SEED_SOCIETY_INCOME,
   notifications: [],
+  monitoringAlerts: [],
+  monitoringConfig: DEFAULT_MONITORING_CONFIG,
 };
 
 const AavinStoreContext = createContext<AavinStoreContextType | null>(null);
@@ -360,6 +400,8 @@ function sanitizeLoadedState(loadedState: AavinState): AavinState {
         boothName: replaceText(d.boothName),
       }));
     })(),
+    monitoringAlerts: loadedState.monitoringAlerts || [],
+    monitoringConfig: loadedState.monitoringConfig || DEFAULT_MONITORING_CONFIG,
   };
 }
 
@@ -1548,6 +1590,263 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [state]);
 
+  const runBatchMonitoring = useCallback(async (
+    societyId: string,
+    batch: MonitoringBatch,
+    date?: string
+  ): Promise<FarmerBatchMonitoringResult[]> => {
+    const targetDate = date || indiaDate();
+    if (!state.monitoringConfig.enabled) {
+      return [];
+    }
+
+    try {
+      const society = state.booths.find(b => b.id === societyId);
+      const societyName = society ? society.name : `Society ${societyId}`;
+
+      const batchResults = BatchMilkMonitoringService.monitorSocietyBatch(
+        societyId,
+        state.farmers,
+        state.cows,
+        state.milkRecords,
+        batch,
+        targetDate,
+        state.monitoringConfig
+      );
+
+      // Process alerts idempotently
+      let currentAlerts = [...state.monitoringAlerts];
+      let collectedNotifs: InAppNotification[] = [];
+
+      for (const res of batchResults) {
+        const { updatedAlerts, newNotifications } = LowSupplyAlertService.processBatchAlert(
+          res,
+          societyName,
+          currentAlerts,
+          state.monitoringAlerts,
+          state.monitoringConfig
+        );
+        currentAlerts = updatedAlerts;
+        collectedNotifs = [...collectedNotifs, ...newNotifications];
+      }
+
+      setState(prev => {
+        const nextState = {
+          ...prev,
+          monitoringAlerts: currentAlerts,
+          notifications: [...collectedNotifs, ...prev.notifications],
+        };
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+        return nextState;
+      });
+
+      return batchResults;
+    } catch (err) {
+      console.warn('Monitoring service error isolated:', err);
+      return [];
+    }
+  }, [state]);
+
+  const reviewMonitoringAlert = useCallback((
+    alertId: string,
+    reason: string,
+    notes: string,
+    reviewer: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    setState(prev => {
+      const updated = prev.monitoringAlerts.map(alert => {
+        if (alert.id !== alertId) return alert;
+        return {
+          ...alert,
+          status: 'investigating' as const,
+          reviewReason: reason,
+          reviewNotes: notes,
+          reviewedBy: reviewer,
+          reviewedAt: timestamp,
+          updatedAt: timestamp,
+          auditTrail: [
+            ...alert.auditTrail,
+            {
+              timestamp,
+              action: 'SOCIETY_REVIEWED',
+              actor: reviewer,
+              details: `Investigation recorded. Reason: ${reason}. Notes: ${notes}`,
+            },
+          ],
+        };
+      });
+      const nextState = { ...prev, monitoringAlerts: updated };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const resolveMonitoringAlert = useCallback((
+    alertId: string,
+    resolutionNotes: string,
+    reviewer: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    setState(prev => {
+      const updated = prev.monitoringAlerts.map(alert => {
+        if (alert.id !== alertId) return alert;
+        return {
+          ...alert,
+          status: 'resolved' as const,
+          resolutionNotes,
+          resolvedBy: reviewer,
+          resolvedAt: timestamp,
+          updatedAt: timestamp,
+          auditTrail: [
+            ...alert.auditTrail,
+            {
+              timestamp,
+              action: 'MANUAL_RESOLVED',
+              actor: reviewer,
+              details: `Alert resolved: ${resolutionNotes}`,
+            },
+          ],
+        };
+      });
+      const nextState = { ...prev, monitoringAlerts: updated };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const escalateMonitoringAlert = useCallback((
+    alertId: string,
+    notes: string,
+    reviewer: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    setState(prev => {
+      let escalatedAlert: MilkMonitoringAlert | undefined;
+      const updated = prev.monitoringAlerts.map(alert => {
+        if (alert.id !== alertId) return alert;
+        escalatedAlert = {
+          ...alert,
+          status: 'escalated_to_union' as const,
+          isEscalatedToUnion: true,
+          escalatedAt: timestamp,
+          reviewNotes: notes ? `${alert.reviewNotes || ''}\nEscalation note: ${notes}`.trim() : alert.reviewNotes,
+          updatedAt: timestamp,
+          auditTrail: [
+            ...alert.auditTrail,
+            {
+              timestamp,
+              action: 'MANUAL_ESCALATED_TO_UNION',
+              actor: reviewer,
+              details: `Escalated to Union: ${notes}`,
+            },
+          ],
+        };
+        return escalatedAlert;
+      });
+
+      const newNotifs = [...prev.notifications];
+      if (escalatedAlert) {
+        newNotifs.unshift({
+          id: `NOTIF-ESC-${alertId}-${Date.now()}`,
+          recipientRole: 'union',
+          title: `Escalated Milk Shortfall: ${escalatedAlert.farmerName} (${escalatedAlert.societyName})`,
+          message: `${escalatedAlert.batch.toUpperCase()} batch shortfall: ${escalatedAlert.actualLitres} L vs ${escalatedAlert.expectedLitres} L. Notes: ${notes}`,
+          type: 'union_escalation',
+          timestamp,
+          isRead: false,
+          referenceId: alertId,
+          linkRoute: '/(union)',
+        });
+      }
+
+      const nextState = { ...prev, monitoringAlerts: updated, notifications: newNotifs };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const updateMonitoringConfig = useCallback((config: Partial<MilkMonitoringConfig>) => {
+    setState(prev => {
+      const nextConfig = { ...prev.monitoringConfig, ...config };
+      const nextState = { ...prev, monitoringConfig: nextConfig };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const getSocietyMonitoringSummary = useCallback((societyId: string, date: string) => {
+    const targetDate = date || indiaDate();
+    const morningResults = BatchMilkMonitoringService.monitorSocietyBatch(
+      societyId,
+      state.farmers,
+      state.cows,
+      state.milkRecords,
+      'morning',
+      targetDate,
+      state.monitoringConfig
+    );
+
+    const eveningResults = BatchMilkMonitoringService.monitorSocietyBatch(
+      societyId,
+      state.farmers,
+      state.cows,
+      state.milkRecords,
+      'evening',
+      targetDate,
+      state.monitoringConfig
+    );
+
+    const dailySummaries = morningResults.map((m, idx) => {
+      const e = eveningResults[idx] || eveningResults.find(r => r.farmerId === m.farmerId) || m;
+      return BatchMilkMonitoringService.calculateDailySummary(m, e);
+    });
+
+    const societyAlerts = state.monitoringAlerts.filter(
+      a => a.societyId === societyId && a.collectionDate === targetDate
+    );
+
+    return {
+      morning: morningResults,
+      evening: eveningResults,
+      daily: dailySummaries,
+      alerts: societyAlerts,
+    };
+  }, [state]);
+
+  const getUnionMonitoringAlerts = useCallback((unionId?: string) => {
+    let alerts = state.monitoringAlerts;
+    if (unionId) {
+      const linkedBmcIds = state.bmcs.map(b => b.id);
+      const linkedSocietyIds = state.booths
+        .filter(b => linkedBmcIds.includes(b.assignedBmcId))
+        .map(b => b.id);
+      alerts = alerts.filter(a => linkedSocietyIds.includes(a.societyId));
+    }
+
+    const morningWarnings = alerts.filter(a => a.batch === 'morning' && a.severity === 'warning').length;
+    const eveningWarnings = alerts.filter(a => a.batch === 'evening' && a.severity === 'warning').length;
+    const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
+    const persistentShortfalls = alerts.filter(a => a.severity === 'persistent').length;
+    const missingRecords = alerts.filter(a => a.severity === 'no_record').length;
+    const awaitingSocietyReview = alerts.filter(a => a.status === 'active' && !a.reviewReason).length;
+    const escalatedToUnion = alerts.filter(a => a.isEscalatedToUnion && a.status !== 'resolved').length;
+
+    return {
+      alerts,
+      stats: {
+        totalAlerts: alerts.length,
+        morningWarnings,
+        eveningWarnings,
+        criticalAlerts,
+        persistentShortfalls,
+        missingRecords,
+        awaitingSocietyReview,
+        escalatedToUnion,
+      },
+    };
+  }, [state]);
+
   return (
     <AavinStoreContext.Provider
       value={{
@@ -1588,6 +1887,13 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getBmcStats,
         getSocietyDetailedStats,
         getUnionStats,
+        runBatchMonitoring,
+        reviewMonitoringAlert,
+        resolveMonitoringAlert,
+        escalateMonitoringAlert,
+        updateMonitoringConfig,
+        getSocietyMonitoringSummary,
+        getUnionMonitoringAlerts,
       }}
     >
       {children}

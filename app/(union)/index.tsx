@@ -33,6 +33,7 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeColors } from '../../constants/Colors';
 import { UnionDesktopHome } from '../../components/union/desktop/UnionDesktopHome';
+import { UnionMonitoringSection } from '../../components/monitoring/UnionMonitoringSection';
 
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 
@@ -549,6 +550,9 @@ export default function UnionDashboard() {
               </View>
             </View>
           </View>
+
+          {/* Society Milk Supply Alerts Section */}
+          <UnionMonitoringSection unionId={union.id} unionName={union.name} />
 
           {/* =========================================================================
               NEW FEATURE 2: BOOTH LOW-YIELD COMPARATIVE ANALYSIS (VERSUS PREVIOUS MONTH)

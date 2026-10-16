@@ -84,6 +84,9 @@ function storeHarness(savedState) {
     '../data/seedData': new Proxy({}, {get: (_target,key) => key === 'SEED_UNION' ? {} : []}),
     '../services/workflowApi': {WorkflowApi: {}},
     '../services/milkCollectionsApi': {indiaDate: () => '2026-10-14', daysBefore: () => '2026-10-07'},
+    '../services/monitoring/monitoringTypes': { DEFAULT_MONITORING_CONFIG: { enabled: true, morningCutoffTime: '10:00', eveningCutoffTime: '19:00' } },
+    '../services/monitoring/batchMilkMonitoringService': { BatchMilkMonitoringService: { monitorSocietyBatch: () => [], calculateDailySummary: (m, e) => ({ morning: m, evening: e }) } },
+    '../services/monitoring/lowSupplyAlertService': { LowSupplyAlertService: { processBatchAlert: () => ({ updatedAlerts: [], newNotifications: [] }) } },
   });
   return {value: AavinStoreProvider({children: null}).props.value, state: () => states[0], persisted: () => persisted, effects};
 }

@@ -13,6 +13,7 @@ import { Card } from '../../components/ui/Card';
 import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { Ionicons } from '@expo/vector-icons';
 import { SmartCattleTagScannerModal } from '../../components/scanner/SmartCattleTagScannerModal';
+import { SocietyMonitoringSection } from '../../components/monitoring/SocietyMonitoringSection';
 
 export default function BoothDashboard() {
   const { width, fontScale } = useWindowDimensions();
@@ -144,6 +145,12 @@ export default function BoothDashboard() {
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
         </View>
+
+        {/* Morning & Evening Milk Monitoring Section */}
+        <SocietyMonitoringSection
+          societyId={booth.id}
+          societyName={boothDisplayName}
+        />
 
         {/* Today's Recorded Entries List */}
         <Card style={styles.entriesCard}>

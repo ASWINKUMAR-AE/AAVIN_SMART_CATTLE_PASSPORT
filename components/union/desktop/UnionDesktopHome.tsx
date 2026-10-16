@@ -26,6 +26,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { Typography } from '../../../constants/Typography';
 import { Ionicons } from '@expo/vector-icons';
+import { UnionMonitoringSection } from '../../monitoring/UnionMonitoringSection';
 
 interface UnionDesktopHomeProps {
   onIssueDirective?: () => void;
@@ -702,6 +703,9 @@ export const UnionDesktopHome: React.FC<UnionDesktopHomeProps> = () => {
                     </View>
                   </View>
                 </View>
+
+                {/* Society Milk Supply Alerts Section */}
+                <UnionMonitoringSection unionId={user?.associatedId} />
 
                 {/* Section 5: Low-Yielding Booths Watchlist */}
                 <View style={[styles.surfaceCard, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 16 }]}>
