@@ -248,11 +248,12 @@ GENERATED_BOOTHS.forEach((booth, bIdx) => {
     // Generate cows for this farmer
     for (let c = 0; c < cowsCount; c++) {
       const cId = `COW${cowCounter.toString().padStart(3, '0')}`;
-      const breed = BREEDS[(cowCounter + c) % BREEDS.length];
-      const cowName = COW_NAMES[(cowCounter + c * 3) % COW_NAMES.length];
-      const tagId = `100100${(100000 + cowCounter).toString()}`;
+      const breed = cowCounter === 1 ? 'Jersey Cross' : BREEDS[(cowCounter + c) % BREEDS.length];
+      const cowName = cowCounter === 1 ? 'Lakshmi (AIC-106353)' : COW_NAMES[(cowCounter + c * 3) % COW_NAMES.length];
+      // Cow 1 uses the exact Pashu Aadhaar UID from the user's uploaded ear tag: 106353486450
+      const tagId = cowCounter === 1 ? '106353486450' : `100100${(100000 + cowCounter).toString()}`;
       const isQuarantine = cowCounter === 18 || cowCounter === 72 || cowCounter === 145 || cowCounter === 290;
-      const dailyYield = Number((10 + ((cowCounter * 7) % 60) / 10).toFixed(1));
+      const dailyYield = cowCounter === 1 ? 13.5 : Number((10 + ((cowCounter * 7) % 60) / 10).toFixed(1));
 
       GENERATED_COWS.push({
         id: cId,
@@ -269,7 +270,7 @@ GENERATED_BOOTHS.forEach((booth, bIdx) => {
         dailyMilkYield: dailyYield,
         healthStatus: isQuarantine ? 'quarantine_hold' : 'healthy',
         lactationStage: 'peak',
-        identificationMarks: `RFID Pashu Aadhaar #${tagId}, ${breed} characteristics`,
+        identificationMarks: `RFID Pashu Aadhaar #${tagId}, ${breed} characteristics, AIC ear tag`,
         photoUrl: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=500',
         verificationStatus: 'verified',
         medicalHistory: isQuarantine ? [
@@ -285,7 +286,20 @@ GENERATED_BOOTHS.forEach((booth, bIdx) => {
             recommendations: 'Intramammary Ceftiofur therapy. Strict milk withholding for 72 hours.',
             followUpDate: '2026-10-16',
           }
-        ] : [],
+        ] : [
+          {
+            id: `MED-${cId}`,
+            date: '2026-09-28',
+            vetName: 'Dr. R. Anand BVSc',
+            diagnosis: 'Routine Veterinary Health & Udder Assessment',
+            symptoms: 'Optimal physical condition, clear eyes, moist muzzle',
+            bodyTemperatureC: 38.6,
+            heartRateBpm: 68,
+            rumenMotility: 'Normal (3/2min)',
+            recommendations: 'CMT test negative. Continue high-protein green fodder and mineral supplement.',
+            followUpDate: '2026-11-20',
+          }
+        ],
         treatmentRecords: isQuarantine ? [
           {
             id: `TRT-${cId}`,
@@ -319,14 +333,90 @@ GENERATED_BOOTHS.forEach((booth, bIdx) => {
             batchNumber: 'FMD-TN-2026-09',
             nextDueDate: '2026-11-15',
             administeredBy: 'Dr. R. Anand BVSc',
+          },
+          {
+            id: `VAC2-${cId}`,
+            date: '2026-02-10',
+            vaccineName: 'Hemorrhagic Septicemia & Black Quarter',
+            batchNumber: 'HS-BQ-2026-01',
+            nextDueDate: '2027-02-10',
+            administeredBy: 'Dr. R. Anand BVSc',
           }
         ],
-        inseminationHistory: [],
+        inseminationHistory: [
+          {
+            id: `AI-${cId}`,
+            date: '2025-11-04',
+            bullId: 'BAIF-JER-9921',
+            breed: 'Purebred Jersey',
+            technicianName: 'S. Shanmugam',
+            pregnancyStatus: 'confirmed_pregnant',
+            expectedCalvingDate: '2026-08-12',
+          }
+        ],
         createdAt: '2025-01-12T09:30:00Z',
       });
 
-      // Today's milk record for active cows
-      if (!isQuarantine && farmerCounter <= 60) {
+      // Generate 14 days of milk records for Farmer 1's cows (for rich 7-day & 14-day bar charts)
+      if (farmerCounter === 1 && !isQuarantine) {
+        for (let dayOffset = 13; dayOffset >= 0; dayOffset--) {
+          const recDate = new Date(2026, 9, 14 - dayOffset);
+          const dateStr = recDate.toISOString().split('T')[0];
+          const variance = Math.sin(dayOffset * 0.8 + c) * 0.7;
+          const adjustedDaily = Number((dailyYield + variance).toFixed(1));
+          const morningLitres = Number((adjustedDaily * 0.56).toFixed(1));
+          const eveningLitres = Number((adjustedDaily * 0.44).toFixed(1));
+          const fat = Number((4.1 + ((dayOffset + c) % 5) * 0.08).toFixed(2));
+          const snf = Number((8.4 + ((dayOffset * 2 + c) % 4) * 0.06).toFixed(2));
+
+          // Morning record
+          GENERATED_MILK_RECORDS.push({
+            id: `MR-${dateStr}-M-${cId}`,
+            farmerId: fId,
+            farmerName: fullName,
+            cowId: cId,
+            cowTagId: tagId,
+            cowName,
+            fatPercentage: fat,
+            snfPercentage: snf,
+            boothId: booth.id,
+            collectionDate: dateStr,
+            session: 'morning',
+            quantityLitres: morningLitres,
+            route: 'direct',
+            measurementMethod: 'farmer_wise',
+            individualAllocation: 'measured',
+            status: 'recorded',
+            createdBy: `${booth.operatorName} (${booth.id})`,
+            notes: `Morning yield for ${cowName}. Fat: ${fat}%, SNF: ${snf}%`,
+            createdAt: `${dateStr}T06:30:00Z`,
+          });
+
+          // Evening record
+          GENERATED_MILK_RECORDS.push({
+            id: `MR-${dateStr}-E-${cId}`,
+            farmerId: fId,
+            farmerName: fullName,
+            cowId: cId,
+            cowTagId: tagId,
+            cowName,
+            fatPercentage: Number((fat + 0.1).toFixed(2)),
+            snfPercentage: snf,
+            boothId: booth.id,
+            collectionDate: dateStr,
+            session: 'evening',
+            quantityLitres: eveningLitres,
+            route: 'direct',
+            measurementMethod: 'farmer_wise',
+            individualAllocation: 'measured',
+            status: 'recorded',
+            createdBy: `${booth.operatorName} (${booth.id})`,
+            notes: `Evening yield for ${cowName}. Fat: ${(fat + 0.1).toFixed(2)}%, SNF: ${snf}%`,
+            createdAt: `${dateStr}T17:45:00Z`,
+          });
+        }
+      } else if (!isQuarantine && farmerCounter <= 60) {
+        // Today's milk record for other active cows
         const morningQty = Number((dailyYield * 0.55).toFixed(1));
         const fat = Number((3.9 + (cowCounter % 7) * 0.1).toFixed(2));
         const snf = Number((8.3 + (cowCounter % 5) * 0.08).toFixed(2));
@@ -335,6 +425,11 @@ GENERATED_BOOTHS.forEach((booth, bIdx) => {
           id: `MR-${todayStr}-${cId}`,
           farmerId: fId,
           farmerName: fullName,
+          cowId: cId,
+          cowTagId: tagId,
+          cowName,
+          fatPercentage: fat,
+          snfPercentage: snf,
           boothId: booth.id,
           collectionDate: todayStr,
           session: 'morning',

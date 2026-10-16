@@ -12,6 +12,7 @@ import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
 import { Card } from '../../components/ui/Card';
 import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { Ionicons } from '@expo/vector-icons';
+import { SmartCattleTagScannerModal } from '../../components/scanner/SmartCattleTagScannerModal';
 
 export default function BoothDashboard() {
   const { width, fontScale } = useWindowDimensions();
@@ -22,6 +23,7 @@ export default function BoothDashboard() {
   const { context, milkRecords, boothReceipts, error, loading, refresh } = useDispatchWorkflow();
   useDispatchRefresh();
   const [refreshing, setRefreshing] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
   const boothId = user?.id || '';
   const booth = context?.society || { id: boothId, name: user?.fullName || '', assignedBmcId: '' };
   const boothDisplayName = booth.name;
@@ -107,6 +109,24 @@ export default function BoothDashboard() {
           </Pressable>
 
           <Pressable 
+            onPress={() => setScannerVisible(true)}
+            style={[styles.quickActionCard, { backgroundColor: colors.card, borderColor: '#0284C7', borderWidth: 1.5 }]}
+          >
+            <View style={[styles.quickActionIconCircle, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="scan" size={20} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                Scan Cattle Ear Tag (Dual-Mode)
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                Barcode First + 12-Digit OCR • Check Withdrawal Hold
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#0284C7" />
+          </Pressable>
+
+          <Pressable 
             onPress={() => router.push(todayReceipt ? `/(booth)/receipt-preview?receiptId=${todayReceipt.id}` as any : '/(booth)/review-collection')}
             style={[styles.quickActionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
@@ -181,6 +201,18 @@ export default function BoothDashboard() {
           )}
         </Card>
       </ScrollView>
+      <SmartCattleTagScannerModal
+        visible={scannerVisible}
+        onClose={() => setScannerVisible(false)}
+        onScan={(tagId) => {
+          setScannerVisible(false);
+          router.push({
+            pathname: '/cow-details',
+            params: { tagId },
+          } as any);
+        }}
+        userRoleLabel="Society Staff"
+      />
     </BoothScreen>
   );
 }

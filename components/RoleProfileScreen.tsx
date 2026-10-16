@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,8 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { IndicTransLanguageSwitch } from './ui/IndicTransLanguageSwitch';
+import { canScanCattleTag } from '../constants/CattlePermissions';
+import { SmartCattleTagScannerModal } from './scanner/SmartCattleTagScannerModal';
 
 interface RoleProfileScreenProps {
   roleTitle: string;
@@ -41,6 +43,8 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
   const { colors, isDark } = useTheme();
   const { language, toggleLanguage, t } = useTranslation();
   const router = useRouter();
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const isScannerAllowed = canScanCattleTag(user?.role);
 
   const handleLogout = async () => {
     await logout();
@@ -124,6 +128,16 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
           </View>
         </Card>
 
+        {/* Quick Cattle Tag Scanner for Authorized Personnel (Vet, Society, Union, Admin) */}
+        {isScannerAllowed && (
+          <Button
+            title="📷 Scan Cattle Ear Tag (Dual-Mode)"
+            variant="primary"
+            onPress={() => setScannerVisible(true)}
+            style={{ marginVertical: 2 }}
+          />
+        )}
+
         {/* Live Performance Stats */}
         {stats && stats.length > 0 && (
           <Card style={styles.card}>
@@ -192,6 +206,22 @@ export const RoleProfileScreen: React.FC<RoleProfileScreenProps> = ({
           style={{ marginTop: 8, marginBottom: 20 }}
         />
       </ScrollView>
+
+      {/* Smart Cattle Tag Scanner Modal */}
+      {isScannerAllowed && (
+        <SmartCattleTagScannerModal
+          visible={scannerVisible}
+          onClose={() => setScannerVisible(false)}
+          onScan={(tagId) => {
+            setScannerVisible(false);
+            router.push({
+              pathname: '/cow-details',
+              params: { tagId },
+            } as any);
+          }}
+          userRoleLabel={roleTitle}
+        />
+      )}
     </View>
   );
 };

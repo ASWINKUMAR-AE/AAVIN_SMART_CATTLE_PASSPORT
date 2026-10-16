@@ -9,6 +9,7 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { SmartCattleTagScannerModal } from '../../components/scanner/SmartCattleTagScannerModal';
 
 export default function VeterinaryDashboard() {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ export default function VeterinaryDashboard() {
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
 
   const cowsWithWithdrawal = cows.filter(c => c.activeWithdrawal?.hasActiveWithdrawal);
   const cowsUnderTreatment = cows.filter(c => c.healthStatus === 'under_treatment');
@@ -164,8 +166,15 @@ export default function VeterinaryDashboard() {
         {/* Quick Operations Actions */}
         <View style={styles.actionsGrid}>
           <Button
+            title="📷 Scan Cattle Ear Tag (Barcode + OCR)"
+            variant="primary"
+            size="lg"
+            onPress={() => setScannerVisible(true)}
+          />
+          <Button
             title="💊 Prescribe Treatment & Set Withdrawal Period"
             size="lg"
+            variant="outline"
             onPress={() => router.push('/(veterinary)/treatment-entry' as any)}
           />
           <Button
@@ -180,6 +189,19 @@ export default function VeterinaryDashboard() {
           />
         </View>
       </ScrollView>
+
+      <SmartCattleTagScannerModal
+        visible={scannerVisible}
+        onClose={() => setScannerVisible(false)}
+        onScan={(tagId) => {
+          setScannerVisible(false);
+          router.push({
+            pathname: '/cow-details',
+            params: { tagId },
+          } as any);
+        }}
+        userRoleLabel="Veterinary Doctor"
+      />
     </View>
   );
 }
