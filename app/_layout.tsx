@@ -34,6 +34,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(veterinary)" options={{ headerShown: false }} />
         <Stack.Screen name="(admin)" options={{ headerShown: false }} />
         <Stack.Screen name="(collection)" options={{ headerShown: false }} />
+        <Stack.Screen name="cow-details" options={{ headerShown: false }} />
         <Stack.Screen
           name="notifications"
           options={{

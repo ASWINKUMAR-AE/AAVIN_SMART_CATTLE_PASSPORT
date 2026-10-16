@@ -272,9 +272,23 @@ function sanitizeLoadedState(loadedState: AavinState): AavinState {
   return {
     ...loadedState,
     farmers: loadedState.farmers || SEED_FARMERS,
-    cows: loadedState.cows || SEED_COWS,
+    cows: (() => {
+      const existing = loadedState.cows || SEED_COWS;
+      if (!existing.some((c: any) => c.tagId === '106353486450')) {
+        const flagship = SEED_COWS.find((c: any) => c.tagId === '106353486450');
+        return flagship ? [flagship, ...existing.filter((c: any) => c.id !== flagship.id)] : existing;
+      }
+      return existing;
+    })(),
     vendors: loadedState.vendors || SEED_VENDORS,
-    milkRecords: loadedState.milkRecords || SEED_MILK_RECORDS,
+    milkRecords: (() => {
+      const existing = loadedState.milkRecords || SEED_MILK_RECORDS;
+      if (!existing.some((m: any) => m.cowTagId === '106353486450')) {
+        const flagshipRecords = SEED_MILK_RECORDS.filter((m: any) => m.cowTagId === '106353486450');
+        return [...flagshipRecords, ...existing];
+      }
+      return existing;
+    })(),
     bmcReceipts: loadedState.bmcReceipts || SEED_BMC_RECEIPTS,
     societyIncomeRecords: (() => {
       const existing = loadedState.societyIncomeRecords || [];

@@ -9,6 +9,7 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { SmartCattleTagScannerModal } from '../../components/scanner/SmartCattleTagScannerModal';
 
 export default function BoothDashboard() {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ export default function BoothDashboard() {
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
 
   const boothId = user?.associatedId || 'BOOTH001';
   const booth = booths.find(b => b.id === boothId) || booths[0];
@@ -129,6 +131,24 @@ export default function BoothDashboard() {
           </Pressable>
 
           <Pressable 
+            onPress={() => setScannerVisible(true)}
+            style={[styles.quickActionCard, { backgroundColor: colors.card, borderColor: '#0284C7', borderWidth: 1.5 }]}
+          >
+            <View style={[styles.quickActionIconCircle, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="scan" size={20} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                Scan Cattle Ear Tag (Dual-Mode)
+              </Text>
+              <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
+                Barcode First + 12-Digit OCR • Check Withdrawal Hold
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#0284C7" />
+          </Pressable>
+
+          <Pressable 
             onPress={() => router.push(todayReceipt ? `/(booth)/receipt-preview?receiptId=${todayReceipt.id}` as any : '/(booth)/review-collection')}
             style={[styles.quickActionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
@@ -197,6 +217,19 @@ export default function BoothDashboard() {
           )}
         </Card>
       </ScrollView>
+
+      <SmartCattleTagScannerModal
+        visible={scannerVisible}
+        onClose={() => setScannerVisible(false)}
+        onScan={(tagId) => {
+          setScannerVisible(false);
+          router.push({
+            pathname: '/cow-details',
+            params: { tagId },
+          } as any);
+        }}
+        userRoleLabel="Society Staff"
+      />
     </View>
   );
 }

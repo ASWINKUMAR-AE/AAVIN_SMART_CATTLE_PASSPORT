@@ -8,6 +8,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useAavinStore } from '../store/AavinStoreContext';
 import { Typography } from '../constants/Typography';
 import { UserRole } from '../types/aavin';
+import { canScanCattleTag } from '../constants/CattlePermissions';
+import { SmartCattleTagScannerModal } from './scanner/SmartCattleTagScannerModal';
 
 import { useTranslation } from '../context/LanguageContext';
 import { useScroll } from '../context/ScrollContext';
@@ -30,6 +32,8 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
   const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [tagScannerVisible, setTagScannerVisible] = useState(false);
+  const isScannerAllowed = canScanCattleTag(activeRole);
 
   // Unread notifications count for current active role
   const unreadCount = notifications.filter(
@@ -154,6 +158,17 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
           <View style={styles.rightIconsRow}>
             {/* AI4Bharat IndicTrans2 Language Switcher (eng_Latn ⇄ tam_Taml) */}
             <IndicTransLanguageSwitch variant="compact" />
+
+            {/* Cattle Ear-Tag Scanner (Strictly for Society, Union, Vet, and Admin roles only) */}
+            {isScannerAllowed && (
+              <Pressable
+                style={[styles.iconBtn, styles.scannerIconBtn]}
+                onPress={() => setTagScannerVisible(true)}
+                accessibilityLabel="Scan Cattle Ear Tag"
+              >
+                <Ionicons name="scan" size={15} color="#FFFFFF" />
+              </Pressable>
+            )}
 
             {/* Notification Bell */}
             <Pressable
@@ -288,6 +303,22 @@ export const DemoHeader: React.FC<DemoHeaderProps> = ({ title, subtitle, showBac
           </View>
         </Pressable>
       </Modal>
+
+      {/* Cattle Ear-Tag Dual-Mode Scanner Modal (Barcode First + OCR Fallback) */}
+      {isScannerAllowed && (
+        <SmartCattleTagScannerModal
+          visible={tagScannerVisible}
+          onClose={() => setTagScannerVisible(false)}
+          onScan={(scannedTag) => {
+            setTagScannerVisible(false);
+            router.push({
+              pathname: '/cow-details',
+              params: { tagId: scannedTag },
+            } as any);
+          }}
+          userRoleLabel={currentMeta.label}
+        />
+      )}
     </>
   );
 };
@@ -459,6 +490,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 12,
+  },
+  scannerIconBtn: {
+    backgroundColor: 'rgba(2, 132, 199, 0.45)',
+    borderColor: 'rgba(255, 255, 255, 0.45)',
   },
   logoutIconBtn: {
     backgroundColor: 'rgba(239, 68, 68, 0.35)',

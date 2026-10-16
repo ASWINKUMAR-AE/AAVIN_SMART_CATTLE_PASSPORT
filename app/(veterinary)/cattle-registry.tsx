@@ -8,6 +8,7 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { SmartCattleTagScannerModal } from '../../components/scanner/SmartCattleTagScannerModal';
 
 export default function CattleRegistryScreen() {
   const { cows } = useAavinStore();
@@ -16,6 +17,7 @@ export default function CattleRegistryScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'under_treatment' | 'healthy'>('all');
+  const [scannerVisible, setScannerVisible] = useState(false);
 
   const filteredCows = cows.filter(c => {
     if (searchQuery.trim()) {
@@ -49,6 +51,13 @@ export default function CattleRegistryScreen() {
             onChangeText={setSearchQuery}
             style={[styles.searchInput, { color: colors.text }]}
           />
+          <Pressable
+            onPress={() => setScannerVisible(true)}
+            style={{ padding: 4 }}
+            accessibilityLabel="Scan Ear Tag"
+          >
+            <Ionicons name="scan" size={18} color={colors.primary} />
+          </Pressable>
         </View>
 
         <View style={styles.chipsRow}>
@@ -139,6 +148,19 @@ export default function CattleRegistryScreen() {
             </Pressable>
           );
         }}
+      />
+
+      <SmartCattleTagScannerModal
+        visible={scannerVisible}
+        onClose={() => setScannerVisible(false)}
+        onScan={(tagId) => {
+          setScannerVisible(false);
+          router.push({
+            pathname: '/cow-details',
+            params: { tagId },
+          } as any);
+        }}
+        userRoleLabel="Veterinary Doctor"
       />
     </View>
   );

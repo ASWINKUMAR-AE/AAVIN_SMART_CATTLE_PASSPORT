@@ -172,6 +172,11 @@ export interface MilkRecord {
   id: string;
   farmerId?: string; // empty if combined vendor
   farmerName?: string;
+  cowId?: string; // cow ID
+  cowTagId?: string; // cow 12-digit tag, e.g. 106353486450
+  cowName?: string;
+  fatPercentage?: number;
+  snfPercentage?: number;
   boothId: string;
   collectionDate: string; // YYYY-MM-DD
   session: 'morning' | 'evening';
