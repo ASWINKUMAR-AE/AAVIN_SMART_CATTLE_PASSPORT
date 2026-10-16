@@ -25,6 +25,10 @@ RUN groupadd --system aavin \
 COPY --chown=aavin:aavin manage.py ./manage.py
 COPY --chown=aavin:aavin config/ ./config/
 COPY --chown=aavin:aavin accounts/ ./accounts/
+COPY --chown=aavin:aavin unions/ ./unions/
+COPY --chown=aavin:aavin bmcs/ ./bmcs/
+COPY --chown=aavin:aavin societies/ ./societies/
+COPY --chown=aavin:aavin farmers/ ./farmers/
 COPY --chown=aavin:aavin milk_collections/ ./milk_collections/
 
 USER aavin
