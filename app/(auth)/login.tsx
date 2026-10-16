@@ -7,11 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { UserRole } from '../../types/aavin';
 import { AavinLogo } from '../../components/ui/AavinLogo';
 import { useTranslation } from '../../context/LanguageContext';
-import { IndicTransLanguageSwitch } from '../../components/ui/IndicTransLanguageSwitch';
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const { language, toggleLanguage, t } = useTranslation();
+  const { language, t } = useTranslation();
   const router = useRouter();
 
   const [usernameOrPhone, setUsernameOrPhone] = useState('');
@@ -97,14 +96,12 @@ export default function LoginScreen() {
           {/* Dark Layer for Contrast and Legibility */}
           <View style={styles.darkOverlayLayer} />
 
-          {/* Top Utilities Row: IndicTrans2 Language Switcher */}
+          {/* Union badge */}
           <View style={styles.topUtilitiesRow}>
             <View style={styles.headerPill}>
               <Ionicons name="shield-checkmark" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
               <Text style={styles.headerPillText}>MADURAI MILK UNION</Text>
             </View>
-
-            <IndicTransLanguageSwitch variant="compact" />
           </View>
 
           {/* Logo & Headline */}
@@ -120,9 +117,6 @@ export default function LoginScreen() {
 
         {/* White Curved Sheet Content (Matching Reference UI Bottom Panel) */}
         <View style={styles.whiteContentSheet}>
-          {/* IndicTrans2 Interactive Bilingual Switch Pill */}
-          <IndicTransLanguageSwitch variant="pill" showModelBadge={true} style={{ marginBottom: 14 }} />
-
           <Text style={styles.sheetTitle}>
             {language === 'ta' ? 'அதிகாரப்பூர்வ உள்நுழைவு' : 'Aavin Official Sign In'}
           </Text>
@@ -227,19 +221,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
-  },
-  langPillButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  langPillText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
   },
   heroBrandingContainer: {
     alignItems: 'center',
