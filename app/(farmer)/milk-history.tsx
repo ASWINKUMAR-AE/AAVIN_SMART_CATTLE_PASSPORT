@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, Pressable, TextInput } from 'react-native';
+import { StyleSheet, View, Text, FlatList, Pressable, TextInput, RefreshControl } from 'react-native';
 import { useAavinStore } from '../../store/AavinStoreContext';
+import { useMilkCollections, useCollectionRefresh } from '../../context/MilkCollectionsContext';
+import { indiaDate, daysBefore } from '../../services/milkCollectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -11,10 +13,13 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function FarmerMilkHistoryScreen() {
   const { user } = useAuth();
-  const { milkRecords, booths } = useAavinStore();
+  const { booths } = useAavinStore();
   const { colors } = useTheme();
 
-  const farmerId = user?.associatedId || 'FARMER001';
+  const farmerId = user?.id || '';
+  const { records: milkRecords, summary, loading, error, refresh } = useMilkCollections();
+  useCollectionRefresh();
+  const today = summary?.today || indiaDate();
   const allFarmerRecords = milkRecords.filter(r => r.farmerId === farmerId);
 
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'daily' | 'weekly' | 'monthly'>('all');
@@ -29,13 +34,13 @@ export default function FarmerMilkHistoryScreen() {
       if (!matchDate && !matchQty && !matchSession) return false;
     }
     if (filterPeriod === 'daily') {
-      return r.collectionDate === '2026-10-12';
+      return r.collectionDate === today;
     }
     if (filterPeriod === 'weekly') {
-      return r.collectionDate >= '2026-10-06';
+      return r.collectionDate >= daysBefore(today, 6) && r.collectionDate <= today;
     }
     if (filterPeriod === 'monthly') {
-      return r.collectionDate.startsWith('2026-10');
+      return r.collectionDate.startsWith(today.slice(0, 7));
     }
     return true;
   });
@@ -50,6 +55,7 @@ export default function FarmerMilkHistoryScreen() {
         showBack
       />
 
+      {error && <Text style={{ color: colors.hold, padding: 12 }}>{error}</Text>}
       {/* Filter and Search Bar */}
       <View style={[styles.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={[styles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -89,18 +95,19 @@ export default function FarmerMilkHistoryScreen() {
         {/* Summary Pill */}
         <View style={[styles.summaryPill, { backgroundColor: colors.primaryLight }]}>
           <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '700' }]}>
-            Total: {totalLitres.toFixed(2)} Litres ({filteredRecords.length} Records)
+            {summary ? `Total: ${totalLitres.toFixed(2)} Litres (${filteredRecords.length} Records)` : 'Collections not loaded yet'}
           </Text>
         </View>
       </View>
 
       <FlatList
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
         data={filteredRecords}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            title="No record available"
+            title={summary ? 'No collection available' : loading ? 'Loading collections…' : 'Collections unavailable'}
             message={`No milk records found for the selected ${filterPeriod} period.`}
             icon="water-outline"
           />
@@ -137,7 +144,7 @@ export default function FarmerMilkHistoryScreen() {
                 <View style={styles.detailRow}>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Collection Society:</Text>
                   <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600' }]}>
-                    {booth?.name || item.boothId}
+                    {item.boothName || booth?.name || 'Collection society'}
                   </Text>
                 </View>
 
@@ -152,7 +159,7 @@ export default function FarmerMilkHistoryScreen() {
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Digital Receipt Status:</Text>
                   <View style={[styles.statusBadge, { backgroundColor: item.receiptId ? '#DCFCE7' : '#FEF3C7' }]}>
                     <Text style={[styles.statusText, { color: item.receiptId ? '#15803D' : '#B45309' }]}>
-                      {item.receiptId ? `Included in Receipt #${item.receiptId}` : 'Awaiting Society Receipt Closure'}
+                      {item.receiptId ? 'Included in Receipt' : 'Awaiting Society Receipt Closure'}
                     </Text>
                   </View>
                 </View>

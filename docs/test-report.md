@@ -1,58 +1,35 @@
-# Verification & Test Report
+# Authentication and Farmer onboarding verification
 
-## 1. Automated Backend Invariant Tests
+## Automated backend checks
 
-Executed test suites verify deterministic invariants:
-- **Test Suite 1: Deterministic Milk Safety Twin Engine (`backend/tests/safety.test.ts`)**
-  - Case 1: Healthy cow (Cow 1001) with Fat 4.2% and SNF 8.7% -> **Evaluates to CLEAR**.
-  - Case 2: Cow 1003 with Fat 3.3% (Review boundary 3.00-3.49%) -> **Evaluates to REVIEW**.
-  - Case 3: Cow under active veterinary withdrawal restriction -> **Evaluates to HOLD**.
-  - Case 4: Milk with adulteration detected -> **Evaluates to MANDATORY HOLD**.
+Run from `backend/`:
 
-- **Test Suite 2: Transparent Payment Calculation Engine (`backend/tests/payments.test.ts`)**
-  - Case 1: Standard 10L @ 4.0% Fat, 8.5% SNF -> Evaluates ₹36.50 + ₹1.00 CLEAR incentive = **₹37.50/L (Total ₹375.00)**.
-  - Case 2: HOLD milk -> Payable amount is strictly locked to **₹0.00**.
+```bash
+python manage.py test accounts --settings=config.test_settings
+```
 
-- **Test Suite 3: AI Provider & Non-Silent Fallback (`backend/tests/ai.test.ts`)**
-  - Case 1: `AI_FALLBACK_ENABLED` is verified `false` by default.
-  - Case 2: Provider switching (`openrouter` | `own_api` | `disabled`) validated.
-  - Case 3: Responses return provider metadata (`isFallback: boolean`).
-  - Case 4: Safety decisions operate 100% independently of AI.
+All 21 tests pass using an isolated in-memory SQLite database. They cover the four-role registration matrix, phone login, exact password preservation, inactive users, JWT refresh/revocation, manual Union creation, complete Farmer personal-details persistence, zero cattle, optional banking, case-insensitive duplicate Farmer IDs, rollback on profile failure, immediate pending-Farmer login with phone as initial password, and Society-scoped listing including accounts without profiles.
 
----
+Django system checks and migration consistency checks pass. The new migration creates `accounts_farmerprofile`; it does not backfill demo details or change existing passwords.
 
-## 2. End-to-End Core Workflow Verification
+## Frontend and UI checks
 
-1. **Farmer Experience:**
-   - Farmer logs in with 1-tap demo button.
-   - Views registered cattle (#1001, #1002).
-   - Cow #1002 displays prominent active withdrawal alert badge.
-   - Farmer logs daily morning milk yield (7.5L) and feed given (Co-4 green fodder).
-   - Generates and views Digital Cattle Passport with QR token.
+`node scripts/test-auth-integration.cjs` passes. It checks all four role mappings, exact login passwords, removal of demo fallback, validated session restoration, invalid session cleanup, logout token submission, Farmer mapping, registration/list requests, concurrent token refresh, refresh failure, and preservation of tokens on network errors.
 
-2. **Veterinary Doctor Experience:**
-   - Dr. Anand logs in.
-   - Inspects active withdrawal alert for Cow #1002.
-   - Prescribes new treatment: selects medicine, sets dosage and withdrawal days.
-   - Live withdrawal calculator shows exact end date.
-   - Submitting updates cow's status to quarantine hold.
+TypeScript checks pass with the retired Node backend excluded from frontend compilation. Expo production web export succeeded. Chrome checks passed with all API requests intercepted by local fixtures: failed/successful login, every registration field, Society ownership, zero cattle, inline duplicate-ID errors, retained form values, and the Farmer list after page reload. No test Farmers were written to production.
 
-3. **Collection Centre Operator Experience:**
-   - Operator Kannan logs in.
-   - Scans cattle QR token / inputs tag ID.
-   - Enters 7.5L, Fat 4.3%, SNF 8.7%, Temp 7.2°C.
-   - Triggers Milk Safety Twin -> Evaluates to CLEAR with spring animation.
-   - Issues digital receipt with unique reference `#RCP-MDU-...`.
-   - Tests Cow #1002 (Under withdrawal) -> Immediate HOLD generated; payment set to ₹0.00.
+Login, registration, and Society Farmers-list JSX and styles were compared with the existing forms and preserved. Screenshots of the rendered login, registration, and directory were inspected.
 
-4. **Milk Transport Vendor Experience:**
-   - Vendor Kumar logs in.
-   - Views assigned batch from Melur CC.
-   - Records chilled transit temperature (4.5°C) and dispatches batch.
-   - Confirms delivery at Aavin Madurai Central Dairy Plant.
+## Deployment status
 
-5. **Aavin Administrator Experience:**
-   - Admin logs in.
-   - Views system-wide metrics: active cows, daily intake, payments.
-   - Inspects AI configuration: verifies OpenRouter provider and fallback toggle.
-   - Reviews flagged collections in Safety Review Queue.
+The original `aavin` database and authentication schema were created and verified previously. Applying the new Farmer-profile migration from this environment timed out on two cloud connection attempts; it remains pending in the hosted database.
+
+After copying the updated backend to your server, run from its `backend/` directory:
+
+```bash
+docker compose build backend
+docker compose run --rm backend python manage.py migrate
+docker compose up -d backend
+```
+
+Run the migration successfully before starting the updated backend. The deployed login response and `/api/v1/farmers` endpoint will not include the new functionality until that deployment is complete.

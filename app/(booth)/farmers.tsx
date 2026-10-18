@@ -1,38 +1,76 @@
-import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  FlatList, 
-  Pressable, 
-  TextInput, 
-  Alert, 
-  Modal, 
-  ScrollView, 
-  KeyboardAvoidingView, 
-  Platform 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BoothScreen } from '../../components/booth/BoothScreen';
+import { BoothText as Text } from '../../components/booth/BoothText';
+import React, { useCallback, useState } from 'react';
+import {
+  StyleSheet,
+  ActivityIndicator,
+  View,
+  FlatList,
+  Pressable,
+  TextInput,
+  Alert,
+  Modal,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { AccountsApi } from '../../services/accountsApi';
+import { apiErrorMessage, mapCows, mapFarmer } from '../../services/accountMapping';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
-import { DemoHeader } from '../../components/DemoHeader';
+import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { TextField } from '../../components/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { OCRRegisterImportModal } from '../../components/scanner/OCRRegisterImportModal';
 import { Farmer, Cow } from '../../types/aavin';
 
 export default function BoothFarmersScreen() {
+  const insets = useSafeAreaInsets();
+  const { width, height, fontScale } = useWindowDimensions();
+  const styles = createStyles(width, fontScale, height);
   const { user } = useAuth();
-  const { farmers, booths, cows, verifyFarmer, updateFarmer, addFarmer } = useAavinStore();
+  const { farmers: storedFarmers, booths, cows, replaceSocietyFarmers, cacheFarmer } = useAavinStore();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
+  const boothId = user?.associatedId || '';
+  const booth = booths.find(b => b.id === boothId) || { id: boothId, name: user?.fullName || 'Society' };
+
+  const [loadedForSociety, setLoadedForSociety] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const hasLoadedFarmers = loadedForSociety !== null && loadedForSociety === user?.associatedId;
+  const isLoadingFarmers = !hasLoadedFarmers && !loadError;
+  const farmers = loadedForSociety === user?.associatedId
+    ? storedFarmers.filter(farmer => farmer.assignedBoothId === user?.associatedId)
+    : [];
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setLoadedForSociety(null);
+    setLoadError(null);
+    if (user?.role !== 'booth') return;
+    AccountsApi.listFarmers().then(accounts => {
+      if (!active) return;
+      replaceSocietyFarmers(user.associatedId, accounts.map(mapFarmer),
+        accounts.every(account => account.cows !== undefined) ? accounts.flatMap(account => mapCows(account) || []) : undefined);
+      setLoadedForSociety(user.associatedId);
+    }).catch(error => {
+      if (active) setLoadError(apiErrorMessage(error));
+    });
+    return () => { active = false; };
+  }, [user?.role, user?.associatedId, replaceSocietyFarmers, loadAttempt]));
+
+  // OCR Register Import Modal State
+  const [isOcrImportOpen, setIsOcrImportOpen] = useState(false);
 
   // New Farmer & Cattle Registration Modal State (Booth Operator Flow)
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -74,7 +112,6 @@ export default function BoothFarmersScreen() {
   const [formAddress, setFormAddress] = useState('');
   const [formCommunity, setFormCommunity] = useState('');
   const [formBoothId, setFormBoothId] = useState('');
-  const [formCowsCount, setFormCowsCount] = useState('1');
   const [formStatus, setFormStatus] = useState<'verified' | 'pending'>('verified');
   const [formBankAccName, setFormBankAccName] = useState('');
   const [formBankName, setFormBankName] = useState('');
@@ -87,7 +124,7 @@ export default function BoothFarmersScreen() {
     tagId: string;
     breed: string;
     name: string;
-    dailyMilkYield: number;
+    dailyMilkYield: number | string;
     originalCow: Cow | null;
   }>>([]);
   const [activeEditCowSlide, setActiveEditCowSlide] = useState(0);
@@ -95,7 +132,7 @@ export default function BoothFarmersScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   // List of farmers matching current scope
-  const baseFarmers = filterScope === 'assigned' 
+  const baseFarmers = filterScope === 'assigned'
     ? farmers.filter(f => f.assignedBoothId === booth.id)
     : farmers;
 
@@ -108,18 +145,28 @@ export default function BoothFarmersScreen() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      f.name.toLowerCase().includes(q) || 
-      f.farmerIdCode.toLowerCase().includes(q) || 
+      f.name.toLowerCase().includes(q) ||
+      f.farmerIdCode.toLowerCase().includes(q) ||
       f.mobileNumber.includes(q) ||
       f.village.toLowerCase().includes(q) ||
       (f.community && f.community.toLowerCase().includes(q))
     );
   });
 
-  const handleToggleVerification = (farmerId: string, currentStatus: 'verified' | 'pending') => {
+  const [verifyingFarmerId, setVerifyingFarmerId] = useState<string | null>(null);
+  const handleToggleVerification = async (farmerId: string, currentStatus: 'verified' | 'pending') => {
+    if (verifyingFarmerId || user?.role !== 'booth') return;
     const nextStatus = currentStatus === 'verified' ? 'pending' : 'verified';
-    verifyFarmer(farmerId, nextStatus);
-    Alert.alert('KYC Updated', `Farmer status set to ${nextStatus.toUpperCase()}.`);
+    setVerifyingFarmerId(farmerId);
+    try {
+      const account = await AccountsApi.updateFarmer(farmerId, { personalDetails: { verificationStatus: nextStatus } });
+      cacheFarmer(mapFarmer(account), mapCows(account));
+      Alert.alert('KYC Updated', `Farmer status set to ${nextStatus.toUpperCase()}.`);
+    } catch (error) {
+      Alert.alert('Unable to update KYC', apiErrorMessage(error));
+    } finally {
+      setVerifyingFarmerId(null);
+    }
   };
 
   const handleOpenEditModal = (farmer: Farmer) => {
@@ -129,14 +176,13 @@ export default function BoothFarmersScreen() {
     setFormIdCode(farmer.farmerIdCode);
     setFormVillage(farmer.village);
     setFormAddress(farmer.address);
-    setFormCommunity(farmer.community || 'Melur Taluk');
+    setFormCommunity(farmer.community || '');
     setFormBoothId(farmer.assignedBoothId || booth.id);
-    setFormCowsCount(String(farmer.numberOfCows || 1));
     setFormStatus(farmer.verificationStatus);
-    setFormBankAccName(farmer.bankAccountName || farmer.name);
-    setFormBankName(farmer.bankName || 'Canara Bank - Melur');
+    setFormBankAccName(farmer.bankAccountName || '');
+    setFormBankName(farmer.bankName || '');
     setFormBankAccNum(farmer.bankAccountNumber || '');
-    setFormBankIfsc(farmer.bankIfsc || 'CNRB0001092');
+    setFormBankIfsc(farmer.bankIfsc || '');
     setFormUpiId(farmer.upiId || '');
 
     // Load cows belonging to this farmer so the operator can edit cow name and capacity
@@ -152,21 +198,21 @@ export default function BoothFarmersScreen() {
         originalCow: c,
       })));
     } else {
-      setEditingFarmerCows([{
-        id: `COW_DRAFT_${farmer.id}_1`,
-        cowId: `COW-${farmer.farmerIdCode}-01`,
-        tagId: `10010000${Math.floor(1000 + Math.random() * 9000)}`,
-        breed: 'Jersey Cross',
-        name: 'Lakshmi',
-        dailyMilkYield: 12,
-        originalCow: null,
-      }]);
+      setEditingFarmerCows([]);
     }
     setActiveEditCowSlide(0);
     setErrors({});
   };
 
-  const handleUpdateEditingCow = (cowId: string, field: 'name' | 'dailyMilkYield', value: any) => {
+  const handleAddEditingCow = () => {
+    const id = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    setEditingFarmerCows(previous => [...previous, {
+      id, cowId: '', tagId: '', breed: 'Jersey Cross', name: '', dailyMilkYield: '12.0', originalCow: null,
+    }]);
+    setActiveEditCowSlide(editingFarmerCows.length);
+  };
+
+  const handleUpdateEditingCow = (cowId: string, field: 'name' | 'dailyMilkYield' | 'tagId' | 'breed', value: any) => {
     setEditingFarmerCows(prev => prev.map(c => {
       if (c.id === cowId) {
         return { ...c, [field]: value };
@@ -243,6 +289,11 @@ export default function BoothFarmersScreen() {
   };
 
   const handleSaveNewFarmer = async () => {
+    if (isRegistering) return;
+    if (user?.role !== 'booth') {
+      Alert.alert('Enrollment Error', 'Sign in as a Society to register a Farmer.');
+      return;
+    }
     const errs: Record<string, string> = {};
 
     if (!regName.trim()) errs.name = 'Farmer name is required.';
@@ -296,24 +347,28 @@ export default function BoothFarmersScreen() {
         name: c.name.trim() || `Cow #${idx + 1} (${c.breed.trim() || 'Jersey Cross'})`,
       }));
 
-      const created = addFarmer({
-        farmerIdCode: regIdCode.trim().toUpperCase() || `FARM-MDU-${Math.floor(105 + Math.random() * 800)}`,
-        name: regName.trim(),
-        mobileNumber: cleanPhone,
-        address: regAddress.trim(),
-        village: regVillage.trim(),
-        community: regCommunity.trim(),
-        numberOfCows: regCows.length,
-        assignedBoothId: booth.id,
-        verificationStatus: 'verified',
-        bankAccountName: regBankAccName.trim() || undefined,
-        bankName: regBankName.trim() || undefined,
-        bankAccountNumber: regBankAccNum.trim() || undefined,
-        bankIfsc: regBankIfsc.trim().toUpperCase() || undefined,
-        upiId: regUpiId.trim() || undefined,
-      }, initialCows);
+      const account = await AccountsApi.registerFarmer({
+        phone: cleanPhone,
+        fullName: regName.trim(),
+        parentId: user.associatedId,
+        personalDetails: {
+          farmerIdCode: regIdCode.trim().toUpperCase() || `FARM-MDU-${Math.floor(105 + Math.random() * 800)}`,
+          address: regAddress.trim(),
+          village: regVillage.trim(),
+          community: regCommunity.trim(),
+          numberOfCows: regCows.length,
+          bankAccountName: regBankAccName.trim() || undefined,
+          bankName: regBankName.trim() || undefined,
+          bankAccountNumber: regBankAccNum.trim() || undefined,
+          bankIfsc: regBankIfsc.trim().toUpperCase() || undefined,
+          upiId: regUpiId.trim() || undefined,
+        },
+        cows: initialCows,
+      });
+      const created = mapFarmer(account);
+      cacheFarmer(created, mapCows(account));
 
-      setIsRegistering(false);
+      setLoadedForSociety(user.associatedId);
       handleCloseRegisterModal();
 
       Alert.alert(
@@ -321,13 +376,27 @@ export default function BoothFarmersScreen() {
         `Successfully enrolled ${created.name} (${created.farmerIdCode}) and ${regCows.length} cattle passports with 12-digit Pashu Aadhaar RFID tags at ${booth.name}.`
       );
     } catch (err: any) {
+      Alert.alert('Enrollment Error', apiErrorMessage(err));
+    } finally {
       setIsRegistering(false);
-      Alert.alert('Enrollment Error', err?.message || 'Failed to register farmer.');
     }
   };
 
   const handleSaveFarmer = async () => {
+    if (isSaving || user?.role !== 'booth') return;
     const newErrors: Record<string, string> = {};
+    if (!formIdCode.trim()) newErrors.farmerIdCode = 'Farmer ID Code is required.';
+    const seenTags = new Set<string>();
+    for (const cow of editingFarmerCows) {
+      if (!/^\d{12}$/.test(cow.tagId) || seenTags.has(cow.tagId)) {
+        newErrors[`cow_${cow.id}_tagId`] = 'Enter a unique 12-digit Pashu Aadhaar.';
+      }
+      seenTags.add(cow.tagId);
+      if (!cow.breed.trim()) newErrors[`cow_${cow.id}_breed`] = 'Breed is required.';
+      if (!Number.isFinite(Number(cow.dailyMilkYield)) || Number(cow.dailyMilkYield) <= 0) {
+        newErrors.cows = 'Enter a positive daily milk capacity for each cow.';
+      }
+    }
 
     if (!formName.trim()) {
       newErrors.name = 'Farmer name is required.';
@@ -336,7 +405,7 @@ export default function BoothFarmersScreen() {
     const cleanPhone = formPhone.trim().replace(/\D/g, '');
     if (!cleanPhone) {
       newErrors.phone = 'Mobile phone number is required.';
-    } else if (cleanPhone.length !== 10) {
+    } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       newErrors.phone = 'Enter a valid 10-digit Indian phone number.';
     }
 
@@ -345,11 +414,6 @@ export default function BoothFarmersScreen() {
     }
     if (!formAddress.trim()) {
       newErrors.address = 'Street / Door address is required.';
-    }
-
-    const parsedCows = parseInt(formCowsCount, 10);
-    if (isNaN(parsedCows) || parsedCows < 0) {
-      newErrors.cows = 'Enter a valid number of cattle (0 or more).';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -362,82 +426,58 @@ export default function BoothFarmersScreen() {
 
     setIsSaving(true);
     try {
-      const updatedFarmerData: Farmer = {
-        ...editingFarmer,
-        name: formName.trim(),
-        mobileNumber: cleanPhone,
-        farmerIdCode: formIdCode.trim() || editingFarmer.farmerIdCode,
-        village: formVillage.trim(),
-        address: formAddress.trim(),
-        community: formCommunity.trim() || 'Melur Taluk',
-        assignedBoothId: formBoothId,
-        numberOfCows: editingFarmerCows.length || parsedCows,
-        verificationStatus: formStatus,
-        bankAccountName: formBankAccName.trim() || undefined,
-        bankName: formBankName.trim() || undefined,
-        bankAccountNumber: formBankAccNum.trim() || undefined,
-        bankIfsc: formBankIfsc.trim() || undefined,
-        upiId: formUpiId.trim() || undefined,
-      };
-
-      const updatedCowsToSave: Cow[] = editingFarmerCows.map((ec, idx) => {
-        if (ec.originalCow) {
-          return {
-            ...ec.originalCow,
-            name: ec.name.trim() || ec.originalCow.name,
-            dailyMilkYield: typeof ec.dailyMilkYield === 'number' ? ec.dailyMilkYield : parseFloat(String(ec.dailyMilkYield)) || 10,
-          };
-        } else {
-          return {
-            id: `COW${String(cows.length + idx + 1).padStart(3, '0')}`,
-            cowId: ec.cowId,
-            tagId: ec.tagId,
-            farmerId: editingFarmer.id,
-            farmerName: formName.trim(),
-            breed: ec.breed,
-            name: ec.name.trim() || `Cow (${ec.breed})`,
-            dateOfBirth: '2023-04-15',
-            approxAgeMonths: 36,
-            sex: 'female' as const,
-            currentStatus: 'lactating' as const,
-            dailyMilkYield: typeof ec.dailyMilkYield === 'number' ? ec.dailyMilkYield : parseFloat(String(ec.dailyMilkYield)) || 10,
-            healthStatus: 'healthy' as const,
-            lactationStage: 'peak' as const,
-            identificationMarks: 'Govt 12-digit RFID Tag',
-            verificationStatus: 'verified' as const,
-            medicalHistory: [],
-            vaccinationHistory: [],
-            inseminationHistory: [],
-            treatmentRecords: [],
-            createdAt: new Date().toISOString(),
-          };
-        }
+      const account = await AccountsApi.updateFarmer(editingFarmer.id, {
+        fullName: formName.trim(),
+        phone: cleanPhone,
+        personalDetails: {
+          farmerIdCode: formIdCode.trim().toUpperCase(),
+          village: formVillage.trim(),
+          address: formAddress.trim(),
+          community: formCommunity.trim(),
+          verificationStatus: formStatus,
+          bankAccountName: formBankAccName.trim(),
+          bankName: formBankName.trim(),
+          bankAccountNumber: formBankAccNum.trim(),
+          bankIfsc: formBankIfsc.trim().toUpperCase(),
+          upiId: formUpiId.trim(),
+        },
+        newCows: editingFarmerCows.filter(cow => !cow.originalCow?.backendSynced).map(cow => ({
+          pashuAadhaar: cow.tagId,
+          breed: cow.breed.trim(),
+          name: cow.name.trim(),
+          milkCapacity: Number(cow.dailyMilkYield),
+        })),
+        cows: editingFarmerCows.filter(cow => cow.originalCow?.backendSynced).map(cow => ({
+          id: cow.id,
+          name: cow.name.trim(),
+          milkCapacity: Number(cow.dailyMilkYield),
+        })),
       });
-
-      updateFarmer(updatedFarmerData, updatedCowsToSave);
-      setIsSaving(false);
+      const savedFarmer = mapFarmer(account);
+      cacheFarmer(savedFarmer, mapCows(account));
       handleCloseModal();
-
-      Alert.alert(
-        'Farmer & Cattle Data Updated',
-        `Successfully updated profile for ${updatedFarmerData.name} and ${updatedCowsToSave.length} cattle passports. Changes have been saved to the society database.`
-      );
+      Alert.alert('Farmer & Cattle Data Updated', `Saved ${savedFarmer.name}'s profile and cattle details.`);
     } catch (err: any) {
       setIsSaving(false);
-      Alert.alert('Error', err?.message || 'Failed to update farmer data. Please try again.');
+      Alert.alert('Error', apiErrorMessage(err));
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const assignedCount = farmers.filter(f => f.assignedBoothId === booth.id).length;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+    <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
+      <DemoHeader
         title="Farmers Directory"
-        subtitle={`${assignedCount} Member Farmers • ${booth.name}`}
+        subtitle={hasLoadedFarmers ? `${assignedCount} Member Farmers • ${booth.name}` : booth.name}
         showBack
       />
 
+      {/* Farmers List */}
+      <FlatList
+        ListHeaderComponent={<>
       {/* Top Search & Filter Bar */}
       <View style={[styles.topBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: colors.border }]}>
@@ -456,11 +496,24 @@ export default function BoothFarmersScreen() {
           )}
         </View>
 
-        <Button
-          title="+ Register Farmer"
-          size="sm"
-          onPress={handleOpenRegisterModal}
-        />
+        <View style={styles.actionButtonsRow}>
+          <Button
+            title="Create Farmers from OCR"
+            size="sm"
+            variant="outline"
+            icon="scan-outline"
+            onPress={() => setIsOcrImportOpen(true)}
+            style={styles.halfWidthButton}
+            textStyle={styles.halfWidthButtonText}
+          />
+          <Button
+            title="+ Register Farmer"
+            size="sm"
+            onPress={handleOpenRegisterModal}
+            style={styles.halfWidthButton}
+            textStyle={styles.halfWidthButtonText}
+          />
+        </View>
       </View>
 
       {/* Filter Chips Bar */}
@@ -479,7 +532,7 @@ export default function BoothFarmersScreen() {
               styles.filterChipText,
               { color: filterScope === 'assigned' ? '#FFFFFF' : colors.textSecondary }
             ]}>
-              This Society ({assignedCount})
+              This Society{hasLoadedFarmers ? ` (${assignedCount})` : ''}
             </Text>
           </Pressable>
 
@@ -496,7 +549,7 @@ export default function BoothFarmersScreen() {
               styles.filterChipText,
               { color: filterScope === 'all' ? '#FFFFFF' : colors.textSecondary }
             ]}>
-              All Network ({farmers.length})
+              All Network{hasLoadedFarmers ? ` (${farmers.length})` : ''}
             </Text>
           </Pressable>
         </View>
@@ -509,10 +562,10 @@ export default function BoothFarmersScreen() {
               { borderColor: colors.border, backgroundColor: colors.background }
             ]}
           >
-            <Ionicons 
-              name={statusFilter === 'verified' ? 'checkmark-circle' : statusFilter === 'pending' ? 'time' : 'funnel-outline'} 
-              size={12} 
-              color={statusFilter === 'verified' ? '#16A34A' : statusFilter === 'pending' ? '#D97706' : colors.textSecondary} 
+            <Ionicons
+              name={statusFilter === 'verified' ? 'checkmark-circle' : statusFilter === 'pending' ? 'time' : 'funnel-outline'}
+              size={12}
+              color={statusFilter === 'verified' ? '#16A34A' : statusFilter === 'pending' ? '#D97706' : colors.textSecondary}
             />
             <Text style={[styles.statusChipText, { color: colors.textSecondary }]}>
               {statusFilter === 'all' ? 'All Status' : statusFilter === 'verified' ? 'Verified Only' : 'Pending Only'}
@@ -521,13 +574,25 @@ export default function BoothFarmersScreen() {
         </View>
       </View>
 
-      {/* Farmers List */}
-      <FlatList
+        </>}
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <EmptyState
+          isLoadingFarmers ? (
+            <View accessibilityRole="progressbar" accessibilityLabel="Loading farmers" style={{ paddingVertical: 48, alignItems: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[Typography.subhead, { color: colors.textSecondary }]}>Loading farmers…</Text>
+            </View>
+          ) : loadError ? (
+            <View style={{ paddingVertical: 24, gap: 16 }}>
+              <EmptyState title="Unable to load farmers" message={loadError} icon="cloud-offline-outline" />
+              <Button title="Try Again" onPress={() => {
+                setLoadError(null);
+                setLoadAttempt(attempt => attempt + 1);
+              }} />
+            </View>
+          ) : <EmptyState
             title="No Farmers Found"
             message={searchQuery ? `No farmers match "${searchQuery}".` : 'No farmers available under selected filters.'}
             icon="people-outline"
@@ -560,13 +625,6 @@ export default function BoothFarmersScreen() {
                   </Text>
 
                   <View style={styles.subMetaRow}>
-                    <View style={[styles.idBadge, { backgroundColor: colors.primaryLight }]}>
-                      <Ionicons name="barcode-outline" size={12} color={colors.primary} />
-                      <Text style={[styles.idBadgeText, { color: colors.primary }]}>
-                        {item.farmerIdCode}
-                      </Text>
-                    </View>
-
                     <View style={styles.phoneChip}>
                       <Ionicons name="call" size={11} color={colors.textSecondary} />
                       <Text style={[styles.phoneChipText, { color: colors.textSecondary }]}>
@@ -578,18 +636,19 @@ export default function BoothFarmersScreen() {
 
                 <Pressable
                   onPress={() => handleToggleVerification(item.id, item.verificationStatus)}
+                  disabled={verifyingFarmerId !== null}
                   style={[
                     styles.statusPill,
-                    { 
+                    {
                       backgroundColor: isVerified ? '#DCFCE7' : '#FEF3C7',
                       borderColor: isVerified ? '#86EFAC' : '#FDE68A'
                     }
                   ]}
                 >
-                  <Ionicons 
-                    name={isVerified ? 'checkmark-circle' : 'time'} 
-                    size={12} 
-                    color={isVerified ? '#15803D' : '#B45309'} 
+                  <Ionicons
+                    name={isVerified ? 'checkmark-circle' : 'time'}
+                    size={12}
+                    color={isVerified ? '#15803D' : '#B45309'}
                   />
                   <Text style={[styles.statusPillText, { color: isVerified ? '#15803D' : '#B45309' }]}>
                     {isVerified ? 'VERIFIED' : 'PENDING'}
@@ -618,7 +677,7 @@ export default function BoothFarmersScreen() {
                       {item.village}
                     </Text>
                   </View>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]} numberOfLines={1}>
+                  <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>
                     {item.community || 'Melur Taluk'}
                   </Text>
                 </View>
@@ -630,7 +689,7 @@ export default function BoothFarmersScreen() {
                       {item.bankName ? 'Linked' : 'Pending'}
                     </Text>
                   </View>
-                  <Text style={[Typography.caption2, { color: colors.textSecondary }]} numberOfLines={1}>
+                  <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>
                     DBT Bank Account
                   </Text>
                 </View>
@@ -643,12 +702,12 @@ export default function BoothFarmersScreen() {
                   <View style={styles.infoIconCol}>
                     <Ionicons name="home-outline" size={15} color={colors.primary} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
                       RESIDENTIAL ADDRESS & SOCIETY
                     </Text>
                     <Text style={[Typography.caption1, { color: colors.text, fontWeight: '600', marginTop: 1 }]}>
-                      {item.address}, {item.village} • {assignedBoothObj?.name || item.assignedBoothId}
+                      {item.address}, {item.village} • {assignedBoothObj?.name || 'Society'}
                     </Text>
                   </View>
                 </View>
@@ -658,7 +717,7 @@ export default function BoothFarmersScreen() {
                   <View style={styles.infoIconCol}>
                     <Ionicons name="git-network-outline" size={15} color={colors.primary} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
                       REGISTERED CATTLE PASSPORT ({farmerCows.length})
                     </Text>
@@ -667,13 +726,13 @@ export default function BoothFarmersScreen() {
                         {farmerCows.map(cow => {
                           const hasHold = cow.activeWithdrawal?.hasActiveWithdrawal;
                           return (
-                            <View 
-                              key={cow.id} 
+                            <View
+                              key={cow.id}
                               style={[
-                                styles.cowTag, 
-                                { 
-                                  backgroundColor: hasHold ? '#FEE2E2' : (isDark ? '#1E293B' : '#FFFFFF'), 
-                                  borderColor: hasHold ? '#EF4444' : colors.border 
+                                styles.cowTag,
+                                {
+                                  backgroundColor: hasHold ? '#FEE2E2' : (isDark ? '#1E293B' : '#FFFFFF'),
+                                  borderColor: hasHold ? '#EF4444' : colors.border
                                 }
                               ]}
                             >
@@ -697,7 +756,7 @@ export default function BoothFarmersScreen() {
                   <View style={styles.infoIconCol}>
                     <Ionicons name="card-outline" size={15} color={colors.primary} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>
                       DBT DIRECT BENEFIT TRANSFER ACCOUNT
                     </Text>
@@ -737,18 +796,19 @@ export default function BoothFarmersScreen() {
 
                 <Pressable
                   onPress={() => handleToggleVerification(item.id, item.verificationStatus)}
+                  disabled={verifyingFarmerId !== null}
                   style={[
                     styles.kycToggleBtn,
-                    { 
+                    {
                       borderColor: isVerified ? '#FCA5A5' : '#86EFAC',
                       backgroundColor: isVerified ? '#FEF2F2' : '#F0FDF4'
                     }
                   ]}
                 >
-                  <Ionicons 
-                    name={isVerified ? 'alert-circle-outline' : 'checkmark-done'} 
-                    size={14} 
-                    color={isVerified ? '#DC2626' : '#16A34A'} 
+                  <Ionicons
+                    name={isVerified ? 'alert-circle-outline' : 'checkmark-done'}
+                    size={14}
+                    color={isVerified ? '#DC2626' : '#16A34A'}
                   />
                   <Text style={[styles.kycToggleBtnText, { color: isVerified ? '#DC2626' : '#16A34A' }]}>
                     {isVerified ? 'Flag' : 'Verify'}
@@ -769,17 +829,14 @@ export default function BoothFarmersScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { paddingLeft: insets.left, paddingRight: insets.right }]}
         >
-          <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: Math.max(28, insets.bottom) }]}>
             {/* Modal Header */}
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[Typography.title3, { color: colors.text, fontWeight: '800' }]}>
                   Edit Farmer Data
-                </Text>
-                <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '600' }]}>
-                  {editingFarmer?.farmerIdCode} • ID: {editingFarmer?.id}
                 </Text>
               </View>
 
@@ -793,7 +850,7 @@ export default function BoothFarmersScreen() {
             </View>
 
             {/* Modal Body */}
-            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ flexShrink: 1, minHeight: 0 }} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
               {/* Section 1: Personal & Contact */}
               <View style={styles.formSection}>
                 <View style={styles.sectionHeaderRow}>
@@ -895,7 +952,7 @@ export default function BoothFarmersScreen() {
                   Assigned Collection Society:
                 </Text>
                 <View style={styles.boothChipsRow}>
-                  {booths.map(b => (
+                  {booths.filter(b => b.id === boothId).map(b => (
                     <Pressable
                       key={b.id}
                       onPress={() => setFormBoothId(b.id)}
@@ -910,7 +967,7 @@ export default function BoothFarmersScreen() {
                         styles.boothChoiceText,
                         { color: formBoothId === b.id ? '#FFFFFF' : colors.text }
                       ]}>
-                        {b.name} ({b.code})
+                        {b.name}
                       </Text>
                     </Pressable>
                   ))}
@@ -930,10 +987,10 @@ export default function BoothFarmersScreen() {
                         : { backgroundColor: colors.background, borderColor: colors.border }
                     ]}
                   >
-                    <Ionicons 
-                      name="checkmark-circle" 
-                      size={16} 
-                      color={formStatus === 'verified' ? '#15803D' : colors.textMuted} 
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={formStatus === 'verified' ? '#15803D' : colors.textMuted}
                     />
                     <Text style={[
                       styles.statusSegmentText,
@@ -952,10 +1009,10 @@ export default function BoothFarmersScreen() {
                         : { backgroundColor: colors.background, borderColor: colors.border }
                     ]}
                   >
-                    <Ionicons 
-                      name="time" 
-                      size={16} 
-                      color={formStatus === 'pending' ? '#B45309' : colors.textMuted} 
+                    <Ionicons
+                      name="time"
+                      size={16}
+                      color={formStatus === 'pending' ? '#B45309' : colors.textMuted}
                     />
                     <Text style={[
                       styles.statusSegmentText,
@@ -975,16 +1032,23 @@ export default function BoothFarmersScreen() {
                         Registered Cattle Passports ({editingFarmerCows.length} Cattle)
                       </Text>
                       <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                        RFID Tag & Breed are locked permanent records. Change Name & Milk Capacity below:
+                        View saved cattle, edit name and milk capacity, or add another cow.
                       </Text>
                     </View>
                   </View>
 
+                  <Button title="+ Add Cow" size="sm" onPress={handleAddEditingCow} disabled={isSaving} />
+                  {editingFarmerCows.length === 0 && (
+                    <Text style={[Typography.footnote, { color: colors.textSecondary, marginTop: 12 }]}>
+                      No cattle saved for this farmer yet. Tap Add Cow to register one.
+                    </Text>
+                  )}
+
                   {/* Cattle Slide Tabs if multiple cows */}
                   {editingFarmerCows.length > 1 && (
-                    <ScrollView 
-                      horizontal 
-                      showsHorizontalScrollIndicator={false} 
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
                       contentContainerStyle={styles.sliderTabsRow}
                     >
                       {editingFarmerCows.map((c, idx) => {
@@ -1001,13 +1065,13 @@ export default function BoothFarmersScreen() {
                               }
                             ]}
                           >
-                            <Ionicons 
-                              name="paw" 
-                              size={13} 
-                              color={isActive ? "#FFFFFF" : colors.textSecondary} 
+                            <Ionicons
+                              name="paw"
+                              size={13}
+                              color={isActive ? "#FFFFFF" : colors.textSecondary}
                             />
                             <Text style={[
-                              styles.sliderTabPillText, 
+                              styles.sliderTabPillText,
                               { color: isActive ? "#FFFFFF" : colors.text, fontWeight: isActive ? '800' : '600' }
                             ]}>
                               {c.name || `Cow #${idx + 1}`}
@@ -1027,18 +1091,18 @@ export default function BoothFarmersScreen() {
                         <View style={styles.slideHeader}>
                           <View style={[styles.slideIndexBadge, { backgroundColor: colors.primaryLight }]}>
                             <Text style={[styles.slideIndexBadgeText, { color: colors.primary }]}>
-                              {cow.cowId || `Cattle #${activeEditCowSlide + 1}`}
+                              {`Cattle #${activeEditCowSlide + 1}`}
                             </Text>
                           </View>
 
-                          <View style={styles.lockedPill}>
+                          {cow.originalCow?.backendSynced && <View style={styles.lockedPill}>
                             <Ionicons name="lock-closed" size={11} color="#15803D" />
                             <Text style={styles.lockedPillText}>RFID IMMUTABLE</Text>
-                          </View>
+                          </View>}
                         </View>
 
                         {/* Locked RFID Tag & Breed info row */}
-                        <View style={styles.lockedFieldsRow}>
+                        {cow.originalCow?.backendSynced ? <View style={styles.lockedFieldsRow}>
                           <View style={[styles.lockedInfoChip, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
                             <Ionicons name="barcode-outline" size={14} color={colors.textSecondary} />
                             <View style={{ marginLeft: 6 }}>
@@ -1060,7 +1124,13 @@ export default function BoothFarmersScreen() {
                             </View>
                             <Ionicons name="lock-closed" size={12} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
                           </View>
-                        </View>
+                        </View> : <View>
+                          <TextField label="Pashu Aadhaar (12 Digits) *" value={cow.tagId}
+                            onChangeText={value => handleUpdateEditingCow(cow.id, 'tagId', value.replace(/\D/g, '').slice(0, 12))}
+                            keyboardType="number-pad" maxLength={12} error={errors[`cow_${cow.id}_tagId`]} />
+                          <TextField label="Cattle Breed *" value={cow.breed}
+                            onChangeText={value => handleUpdateEditingCow(cow.id, 'breed', value)} error={errors[`cow_${cow.id}_breed`]} />
+                        </View>}
 
                         {/* Editable Field 1: Cow Name / Call Name */}
                         <View style={{ marginBottom: 12 }}>
@@ -1072,6 +1142,15 @@ export default function BoothFarmersScreen() {
                             icon="happy-outline"
                           />
                         </View>
+
+                        <TextField label="Daily Milk Capacity (Litres) *" value={String(cow.dailyMilkYield)}
+                          keyboardType="decimal-pad" error={errors.cows}
+                          onChangeText={value => handleUpdateEditingCow(cow.id, 'dailyMilkYield', value)} />
+                        {!cow.originalCow && <Button title="Remove New Cow" variant="outline" size="sm"
+                          onPress={() => {
+                            setEditingFarmerCows(previous => previous.filter(item => item.id !== cow.id));
+                            setActiveEditCowSlide(previous => Math.max(0, previous - 1));
+                          }} />}
 
                         {/* Editable Field 2: Daily Milk Capacity */}
                         <View style={{ marginBottom: 10 }}>
@@ -1088,7 +1167,7 @@ export default function BoothFarmersScreen() {
 
                           {/* Steppers & Interactive Track */}
                           <View style={styles.sliderControlRow}>
-                            <Pressable 
+                            <Pressable
                               onPress={() => {
                                 const nextVal = Math.max(1, Number(cow.dailyMilkYield || 10) - 0.5);
                                 handleUpdateEditingCow(cow.id, 'dailyMilkYield', nextVal);
@@ -1100,15 +1179,15 @@ export default function BoothFarmersScreen() {
                             </Pressable>
 
                             <View style={[styles.sliderTrackContainer, { backgroundColor: isDark ? '#0F172A' : '#E2E8F0' }]}>
-                              <View 
+                              <View
                                 style={[
-                                  styles.sliderTrackFill, 
+                                  styles.sliderTrackFill,
                                   { width: `${Math.min(100, Math.max(4, (Number(cow.dailyMilkYield || 0) / 25) * 100))}%` }
-                                ]} 
+                                ]}
                               />
                             </View>
 
-                            <Pressable 
+                            <Pressable
                               onPress={() => {
                                 const nextVal = Math.min(35, Number(cow.dailyMilkYield || 10) + 0.5);
                                 handleUpdateEditingCow(cow.id, 'dailyMilkYield', nextVal);
@@ -1235,19 +1314,33 @@ export default function BoothFarmersScreen() {
                 variant="outline"
                 size="md"
                 onPress={handleCloseModal}
-                style={{ flex: 1 }}
+                style={{ flex: width < 360 ? 0 : 1, minWidth: 0 }}
               />
               <Button
                 title={isSaving ? "Saving..." : "Save Changes"}
                 size="md"
                 onPress={handleSaveFarmer}
                 loading={isSaving}
-                style={{ flex: 1.4 }}
+                style={{ flex: width < 360 ? 0 : 1.4 }}
               />
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* OCR Register Import Modal */}
+      <OCRRegisterImportModal
+        visible={isOcrImportOpen}
+        onClose={() => setIsOcrImportOpen(false)}
+        mode="farmers"
+        onSuccess={() => {
+          AccountsApi.listFarmers().then(accounts => {
+            const domainFarmers = accounts.map(mapFarmer);
+            const domainCows = accounts.flatMap(account => mapCows(account) || []);
+            replaceSocietyFarmers(boothId, domainFarmers, domainCows);
+          }).catch(console.warn);
+        }}
+      />
 
       {/* Register New Farmer & Cattle Slider Modal (Booth Operator Flow) */}
       <Modal
@@ -1258,12 +1351,12 @@ export default function BoothFarmersScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { paddingLeft: insets.left, paddingRight: insets.right }]}
         >
-          <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: Math.max(28, insets.bottom) }]}>
             {/* Modal Header */}
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[Typography.title3, { color: colors.text, fontWeight: '800' }]}>
                   Enroll New Producer & Cattle
                 </Text>
@@ -1282,7 +1375,7 @@ export default function BoothFarmersScreen() {
             </View>
 
             {/* Modal Body */}
-            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ flexShrink: 1, minHeight: 0 }} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
               {/* Section 1: Producer Identity */}
               <View style={styles.formSection}>
                 <View style={styles.sectionHeaderRow}>
@@ -1362,9 +1455,9 @@ export default function BoothFarmersScreen() {
                 </View>
 
                 {/* Slider Tabs */}
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false} 
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.sliderTabsRow}
                 >
                   {regCows.map((c, idx) => {
@@ -1382,13 +1475,13 @@ export default function BoothFarmersScreen() {
                           }
                         ]}
                       >
-                        <Ionicons 
-                          name={isComplete ? "checkmark-circle" : "paw"} 
-                          size={14} 
-                          color={isActive ? "#FFFFFF" : (isComplete ? "#15803D" : colors.textSecondary)} 
+                        <Ionicons
+                          name={isComplete ? "checkmark-circle" : "paw"}
+                          size={14}
+                          color={isActive ? "#FFFFFF" : (isComplete ? "#15803D" : colors.textSecondary)}
                         />
                         <Text style={[
-                          styles.sliderTabPillText, 
+                          styles.sliderTabPillText,
                           { color: isActive ? "#FFFFFF" : colors.text, fontWeight: isActive ? '800' : '600' }
                         ]}>
                           Cow #{idx + 1}
@@ -1400,7 +1493,7 @@ export default function BoothFarmersScreen() {
                     );
                   })}
 
-                  <Pressable 
+                  <Pressable
                     onPress={handleAddRegCowSlide}
                     style={[styles.sliderAddTabBtn, { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
                   >
@@ -1441,7 +1534,7 @@ export default function BoothFarmersScreen() {
                         )}
 
                         {regCows.length > 1 && (
-                          <Pressable 
+                          <Pressable
                             onPress={() => handleRemoveRegCowSlide(currentCow.id)}
                             style={styles.removeSlideBtn}
                             hitSlop={8}
@@ -1472,10 +1565,10 @@ export default function BoothFarmersScreen() {
                             Official 12-digit RFID Tag
                           </Text>
                           <Text style={[
-                            Typography.caption2, 
-                            { 
-                              fontWeight: '700', 
-                              color: isTagComplete ? '#15803D' : (currentCow.pashuAadhaar.length > 0 ? '#D97706' : colors.textMuted) 
+                            Typography.caption2,
+                            {
+                              fontWeight: '700',
+                              color: isTagComplete ? '#15803D' : (currentCow.pashuAadhaar.length > 0 ? '#D97706' : colors.textMuted)
                             }
                           ]}>
                             {currentCow.pashuAadhaar.length} / 12 digits {isTagComplete ? '✓' : ''}
@@ -1530,7 +1623,7 @@ export default function BoothFarmersScreen() {
 
                         {/* Interactive Slider Bar with Steppers */}
                         <View style={styles.sliderControlRow}>
-                          <Pressable 
+                          <Pressable
                             onPress={() => {
                               const current = parseFloat(currentCow.milkCapacity) || 10;
                               const nextVal = Math.max(1, current - 0.5);
@@ -1543,15 +1636,15 @@ export default function BoothFarmersScreen() {
                           </Pressable>
 
                           <View style={[styles.sliderTrackContainer, { backgroundColor: isDark ? '#0F172A' : '#E2E8F0' }]}>
-                            <View 
+                            <View
                               style={[
-                                styles.sliderTrackFill, 
+                                styles.sliderTrackFill,
                                 { width: `${Math.min(100, Math.max(4, ((parseFloat(currentCow.milkCapacity) || 0) / 25) * 100))}%` }
-                              ]} 
+                              ]}
                             />
                           </View>
 
-                          <Pressable 
+                          <Pressable
                             onPress={() => {
                               const current = parseFloat(currentCow.milkCapacity) || 10;
                               const nextVal = Math.min(35, current + 0.5);
@@ -1693,569 +1786,625 @@ export default function BoothFarmersScreen() {
                 title="Cancel"
                 variant="outline"
                 onPress={handleCloseRegisterModal}
-                style={{ flex: 1 }}
+                style={{ flex: width < 360 ? 0 : 1, minWidth: 0 }}
               />
               <Button
                 title={`Enroll (${regCows.length} Cows)`}
                 onPress={handleSaveNewFarmer}
                 loading={isRegistering}
-                style={{ flex: 1.4 }}
+                style={{ flex: width < 360 ? 0 : 1.4 }}
               />
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </BoothScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 10,
-    borderBottomWidth: 1,
-  },
-  searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    paddingVertical: 4,
-  },
-  filterBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  filterChipGroup: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 4,
-  },
-  statusChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  listContent: {
-    padding: 16,
-    gap: 14,
-    paddingBottom: 96,
-  },
-  farmerCard: {
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 12,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatarCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verifiedCheckBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-  },
-  farmerTitleCol: {
-    flex: 1,
-    gap: 3,
-  },
-  subMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  idBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
-  },
-  idBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  phoneChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  phoneChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 4,
-  },
-  statusPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
+const createStyles = (width: number, fontScale: number, height: number) => {
+  const compact = width < 600 || fontScale > 1.2;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      minWidth: 0,
+    },
+    topBar: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      padding: 14,
+      gap: 12,
+      borderBottomWidth: 1,
+    },
+    actionButtonsRow: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    halfWidthButton: {
+      flex: 1,
+      minWidth: 0,
+      paddingHorizontal: 8,
+    },
+    halfWidthButtonText: {
+      fontSize: width < 380 ? 12 : 13,
+      textAlign: 'center',
+    },
+    searchBox: {
+      minHeight: 44,
+      width: '100%',
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      height: undefined,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    searchInput: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: 13,
+      paddingVertical: 4,
+    },
+    filterBar: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+    },
+    filterChipGroup: {
+      maxWidth: '100%',
+      minWidth: 0,
+      flexShrink: 1,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    filterChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    filterChipText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    statusChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 14,
+      borderWidth: 1,
+      gap: 4,
+    },
+    statusChipText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    listContent: {
+      width: '100%',
+      maxWidth: 960,
+      alignSelf: 'center',
+      padding: 16,
+      gap: 14,
+      paddingBottom: 128,
+    },
+    farmerCard: {
+      padding: 16,
+      borderRadius: 20,
+      borderWidth: 1,
+      gap: 12,
+    },
+    cardHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    avatarContainer: {
+      position: 'relative',
+    },
+    avatarCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    verifiedCheckBadge: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 8,
+    },
+    farmerTitleCol: {
+      minWidth: 0,
+      flex: 1,
+      gap: 3,
+    },
+    subMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+    },
+    idBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 4,
+    },
+    idBadgeText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    phoneChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    phoneChipText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    statusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 4,
+    },
+    statusPillText: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.4,
+    },
 
-  // Metrics Strip
-  metricsStrip: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  metricTile: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 2,
-  },
-  metricIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  metricValue: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
+    // Metrics Strip
+    metricsStrip: {
+      flexDirection: compact ? 'column' : 'row',
+      gap: 8,
+    },
+    metricTile: {
+      flex: 1,
+      minWidth: 0,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 2,
+    },
+    metricIconRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    metricValue: {
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    metricLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+    },
 
-  // Structured Info Box
-  infoBox: {
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    paddingTop: 4,
-  },
-  infoIconCol: {
-    marginTop: 2,
-  },
-  cowsPillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
-  },
-  cowTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  cowTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
+    // Structured Info Box
+    infoBox: {
+      padding: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      gap: 10,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      paddingTop: 4,
+    },
+    infoIconCol: {
+      marginTop: 2,
+    },
+    cowsPillRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginTop: 4,
+    },
+    cowTag: {
+      maxWidth: '100%',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    cowTagText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
 
-  // Action Row
-  cardActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 2,
-  },
-  recordMilkBtn: {
-    flex: 1.2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 5,
-  },
-  recordMilkBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  editFarmerBtn: {
-    flex: 1.1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 4,
-  },
-  editFarmerBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  kycToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 4,
-  },
-  kycToggleBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
+    // Action Row
+    cardActionsRow: {
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'stretch',
+      gap: 8,
+      marginTop: 2,
+    },
+    recordMilkBtn: {
+      paddingHorizontal: 12,
+      minHeight: 44,
+      flex: 1.2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      borderRadius: 10,
+      gap: 5,
+    },
+    recordMilkBtnText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    editFarmerBtn: {
+      paddingHorizontal: 12,
+      minHeight: 44,
+      flex: 1.1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      gap: 4,
+    },
+    editFarmerBtnText: {
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    kycToggleBtn: {
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      gap: 4,
+    },
+    kycToggleBtnText: {
+      fontSize: 12,
+      fontWeight: '800',
+    },
 
-  // Modal Styles
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalScrollContent: {
-    padding: 20,
-    gap: 20,
-  },
-  formSection: {
-    gap: 6,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  boothChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  boothChoiceChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  boothChoiceText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusSegmentRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 6,
-  },
-  statusSegmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    gap: 6,
-  },
-  statusSegmentText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    gap: 12,
-  },
-  sliderTabsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingBottom: 10,
-  },
-  sliderTabPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    gap: 6,
-  },
-  sliderTabPillText: {
-    fontSize: 12,
-  },
-  tabGreenDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-  },
-  sliderAddTabBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    gap: 4,
-  },
-  sliderAddTabBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  activeSlideCard: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  slideHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  slideIndexBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  slideIndexBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  tagVerifiedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
-  },
-  tagVerifiedPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  tagPendingPill: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  tagPendingPillText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  removeSlideBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  removeSlideBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  aadhaarCounterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: -4,
-    paddingHorizontal: 2,
-  },
-  breedChipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  breedChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  breedChipText: {
-    fontSize: 12,
-  },
-  capacityHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  capacityValuePill: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-  },
-  capacityValueText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  sliderControlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  stepperBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sliderTrackContainer: {
-    flex: 1,
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  sliderTrackFill: {
-    height: 10,
-    backgroundColor: '#16A34A',
-    borderRadius: 5,
-  },
-  presetsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  presetChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  presetChipText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  slideFooterNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
-  },
-  editCowsSection: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    marginBottom: 16,
-  },
-  lockedFieldsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  lockedInfoChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  lockedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
-  },
-  lockedPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-});
+    // Modal Styles
+    modalBackdrop: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      alignSelf: 'center',
+      maxWidth: 760,
+      width: '100%',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      borderWidth: 1,
+      borderBottomWidth: 0,
+      height: height * 0.92,
+      maxHeight: height * 0.92,
+      paddingBottom: 28,
+    },
+    modalHeader: {
+      flexShrink: 0,
+      gap: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+    },
+    closeBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalScrollContent: {
+      padding: 16,
+      gap: 20,
+    },
+    formSection: {
+      gap: 6,
+    },
+    sectionHeaderRow: {
+      gap: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    boothChipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    boothChoiceChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    boothChoiceText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    statusSegmentRow: {
+      flexDirection: compact ? 'column' : 'row',
+      gap: 10,
+      marginBottom: 6,
+    },
+    statusSegmentBtn: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      gap: 6,
+    },
+    statusSegmentText: {
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    modalFooter: {
+      flexShrink: 0,
+      flexDirection: width < 360 ? 'column' : 'row',
+      alignItems: 'stretch',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderTopWidth: 1,
+      gap: 12,
+    },
+    sliderTabsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingBottom: 10,
+    },
+    sliderTabPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      gap: 6,
+    },
+    sliderTabPillText: {
+      fontSize: 12,
+    },
+    tabGreenDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#16A34A',
+    },
+    sliderAddTabBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      gap: 4,
+    },
+    sliderAddTabBtnText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    activeSlideCard: {
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+    },
+    slideHeader: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    slideIndexBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    slideIndexBadgeText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    tagVerifiedPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#DCFCE7',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 4,
+    },
+    tagVerifiedPillText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#15803D',
+    },
+    tagPendingPill: {
+      backgroundColor: '#F1F5F9',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    tagPendingPillText: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: '#64748B',
+    },
+    removeSlideBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#FEE2E2',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+      gap: 4,
+    },
+    removeSlideBtnText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#DC2626',
+    },
+    aadhaarCounterRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: -4,
+      paddingHorizontal: 2,
+    },
+    breedChipsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    breedChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    breedChipText: {
+      fontSize: 12,
+    },
+    capacityHeaderRow: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    capacityValuePill: {
+      backgroundColor: '#DCFCE7',
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#86EFAC',
+    },
+    capacityValueText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: '#15803D',
+    },
+    sliderControlRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 8,
+    },
+    stepperBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sliderTrackContainer: {
+      flex: 1,
+      minWidth: 0,
+      height: 10,
+      borderRadius: 5,
+      overflow: 'hidden',
+    },
+    sliderTrackFill: {
+      height: 10,
+      backgroundColor: '#16A34A',
+      borderRadius: 5,
+    },
+    presetsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    presetChip: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      borderWidth: 1,
+    },
+    presetChipText: {
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    slideFooterNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 14,
+      paddingTop: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: '#E2E8F0',
+    },
+    editCowsSection: {
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      marginBottom: 16,
+    },
+    lockedFieldsRow: {
+      flexDirection: compact ? 'column' : 'row',
+      gap: 8,
+      marginBottom: 12,
+    },
+    lockedInfoChip: {
+      minWidth: 0,
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    lockedPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#DCFCE7',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 4,
+    },
+    lockedPillText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#15803D',
+    },
+  });
+};

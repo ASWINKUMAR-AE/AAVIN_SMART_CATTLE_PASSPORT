@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable, BackHandler } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { goBackOrReplace } from '../../services/navigation';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -357,7 +358,7 @@ export default function TreatmentEntryScreen() {
         <Button
           title="Cancel"
           variant="outline"
-          onPress={() => router.back()}
+          onPress={() => goBackOrReplace(router, '/(veterinary)/cattle-registry')}
           style={{ marginTop: 10, marginBottom: 30 }}
         />
       </ScrollView>

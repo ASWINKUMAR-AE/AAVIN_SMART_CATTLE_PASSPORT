@@ -1,23 +1,33 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert, Pressable, Share } from 'react-native';
+import { BoothScreen } from '../../components/booth/BoothScreen';
+import { BoothText as Text } from '../../components/booth/BoothText';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, ScrollView, Alert, Pressable, Share, RefreshControl, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useAavinStore } from '../../store/AavinStoreContext';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
+import { apiErrorMessage } from '../../services/accountMapping';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
-import { DemoHeader } from '../../components/DemoHeader';
+import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ReceiptPreviewScreen() {
+  const { width, fontScale } = useWindowDimensions();
+  const styles = createStyles(width, fontScale);
   const params = useLocalSearchParams();
   const receiptId = params.receiptId as string;
-  const { boothReceipts, sendBoothReceiptToBmc, milkRecords, bmcDeliveries, bmcs } = useAavinStore();
+  const { boothReceipts, milkRecords, bmcDeliveries, sendReceipt, refresh, loading, error } = useDispatchWorkflow();
+  useDispatchRefresh();
+  const { user } = useAuth();
+  const accountRef = useRef(user?.id); accountRef.current = user?.id;
+  const sendingRef = useRef(false);
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
-  // Find target receipt or fallback to first
-  const receipt = boothReceipts.find(r => r.id === receiptId) || boothReceipts[0];
+  // Resolve only the requested receipt.
+  const receipt = boothReceipts.find(r => r.id === receiptId);
   const [sending, setSending] = useState(false);
   const [showBatchList, setShowBatchList] = useState(false);
   const [sealChecklist, setSealChecklist] = useState({
@@ -28,12 +38,12 @@ export default function ReceiptPreviewScreen() {
 
   if (!receipt) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
         <DemoHeader title="Dispatch Receipt" subtitle="Receipt Not Found" showBack />
         <View style={styles.emptyContainer}>
           <Ionicons name="receipt-outline" size={48} color={colors.textMuted} />
           <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 12 }]}>
-            No dispatch receipt found matching the requested ID.
+            {loading ? 'Loading dispatch receipt…' : error || 'No dispatch receipt found matching the requested ID.'}
           </Text>
           <Button
             title="Go to Sent Receipts"
@@ -41,7 +51,7 @@ export default function ReceiptPreviewScreen() {
             style={{ marginTop: 16 }}
           />
         </View>
-      </View>
+      </BoothScreen>
     );
   }
 
@@ -57,18 +67,23 @@ export default function ReceiptPreviewScreen() {
   const delivery = bmcDeliveries.find(d => d.boothReceiptId === receipt.id);
   const isAlreadySent = receipt.status === 'sent_to_bmc' || !!delivery;
 
-  const handleSendToBmc = () => {
+  const handleSendToBmc = async () => {
+    if (sendingRef.current || loading || error) return;
+    const account = user?.id;
     if (!sealChecklist.valveSealed || !sealChecklist.sampleStored || !sealChecklist.tempLogged) {
       Alert.alert('Pre-Dispatch Verification', 'Please complete all tanker sealing safety checks before transmitting the waybill.');
       return;
     }
 
-    setSending(true);
+    sendingRef.current = true; setSending(true);
     try {
-      sendBoothReceiptToBmc(receipt.id);
+      await sendReceipt(receipt.id);
+      if (accountRef.current !== account) return;
+      await refresh();
+      if (accountRef.current !== account) return;
       Alert.alert(
         'Receipt Transmitted to BMC!',
-        `Digital Dispatch Receipt #${receipt.id} (${receipt.dispatchQuantity.toFixed(2)} L) is now LIVE in ${receipt.bmcName}'s intake dashboard.\n\nStatus updated to IN TRANSIT.`,
+        `Digital dispatch receipt (${receipt.dispatchQuantity.toFixed(2)} L) is now LIVE in ${receipt.bmcName}'s intake dashboard.\n\nStatus updated to IN TRANSIT.`,
         [
           {
             text: 'Track in Dispatches',
@@ -81,17 +96,17 @@ export default function ReceiptPreviewScreen() {
         ]
       );
     } catch (err: any) {
-      Alert.alert('Transmission Failed', err.message || 'Could not send receipt to BMC.');
+      if (accountRef.current === account) Alert.alert('Transmission Failed', apiErrorMessage(err));
     } finally {
-      setSending(false);
+      sendingRef.current = false; if (accountRef.current === account) setSending(false);
     }
   };
 
   const handleShareWaybill = async () => {
     try {
       await Share.share({
-        title: `AAVIN Digital Dispatch Waybill #${receipt.id}`,
-        message: `🥛 AAVIN CO-OPERATIVE DAIRY - OFFICIAL DISPATCH WAYBILL\nReceipt ID: ${receipt.id}\nOrigin: ${receipt.boothName} (${receipt.boothId})\nDestination: ${receipt.bmcName}\nDate: ${receipt.collectionDate} (${receipt.session.toUpperCase()} Shift)\nDeclared Quantity: ${receipt.dispatchQuantity.toFixed(2)} Litres\nRecords: ${receipt.totalRecordsCount} Entries (${receipt.totalFarmersCount} Farmers)\nVerification Code: ${receipt.verificationCode}\nAuthorized By: ${receipt.createdBy}\nTamper Seal: Verified Digital Waybill`,
+        title: `AAVIN Digital Dispatch Waybill`,
+        message: `🥛 AAVIN CO-OPERATIVE DAIRY - OFFICIAL DISPATCH WAYBILL\nOrigin: ${receipt.boothName}\nDestination: ${receipt.bmcName}\nDate: ${receipt.collectionDate} (${receipt.session.toUpperCase()} Shift)\nDeclared Quantity: ${receipt.dispatchQuantity.toFixed(2)} Litres\nRecords: ${receipt.totalRecordsCount} Entries (${receipt.totalFarmersCount} Farmers)\nVerification Code: ${receipt.verificationCode}\nAuthorized By: ${receipt.createdBy}\nTamper Seal: Verified Digital Waybill`,
       });
     } catch (error) {
       // User cancelled or share error
@@ -120,14 +135,16 @@ export default function ReceiptPreviewScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
+      {error && <Text style={{ color: colors.hold }}>{error}</Text>}
       <DemoHeader 
         title="Send Dispatch Receipt"
-        subtitle={`Receipt #${receipt.id} • ${receipt.bmcName}`}
+        subtitle={`${receipt.collectionDate} • ${receipt.bmcName}`}
         showBack
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}>
         {/* Transit Lifecycle Stepper */}
         <Card style={styles.stepperCard}>
           <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '800', letterSpacing: 0.5, marginBottom: 10 }]}>
@@ -226,7 +243,6 @@ export default function ReceiptPreviewScreen() {
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', textAlign: 'center' }]} numberOfLines={1}>
                 {receipt.boothName}
               </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>ID: {receipt.boothId}</Text>
             </View>
 
             {/* Transit Route Icon & Arrow */}
@@ -252,7 +268,6 @@ export default function ReceiptPreviewScreen() {
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800', textAlign: 'center' }]} numberOfLines={1}>
                 {receipt.bmcName}
               </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted }]}>ID: {receipt.bmcId}</Text>
             </View>
           </View>
 
@@ -388,7 +403,7 @@ export default function ReceiptPreviewScreen() {
             style={[styles.toggleBatchBtn, { borderTopColor: colors.border }]}
             onPress={() => setShowBatchList(!showBatchList)}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="list" size={16} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '700' }]}>
                 {showBatchList ? 'Hide Included Milk Entries' : `View Included Milk Batches (${includedRecords.length})`}
@@ -406,7 +421,7 @@ export default function ReceiptPreviewScreen() {
               ) : (
                 includedRecords.map((r, i) => (
                   <View key={r.id} style={[styles.batchListItem, { borderBottomColor: colors.border }]}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
                         {i + 1}. {r.farmerName || r.vendorName || 'Route Batch'}
                       </Text>
@@ -506,6 +521,7 @@ export default function ReceiptPreviewScreen() {
               title={sending ? "Transmitting Waybill to BMC..." : `Transmit Consignment to BMC (${receipt.bmcName})`}
               size="lg"
               loading={sending}
+              disabled={sending || loading || !!error}
               onPress={handleSendToBmc}
               icon="send"
               style={{ marginTop: 4 }}
@@ -527,7 +543,7 @@ export default function ReceiptPreviewScreen() {
                   Consignment Transmitted to BMC
                 </Text>
                 <Text style={[Typography.caption2, { color: '#15803D', marginTop: 1 }]}>
-                  Waybill #{receipt.id} is active in {receipt.bmcName}'s incoming reception queue.
+                  This waybill is active in {receipt.bmcName}'s incoming reception queue.
                 </Text>
               </View>
             </View>
@@ -548,280 +564,303 @@ export default function ReceiptPreviewScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </BoothScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 14,
-    paddingBottom: 48,
-  },
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperCard: {
-    padding: 14,
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stepItem: {
-    alignItems: 'center',
-    width: 68,
-  },
-  stepCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  stepLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  stepSub: {
-    fontSize: 9,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 1,
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    marginBottom: 16,
-  },
-  waybillCard: {
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-  },
-  certHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  certEmblemBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  shareIconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusStrip: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  statusStripText: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.4,
-  },
-  corridorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 14,
-  },
-  corridorNode: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  corridorIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  corridorMid: {
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  tankerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
-    marginBottom: 4,
-  },
-  tankerPillText: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#0284C7',
-  },
-  arrowLineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 70,
-    justifyContent: 'center',
-  },
-  dashLine: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: '#93C5FD',
-  },
-  volumeSpotlight: {
-    padding: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    marginBottom: 14,
-  },
-  volumeRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginVertical: 4,
-  },
-  bigVolumeNumber: {
-    fontSize: 38,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  volumeUnit: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 14,
-  },
-  metricTile: {
-    width: '48%',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  bmcResultBox: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    marginBottom: 14,
-  },
-  reconValuesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  reconValCol: {
-    flex: 1,
-  },
-  securitySealBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 10,
-  },
-  qrSealCol: {
-    alignItems: 'center',
-  },
-  qrFrame: {
-    padding: 8,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  tokenPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    gap: 4,
-  },
-  tokenPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#0369A1',
-  },
-  notesBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  toggleBatchBtn: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    marginTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  batchListContainer: {
-    marginTop: 10,
-    gap: 6,
-  },
-  batchListItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  checklistCard: {
-    padding: 16,
-  },
-  checklistHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  checkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  actionSection: {
-    marginTop: 2,
-    marginBottom: 20,
-  },
-  sentBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-});
+const createStyles = (width: number, fontScale: number) => {
+  const compact = width < 600 || fontScale > 1.2;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      minWidth: 0,
+    },
+    scrollContent: {
+      width: '100%',
+      maxWidth: 960,
+      alignSelf: 'center',
+      padding: 16,
+      gap: 14,
+      paddingBottom: 128,
+    },
+    emptyContainer: {
+      padding: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepperCard: {
+      padding: 14,
+    },
+    stepperRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    stepItem: {
+      minWidth: 0,
+      flex: 1,
+      alignItems: 'center',
+      width: undefined,
+    },
+    stepCircle: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 4,
+    },
+    stepLabel: {
+      fontSize: 10,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    stepSub: {
+      fontSize: 9,
+      color: '#94A3B8',
+      textAlign: 'center',
+      marginTop: 1,
+    },
+    stepLine: {
+      flex: 1,
+      minWidth: 0,
+      height: 2,
+      marginBottom: 16,
+    },
+    waybillCard: {
+      padding: 16,
+      borderRadius: 18,
+      borderWidth: 1.5,
+      borderColor: '#E2E8F0',
+    },
+    certHeader: {
+      gap: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    certEmblemBox: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: '#EFF6FF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: '#BFDBFE',
+    },
+    shareIconBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: '#F1F5F9',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statusStrip: {
+      paddingVertical: 5,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    statusStripText: {
+      fontSize: 11,
+      fontWeight: '900',
+      letterSpacing: 0.4,
+    },
+    corridorBox: {
+      gap: 12,
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      marginBottom: 14,
+    },
+    corridorNode: {
+      minWidth: 0,
+      width: compact ? '100%' : undefined,
+      flex: 1,
+      alignItems: 'center',
+    },
+    corridorIconBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    corridorMid: {
+      alignItems: 'center',
+      paddingHorizontal: 4,
+    },
+    tankerPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#E0F2FE',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 4,
+      marginBottom: 4,
+    },
+    tankerPillText: {
+      fontSize: 8,
+      fontWeight: '800',
+      color: '#0284C7',
+    },
+    arrowLineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: 70,
+      justifyContent: 'center',
+    },
+    dashLine: {
+      flex: 1,
+      minWidth: 0,
+      height: 1.5,
+      backgroundColor: '#93C5FD',
+    },
+    volumeSpotlight: {
+      padding: 16,
+      borderRadius: 14,
+      alignItems: 'center',
+      borderWidth: 1.5,
+      marginBottom: 14,
+    },
+    volumeRow: {
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      marginVertical: 4,
+    },
+    bigVolumeNumber: {
+      fontSize: width < 360 ? 28 : 38,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+    },
+    volumeUnit: {
+      fontSize: 20,
+      fontWeight: '700',
+      marginLeft: 6,
+    },
+    metricsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginBottom: 14,
+    },
+    metricTile: {
+      flexBasis: compact ? '100%' : '47%',
+      flexGrow: 1,
+      minWidth: 0,
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    bmcResultBox: {
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      marginBottom: 14,
+    },
+    reconValuesRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 4,
+    },
+    reconValCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    securitySealBox: {
+      gap: 12,
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginBottom: 10,
+    },
+    qrSealCol: {
+      alignItems: 'center',
+    },
+    qrFrame: {
+      padding: 8,
+      borderRadius: 10,
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+    },
+    tokenPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#E0F2FE',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      alignSelf: 'flex-start',
+      gap: 4,
+    },
+    tokenPillText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#0369A1',
+    },
+    notesBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 8,
+    },
+    toggleBatchBtn: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 12,
+      marginTop: 4,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    batchListContainer: {
+      marginTop: 10,
+      gap: 6,
+    },
+    batchListItem: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    checklistCard: {
+      padding: 16,
+    },
+    checklistHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    checkItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    actionSection: {
+      marginTop: 2,
+      marginBottom: 20,
+    },
+    sentBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+    },
+  });
+};

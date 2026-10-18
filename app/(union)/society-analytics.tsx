@@ -8,10 +8,10 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  AnalyticsPeriod, 
-  PERIOD_LABELS, 
-  formatLitres, 
+import {
+  AnalyticsPeriod,
+  PERIOD_LABELS,
+  formatLitres,
   getSocietyAnalyticsById,
   getFarmersAnalyticsBySocietyId,
 } from '../../services/bmcAnalyticsService';

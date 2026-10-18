@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "name": "Aavin API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git",
+    "templates"
+  ]
+}

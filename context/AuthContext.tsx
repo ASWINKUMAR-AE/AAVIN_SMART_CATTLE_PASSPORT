@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DemoUser, UserRole } from '../types/aavin';
 import { SEED_DEMO_USERS } from '../data/seedData';
-import { api, setSecureItem, deleteSecureItem, getSecureItem } from '../services/api';
+import { api, setSecureItem, deleteSecureItem, getSecureItem, initializeApiClient } from '../services/api';
 import { Config } from '../constants/Config';
+import { apiErrorMessage, BackendUser, mapAccount, mapCows, mapFarmer, mapSociety } from '../services/accountMapping';
+import { useAavinStore } from '../store/AavinStoreContext';
 
 const AUTH_USER_KEY = '@aavin_auth_user_v2';
 
@@ -20,7 +22,6 @@ interface AuthContextType {
   isLoading: boolean;
   token: string | null;
   login: (usernameOrPhone: string, passwordPlain: string) => Promise<LoginResult>;
-  loginAsDemoUser: (userId: string) => Promise<void>;
   switchRole: (role: UserRole) => Promise<void>;
   updateLanguage: (lang: 'en' | 'ta') => Promise<void>;
   logout: () => Promise<void>;
@@ -33,7 +34,6 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   token: null,
   login: async () => ({ success: false, error: 'Not initialized' }),
-  loginAsDemoUser: async () => {},
   switchRole: async () => {},
   updateLanguage: async () => {},
   logout: async () => {},
@@ -46,151 +46,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const { isLoading: storeLoading, cacheFarmer, cacheSociety, setCollectionData } = useAavinStore();
+
+  const clearSession = useCallback(async () => {
+    setCollectionData([], []);
+    setUser(null);
+    setActiveRole(null);
+    setToken(null);
+    await Promise.all([
+      deleteSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN),
+      deleteSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN),
+      AsyncStorage.removeItem(AUTH_USER_KEY),
+    ]);
+  }, [setCollectionData]);
+
+  const applyAccount = useCallback(async (account: BackendUser) => {
+    const appUser = mapAccount(account);
+    if (account.role === 'society') cacheSociety(mapSociety(account));
+    if (account.role === 'farmer') {
+      cacheFarmer(mapFarmer(account), mapCows(account));
+      if (account.parent) cacheSociety(mapSociety(account.parent));
+    }
+    await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(appUser));
+    setUser(appUser);
+    setActiveRole(appUser.role);
+    setToken(await getSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN));
+    return appUser;
+  }, [cacheFarmer, cacheSociety]);
+
   useEffect(() => {
-    bootstrapAuth();
-  }, []);
-
-  const bootstrapAuth = async () => {
-    try {
-      const savedUserStr = await AsyncStorage.getItem(AUTH_USER_KEY);
-      const savedToken = await getSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN);
-      
-      if (savedUserStr) {
-        const parsed: DemoUser = JSON.parse(savedUserStr);
-        const found = SEED_DEMO_USERS.find(u => u.id === parsed.id || u.username === parsed.username) || parsed;
-        setUser(found);
-        setActiveRole(found.role);
-        setToken(savedToken || null);
-      } else {
-        setUser(null);
-        setActiveRole(null);
-        setToken(null);
-      }
-    } catch (e) {
-      console.warn('Auth bootstrap warning:', e);
-      setUser(null);
-      setActiveRole(null);
-      setToken(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Real production login against Aavin backend API (/api/v1/auth/login)
-   * with seamless offline fallback to seed users
-   */
-  const login = async (usernameOrPhone: string, passwordPlain: string): Promise<LoginResult> => {
-    const cleanInput = usernameOrPhone.trim();
-    const cleanPass = passwordPlain.trim();
-
-    try {
-      // 1. Attempt Real Backend API Authentication
-      const response = await api.post('/auth/login', {
-        usernameOrPhone: cleanInput,
-        password: cleanPass,
-      }, { timeout: 4500 });
-
-      if (response.data?.success && response.data?.data) {
-        const { accessToken, refreshToken, user: backendUser } = response.data.data;
-
-        // Persist JWT Tokens
-        if (accessToken) {
-          await setSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN, accessToken);
-          setToken(accessToken);
+    if (storeLoading) return;
+    let mounted = true;
+    const bootstrap = async () => {
+      try {
+        await initializeApiClient();
+        const savedToken = await getSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN);
+        if (!savedToken) {
+          await clearSession();
+          return;
         }
-        if (refreshToken) {
-          await setSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+        const response = await api.get('/auth/me');
+        if (mounted) await applyAccount(response.data.data.user);
+      } catch (error: any) {
+        if (error?.response?.status === 401) await clearSession();
+        else {
+          // Stored demo users and cached sessions are never proof of authentication.
+          setUser(null);
+          setActiveRole(null);
+          setToken(null);
         }
-
-        // Map backend role to app UserRole
-        let mappedRole: UserRole = 'farmer';
-        const roles: string[] = backendUser.roles || [];
-        if (roles.includes('admin')) mappedRole = 'admin';
-        else if (roles.includes('union')) mappedRole = 'union';
-        else if (roles.includes('bmc')) mappedRole = 'bmc';
-        else if (roles.includes('booth') || roles.includes('collection_operator')) mappedRole = 'booth';
-        else if (roles.includes('veterinary')) mappedRole = 'veterinary';
-        else if (roles.includes('farmer')) mappedRole = 'farmer';
-
-        const associatedId = 
-          backendUser.farmerIdCode || 
-          backendUser.primaryCentreId || 
-          (mappedRole === 'farmer' ? 'FARMER001' : 
-           mappedRole === 'booth' ? 'BOOTH001' : 
-           mappedRole === 'bmc' ? 'BMC001' : 
-           mappedRole === 'union' ? 'UNION001' : 
-           mappedRole === 'veterinary' ? 'VET001' : 'ADMIN001');
-
-        const appUser: DemoUser = {
-          id: backendUser.id || `USR-${mappedRole.toUpperCase()}`,
-          username: backendUser.username,
-          fullName: backendUser.fullName || cleanInput,
-          role: mappedRole,
-          phone: backendUser.phone,
-          email: backendUser.email,
-          associatedId,
-          description: `${backendUser.fullName} • ${mappedRole.toUpperCase()} Node`,
-          preferredLanguage: backendUser.preferredLanguage || 'en',
-        };
-
-        setUser(appUser);
-        setActiveRole(mappedRole);
-        await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(appUser));
-
-        return { success: true, role: mappedRole, user: appUser };
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-    } catch (apiErr: any) {
-      console.log('Real API login attempted; evaluating result or fallback:', apiErr?.message);
-      
-      // If server returned a business validation error (e.g. wrong password or suspended), pass it along
-      if (apiErr?.response?.data?.message) {
-        const serverMsg = apiErr.response.data.message;
-        // If it's explicitly invalid credentials, return server error
-        if (serverMsg.includes('Invalid credentials') || serverMsg.includes('Invalid username/phone') || serverMsg.includes('suspended')) {
-          return { success: false, error: serverMsg };
-        }
-      }
-    }
-
-    // 2. Fallback matching against pre-authorized directory users (offline support)
-    const lower = cleanInput.toLowerCase();
-    const matched = SEED_DEMO_USERS.find(
-      u => u.username.toLowerCase() === lower ||
-           u.phone === cleanInput ||
-           u.id.toLowerCase() === lower ||
-           u.email?.toLowerCase() === lower
-    );
-
-    if (matched) {
-      setUser(matched);
-      setActiveRole(matched.role);
-      await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(matched));
-      return { success: true, role: matched.role, user: matched };
-    }
-
-    return { 
-      success: false, 
-      error: 'Invalid credentials. Please verify your Aavin Username / Phone and Password.' 
     };
-  };
+    bootstrap();
+    return () => { mounted = false; };
+  }, [storeLoading, applyAccount, clearSession]);
 
-  const loginAsDemoUser = async (userId: string) => {
-    const selected = SEED_DEMO_USERS.find(u => u.id === userId || u.username === userId) || SEED_DEMO_USERS[0];
-    setUser(selected);
-    setActiveRole(selected.role);
-    await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(selected));
+  const login = async (phone: string, passwordPlain: string): Promise<LoginResult> => {
+    if (!phone.trim() || !passwordPlain) return { success: false, error: 'Phone number and password are required.' };
+    try {
+      await initializeApiClient();
+      await clearSession();
+      const response = await api.post('/auth/login', { phone: phone.trim(), password: passwordPlain });
+      const { accessToken, refreshToken, user: account } = response.data.data;
+      if (!accessToken || !refreshToken) throw new Error('Invalid login response.');
+      await setSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN, accessToken);
+      await setSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      const appUser = await applyAccount(account);
+      return { success: true, role: appUser.role, user: appUser };
+    } catch (error) {
+      await clearSession();
+      return { success: false, error: apiErrorMessage(error) };
+    }
   };
 
   const switchRole = async (role: UserRole) => {
-    const matched = SEED_DEMO_USERS.find(u => u.role === role);
-    if (matched) {
-      setUser(matched);
-      setActiveRole(role);
-      await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(matched));
-    } else {
-      setActiveRole(role);
-    }
+    if (role !== activeRole) throw new Error('Log in to an account with the requested role.');
   };
 
   const updateLanguage = async (lang: 'en' | 'ta') => {
@@ -202,15 +134,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   /**
-   * Temporarily logs out locally without waiting for backend session revocation.
+   * Revokes the backend session and clears local authentication and collections.
    */
   const logout = async () => {
-    setUser(null);
-    setActiveRole(null);
-    setToken(null);
-    await deleteSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN);
-    await deleteSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
-    await AsyncStorage.removeItem(AUTH_USER_KEY);
+    try {
+      const refreshToken = await getSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
+      await api.post('/auth/logout', { refreshToken }).catch(() => {});
+    } catch {
+      // Ignore network errors on logout
+    } finally {
+      await clearSession();
+    }
   };
 
   return (
@@ -221,7 +155,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         token,
         login,
-        loginAsDemoUser,
         switchRole,
         updateLanguage,
         logout,

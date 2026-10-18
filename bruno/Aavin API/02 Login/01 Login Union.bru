@@ -1,0 +1,62 @@
+meta {
+  name: 01 Login Union
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "phone": "{{unionPhone}}",
+    "password": "{{unionPassword}}"
+  }
+}
+
+vars:pre-request {
+  baseUrl: https://aavin.todayworld.in
+  unionPhone: 8056841008
+  unionPassword: aavin
+}
+
+script:pre-request {
+  bru.setVar("unionAccessToken", "");
+  bru.setVar("unionRefreshToken", "");
+  bru.setVar("accessToken", "");
+  bru.setVar("refreshToken", "");
+  bru.setVar("activeRole", "");
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody().data;
+    if (data.user.role !== "union") throw new Error("Expected a union account; check the phone number.");
+    bru.setVar("unionAccessToken", data.accessToken);
+    bru.setVar("unionRefreshToken", data.refreshToken);
+    bru.setVar("unionId", data.user.id);
+    bru.setVar("accessToken", data.accessToken);
+    bru.setVar("refreshToken", data.refreshToken);
+    bru.setVar("activeRole", "union");
+  }
+}
+
+tests {
+  test("Expected HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Logs in an existing union account. Saves role-specific tokens and selects it as the active session. Set credentials in the Local environment. Tokens stay in runtime variables.
+}

@@ -1,0 +1,59 @@
+meta {
+  name: 03 Society creates Farmer
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/register
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{societyAccessToken}}
+}
+
+body:json {
+  {
+    "phone": "{{farmerPhone}}",
+    "fullName": "Murugan",
+    "password": "{{farmerPassword}}",
+    "role": "farmer"
+  }
+}
+
+vars:pre-request {
+  farmerPhone: 8056841005
+  farmerPassword: framer01
+  baseUrl: http://127.0.0.1:8000/
+}
+
+script:pre-request {
+  if (!bru.getVar("societyAccessToken")) {
+    throw new Error("Run the matching role login first.");
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("farmerId", res.getBody().data.user.id);
+  }
+}
+
+tests {
+  test("Expected HTTP 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Creates a real account in the configured database. Use an unused phone number and a strong password. The authenticated creator becomes the parent. Capture of the created account UUID is automatic.
+}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useMilkCollections } from '../../context/MilkCollectionsContext';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, Text, FlatList, Pressable, Alert, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -12,8 +13,11 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { DemoHeader } from '../../components/DemoHeader';
 
 export default function FarmerNotificationsScreen() {
-  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAavinStore();
-  const { activeRole } = useAuth();
+  const { notifications, markRead, refreshNotifications, notificationError, notificationsLoaded } = useMilkCollections();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => { setRefreshing(true); try { await refreshNotifications(); } finally { setRefreshing(false); } };
+  useFocusEffect(useCallback(() => { void refreshNotifications(); }, [refreshNotifications]));
+  const { user } = useAuth();
   const { colors } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
@@ -21,7 +25,7 @@ export default function FarmerNotificationsScreen() {
   const [filterMode, setFilterMode] = useState<'all' | 'unread'>('all');
 
   const roleNotifications = notifications.filter(
-    n => !n.recipientRole || n.recipientRole === activeRole || n.recipientRole === 'farmer'
+    n => n.recipientId === user?.id
   );
 
   const displayedNotifications = filterMode === 'unread'
@@ -49,11 +53,9 @@ export default function FarmerNotificationsScreen() {
     }
   };
 
-  const handleNotificationPress = (item: InAppNotification) => {
-    markNotificationAsRead(item.id);
-    if (item.linkRoute) {
-      router.push(item.linkRoute as any);
-    }
+  const handleNotificationPress = async (item: InAppNotification) => {
+    try { await markRead(item.id); if (item.linkRoute) router.push(item.linkRoute as any); }
+    catch { Alert.alert('Could not mark notification read', 'Reconnect and try again.'); }
   };
 
   return (
@@ -85,20 +87,22 @@ export default function FarmerNotificationsScreen() {
 
         <Pressable 
           style={styles.markAllBtn}
-          onPress={() => markAllNotificationsAsRead()}
+          onPress={() => { void markRead().catch(() => Alert.alert('Could not mark notifications read', 'Reconnect and try again.')); }}
         >
           <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all read</Text>
         </Pressable>
       </View>
 
+      {notificationError && <Text style={{ color: colors.hold, padding: 12 }}>{notificationError}</Text>}
       <FlatList
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         data={displayedNotifications}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState 
             icon="notifications-off-outline"
-            title="No Notifications"
+            title={!notificationsLoaded ? notificationError ? 'Notifications unavailable' : 'Loading notifications…' : 'No Notifications'}
             message={filterMode === 'unread' ? "You have read all notifications." : "No alerts or messages for your farmer account."}
           />
         }

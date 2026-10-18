@@ -1,26 +1,44 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAavinStore } from '../../store/AavinStoreContext';
+import { BoothScreen } from '../../components/booth/BoothScreen';
+import { BoothText as Text } from '../../components/booth/BoothText';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, ScrollView, Alert, Pressable, RefreshControl, useWindowDimensions } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
+import { submissionKey } from '../../services/dispatchApi';
+import { apiErrorMessage } from '../../services/accountMapping';
+import { indiaDate } from '../../services/milkCollectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
-import { DemoHeader } from '../../components/DemoHeader';
+import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ReviewDailyCollectionScreen() {
+  const { width, fontScale } = useWindowDimensions();
+  const styles = createStyles(width, fontScale);
   const { user } = useAuth();
-  const { booths, bmcs, farmers, milkRecords, boothReceipts, createBoothReceipt } = useAavinStore();
+  useDispatchRefresh();
+  const { context, milkRecords, attendance, boothReceipts, createReceipt, loading, error, refresh } = useDispatchWorkflow();
+  const farmers = context?.farmers || [];
+  const summary = context;
+  const generateKey = useRef(submissionKey());
+  const generatingRef = useRef(false);
+  const accountRef = useRef(user?.id); accountRef.current = user?.id;
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams<{ collectionDate?: string }>();
 
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
-  const assignedBmc = bmcs.find(b => b.id === booth.assignedBmcId) || bmcs[0];
+  const boothId = user?.id || '';
+  const booth = context?.society || { id: boothId, name: user?.fullName || '', assignedBmcId: '' };
+  const assignedBmc = context?.bmc || { id: '', name: 'Loading linked BMC…' };
 
-  const todayStr = '2026-10-12';
+  const requestedDate = params.collectionDate;
+  const validDate = typeof requestedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) &&
+    Number.isFinite(Date.parse(requestedDate + 'T00:00:00Z')) &&
+    new Date(requestedDate + 'T00:00:00Z').toISOString().slice(0, 10) === requestedDate && requestedDate <= indiaDate();
+  const todayStr = validDate ? requestedDate : indiaDate();
 
   // Check if today's receipt is already generated
   const existingTodayReceipt = boothReceipts.find(
@@ -41,34 +59,35 @@ export default function ReviewDailyCollectionScreen() {
   // Exact eligible total without double counting
   const eligibleReceiptTotal = parseFloat((farmerWiseTotal + combinedVendorTotal).toFixed(2));
 
-  const uniqueParticipatingFarmerIds = new Set(farmerWiseRecords.map(r => r.farmerId).filter(Boolean));
+  const uniqueParticipatingFarmerIds = new Set(attendance.filter(a => a.collectionDate === todayStr).map(a => a.farmerId));
   const assignedFarmers = farmers.filter(f => f.assignedBoothId === booth.id);
   const missingFarmers = assignedFarmers.filter(f => !uniqueParticipatingFarmerIds.has(f.id));
 
-  const [notes] = useState('Daily morning collection verified. Dispatched via insulated tanker.');
+  const [notes] = useState('Daily collection verified.');
   const [generating, setGenerating] = useState(false);
 
-  const handleGenerateReceipt = () => {
+  const handleGenerateReceipt = async () => {
+    if (generatingRef.current || loading || error || !context?.society) return;
+    const account = user?.id;
     if (todayRecords.length === 0) {
       Alert.alert('No Eligible Records', 'There are no unreceipted milk entries recorded for today.');
       return;
     }
 
-    setGenerating(true);
+    generatingRef.current = true; setGenerating(true);
     try {
-      const receipt = createBoothReceipt(
-        booth.id,
-        assignedBmc.id,
-        todayStr,
-        'morning',
-        todayRecords.map(r => r.id),
-        user?.fullName || 'Society Operator',
-        notes
-      );
+      const receipt = await createReceipt({
+        collectionDate: todayStr, session: 'full_day', includedRecordIds: todayRecords.map(r => r.id),
+        notes, submissionKey: generateKey.current,
+      });
+      if (accountRef.current !== account) return;
+      generateKey.current = submissionKey();
+      await refresh();
+      if (accountRef.current !== account) return;
 
       Alert.alert(
         'Digital Dispatch Receipt Generated!',
-        `Receipt #${receipt.id} generated for ${receipt.dispatchQuantity} Litres. Review and transmit to ${assignedBmc.name}.`,
+        `Dispatch receipt generated for ${receipt.dispatchQuantity} Litres. Review and transmit to ${assignedBmc.name}.`,
         [
           {
             text: 'Preview & Send to BMC',
@@ -77,21 +96,23 @@ export default function ReviewDailyCollectionScreen() {
         ]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not generate receipt.');
+      if (accountRef.current === account) Alert.alert('Error', apiErrorMessage(err));
     } finally {
-      setGenerating(false);
+      generatingRef.current = false; if (accountRef.current === account) setGenerating(false);
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title="Dispatch Receipts & Closure"
         subtitle={`Daily Audit • Destination: ${assignedBmc.name}`}
         showBack
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}>
+        {error && <Text style={{ color: colors.hold }}>{error} Pull down to retry.</Text>}
         {/* Top Quick Links Bar */}
         <View style={styles.topLinksRow}>
           <Pressable 
@@ -120,7 +141,7 @@ export default function ReviewDailyCollectionScreen() {
                     TODAY'S DISPATCH RECEIPT
                   </Text>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900' }]} numberOfLines={1}>
-                    #{existingTodayReceipt.id}
+                    Existing dispatch receipt
                   </Text>
                 </View>
               </View>
@@ -171,7 +192,7 @@ export default function ReviewDailyCollectionScreen() {
         <Card style={styles.card}>
           <View style={styles.batchMetaRow}>
             <View style={styles.sessionPill}>
-              <Text style={styles.sessionPillText}>MORNING BATCH</Text>
+              <Text style={styles.sessionPillText}>DAILY COLLECTION</Text>
             </View>
             <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
               Date: {todayStr}
@@ -248,9 +269,7 @@ export default function ReviewDailyCollectionScreen() {
               <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]} numberOfLines={1}>
                 {assignedBmc.name}
               </Text>
-              <Text style={[Typography.caption2, { color: colors.textMuted, fontSize: 10 }]}>
-                {assignedBmc.id}
-              </Text>
+
             </View>
           </View>
         </Card>
@@ -265,11 +284,11 @@ export default function ReviewDailyCollectionScreen() {
               </Text>
             </View>
             <Text style={[Typography.caption2, { color: colors.textSecondary, marginBottom: 8 }]}>
-              The following registered society farmers have not yet supplied milk this morning:
+              The following registered society farmers have not yet supplied milk on this date:
             </Text>
             {missingFarmers.map(mf => (
               <View key={mf.id} style={[styles.missingItem, { borderBottomColor: colors.border }]}>
-                <View>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700' }]}>
                     • {mf.name} ({mf.farmerIdCode})
                   </Text>
@@ -302,10 +321,10 @@ export default function ReviewDailyCollectionScreen() {
             <View style={styles.noRecordsBox}>
               <Ionicons name="checkmark-done-circle" size={36} color="#10B981" />
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginTop: 8 }]}>
-                All Entries Reconciled
+                {!summary ? loading ? 'Loading collections…' : 'Collections unavailable' : 'No eligible collections'}
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary, textAlign: 'center', marginTop: 2 }]}>
-                All today's recorded entries have already been packaged into an official dispatch receipt.
+                {summary ? `No eligible entries for ${todayStr}.` : 'Pull down to load saved collections.'}
               </Text>
             </View>
           ) : (
@@ -327,7 +346,7 @@ export default function ReviewDailyCollectionScreen() {
                   </Text>
                 </View>
                 <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800' }]}>
-                  {r.quantityLitres.toFixed(1)} L
+                  {r.quantityLitres.toFixed(2)} L
                 </Text>
               </View>
             ))
@@ -337,9 +356,10 @@ export default function ReviewDailyCollectionScreen() {
         {/* Generate Receipt CTA */}
         {todayRecords.length > 0 ? (
           <Button
-            title={generating ? "Generating Digital Waybill..." : `Confirm Total (${eligibleReceiptTotal} L) & Send Receipt`}
+            title={generating ? "Generating Digital Waybill..." : `Confirm Total (${eligibleReceiptTotal} L) & Generate Receipt`}
             size="lg"
             loading={generating}
+            disabled={generating || loading || !!error || !context?.society}
             onPress={handleGenerateReceipt}
             icon="receipt-outline"
             style={{ marginTop: 6 }}
@@ -362,167 +382,186 @@ export default function ReviewDailyCollectionScreen() {
           style={{ marginTop: 8, marginBottom: 28 }}
         />
       </ScrollView>
-    </View>
+    </BoothScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 14,
-    paddingBottom: 40,
-  },
-  topLinksRow: {
-    flexDirection: 'row',
-  },
-  archiveBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  existingReceiptCard: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1.5,
-  },
-  existingReceiptTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  existingReceiptBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  receiptIconBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  existingReceiptMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  existingMetaCol: {
-    flex: 1,
-  },
-  existingMetaDivider: {
-    width: 1,
-    height: 28,
-    marginHorizontal: 12,
-  },
-  card: {
-    padding: 16,
-    borderRadius: 16,
-  },
-  batchMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sessionPill: {
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  sessionPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#0284C7',
-  },
-  qtyRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  bigTotal: {
-    fontSize: 36,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  bigTotalUnit: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  guardBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: 12,
-  },
-  breakdownGrid: {
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  breakdownTile: {
-    width: '48.5%',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  missingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  transactionsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  noRecordsBox: {
-    alignItems: 'center',
-    paddingVertical: 18,
-  },
-  includedItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  itemTypeBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const createStyles = (width: number, fontScale: number) => {
+  const compact = width < 600 || fontScale > 1.2;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      minWidth: 0,
+    },
+    scrollContent: {
+      width: '100%',
+      maxWidth: 960,
+      alignSelf: 'center',
+      padding: 16,
+      gap: 14,
+      paddingBottom: 128,
+    },
+    topLinksRow: {
+      flexDirection: 'row',
+    },
+    archiveBtn: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    existingReceiptCard: {
+      padding: 16,
+      borderRadius: 16,
+      borderWidth: 1.5,
+    },
+    existingReceiptTopRow: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    existingReceiptBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      minWidth: 0,
+      marginRight: 8,
+    },
+    receiptIconBadge: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    statusPillText: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
+    existingReceiptMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 12,
+      paddingTop: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    existingMetaCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    existingMetaDivider: {
+      width: 1,
+      height: 28,
+      marginHorizontal: 12,
+    },
+    card: {
+      padding: 16,
+      borderRadius: 16,
+    },
+    batchMetaRow: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    sessionPill: {
+      backgroundColor: '#E0F2FE',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    sessionPillText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#0284C7',
+    },
+    qtyRow: {
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      marginTop: 2,
+      marginBottom: 4,
+    },
+    bigTotal: {
+      fontSize: width < 360 ? 28 : 36,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+    },
+    bigTotalUnit: {
+      fontSize: 18,
+      fontWeight: '700',
+      marginLeft: 6,
+    },
+    guardBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      marginTop: 12,
+    },
+    breakdownGrid: {
+      marginTop: 14,
+      paddingTop: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    breakdownTile: {
+      flexBasis: compact ? '100%' : '47%',
+      flexGrow: 1,
+      minWidth: 0,
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    missingItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    transactionsHeader: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    noRecordsBox: {
+      alignItems: 'center',
+      paddingVertical: 18,
+    },
+    includedItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    itemTypeBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
+};

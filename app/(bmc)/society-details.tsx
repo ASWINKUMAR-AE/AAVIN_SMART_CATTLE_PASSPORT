@@ -547,10 +547,10 @@ export default function SocietyDetailsScreen() {
             </View>
 
             <Button
-              title="Audit Log"
+              title="Review deliveries"
               size="sm"
               variant="outline"
-              onPress={() => router.push('/(bmc)/investigations')}
+              onPress={() => router.push({ pathname: '/(bmc)/receive-milk', params: { societyId: societyId || '', statusFilter: 'needs_review', dateFilter: 'all', collectionDate: '' } })}
             />
           </View>
 
@@ -610,7 +610,7 @@ export default function SocietyDetailsScreen() {
               title="📥 Record Milk Delivery at BMC"
               size="md"
               style={{ marginTop: 16 }}
-              onPress={() => router.push('/(bmc)/receive-milk')}
+              onPress={() => router.push({ pathname: '/(bmc)/receive-milk', params: { societyId: societyId || '', statusFilter: 'all', dateFilter: 'all', collectionDate: '' } })}
             />
           </Card>
         ) : (
@@ -1886,7 +1886,7 @@ export default function SocietyDetailsScreen() {
               <Button
                 title="📥 Confirm Milk Received (Intake)"
                 size="lg"
-                onPress={() => router.push('/(bmc)/receive-milk')}
+                onPress={() => router.push({ pathname: '/(bmc)/receive-milk', params: { societyId: societyId || '', statusFilter: 'all', dateFilter: 'all', collectionDate: '' } })}
               />
               <Button
                 title="📋 Submit Consolidated BMC Report"

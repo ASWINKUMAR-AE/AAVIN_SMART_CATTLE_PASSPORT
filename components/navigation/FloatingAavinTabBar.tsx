@@ -96,6 +96,12 @@ const ROUTE_META_MAP: Record<
   },
 
   // BMC Staff
+  dashboard: {
+    outline: 'grid-outline',
+    filled: 'grid',
+    labelKey: 'nav.dashboard',
+    fallbackLabel: 'Dashboard',
+  },
   'receive-milk': {
     outline: 'cube-outline',
     filled: 'cube',
@@ -107,12 +113,6 @@ const ROUTE_META_MAP: Record<
     filled: 'document-text',
     labelKey: 'nav.verifyMilk',
     fallbackLabel: 'Verify Milk',
-  },
-  investigations: {
-    outline: 'alert-circle-outline',
-    filled: 'alert-circle',
-    labelKey: 'nav.alerts',
-    fallbackLabel: 'Alerts',
   },
 
   // Union Management
@@ -181,16 +181,22 @@ export interface FloatingAavinTabBarProps {
   descriptors: any;
   navigation: any;
   insets?: any;
+  hideOnScroll?: boolean;
+  hideOnKeyboard?: boolean;
+  barHeight?: number;
 }
 
 export function FloatingAavinTabBar({
   state,
   descriptors,
   navigation,
+  hideOnScroll = true,
+  hideOnKeyboard = true,
+  barHeight = TAB_BAR_HEIGHT,
 }: FloatingAavinTabBarProps) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { isScrolled } = useScroll();
+  const { isScrolled, barsVisible } = useScroll();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   // Filter to only routes that have a registered icon and not hidden
@@ -203,13 +209,18 @@ export function FloatingAavinTabBar({
   // Active index among visible tabs
   const activeRoute = state.routes[state.index];
   const activeRouteIndex = visibleRoutes.findIndex((route: any) => route.key === activeRoute?.key);
-  
+
   // Map subroutes to their corresponding parent tab
   const SUBROUTE_PARENT_MAP: Record<string, string[]> = {
     'cow-details': ['cows', 'cattle-registry'],
     'milk-entry': ['milk-history', 'record-milk'],
     'bmc-analytics': ['bmc-monitoring'],
     'society-analytics': ['bmc-monitoring'],
+    'my-societies': ['dashboard'],
+    operations: ['dashboard'],
+    'society-comparison': ['dashboard'],
+    'society-income': ['dashboard'],
+    'submit-union-report': ['dashboard'],
   };
 
   const parentTabNames = SUBROUTE_PARENT_MAP[activeRoute?.name];
@@ -223,10 +234,9 @@ export function FloatingAavinTabBar({
     ? parentTabIndex
     : 0;
 
-  const horizontalMargin = 16;
-
-  // Track keyboard events to hide bar during text entry
+  // Screens can keep navigation available during text entry.
   useEffect(() => {
+    if (!hideOnKeyboard) return;
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       () => setKeyboardVisible(true)
@@ -239,9 +249,9 @@ export function FloatingAavinTabBar({
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [hideOnKeyboard]);
 
-  if (isKeyboardVisible) {
+  if ((hideOnKeyboard && isKeyboardVisible) || (hideOnScroll && !barsVisible)) {
     return null;
   }
 
@@ -260,7 +270,8 @@ export function FloatingAavinTabBar({
       <View
         style={[
           styles.barWrapper,
-          { height: TAB_BAR_HEIGHT },
+          { height: barHeight },
+          hideOnScroll && isScrolled && styles.barWrapperScrolled,
         ]}
       >
         {/* Tab Touch Targets & Content */}
@@ -383,7 +394,21 @@ const styles = StyleSheet.create({
     }),
   },
   barWrapperScrolled: {
-    backgroundColor: 'transparent',
+    ...Platform.select({
+      ios: {
+        shadowColor: AAVIN_COLORS.navy,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 16,
+      },
+      default: {
+        boxShadow: '0px 12px 32px rgba(18, 52, 81, 0.24), 0px 4px 14px rgba(94, 168, 238, 0.20)',
+        transform: 'translateY(-2px)',
+      },
+    }),
   },
   tabsRow: {
     flex: 1,

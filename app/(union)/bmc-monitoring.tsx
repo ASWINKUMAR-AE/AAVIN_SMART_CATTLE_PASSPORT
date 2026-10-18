@@ -8,11 +8,11 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { UnionDesktopBmcMonitoring } from '../../components/union/desktop/UnionDesktopBmcMonitoring';
-import { 
-  AnalyticsPeriod, 
-  PERIOD_LABELS, 
-  formatLitres, 
-  getDistrictBmcAnalytics 
+import {
+  AnalyticsPeriod,
+  PERIOD_LABELS,
+  formatLitres,
+  getDistrictBmcAnalytics
 } from '../../services/bmcAnalyticsService';
 import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
@@ -120,7 +120,7 @@ export default function BMCMonitoringScreen() {
   if (isDesktop) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <DemoHeader 
+        <DemoHeader
           title="BMC Facility Monitoring"
           subtitle="District Bulk Milk Cooling Infrastructure"
           showBack
@@ -133,7 +133,7 @@ export default function BMCMonitoringScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="BMC Facility Monitoring"
         subtitle="District Bulk Milk Cooling Infrastructure"
         showBack

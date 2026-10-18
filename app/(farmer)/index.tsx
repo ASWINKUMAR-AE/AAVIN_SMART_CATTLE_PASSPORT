@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
+import { useMilkCollections, useCollectionRefresh } from '../../context/MilkCollectionsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -13,8 +14,6 @@ export default function FarmerDashboard() {
   const { user } = useAuth();
   const {
     cows,
-    milkRecords,
-    getFarmerStats,
     booths,
     boothReceipts
   } = useAavinStore();
@@ -24,34 +23,28 @@ export default function FarmerDashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Fallback to FARMER001 if not set
-  const farmerId = user?.associatedId || 'FARMER001';
+  const farmerId = user?.id || '';
+  const { records: milkRecords, summary, loading, error, refresh } = useMilkCollections();
+  useCollectionRefresh();
+  const ready = summary !== null;
+  const stats = { todaySupply: Number(summary?.todaySupply || 0), monthSupply: Number(summary?.monthSupply || 0), last7DaysSupply: Number(summary?.last7DaysSupply || 0) };
   const farmerCows = cows.filter(c => c.farmerId === farmerId);
-  const stats = getFarmerStats(farmerId);
   const farmerRecords = milkRecords.filter(r => r.farmerId === farmerId);
 
   // Active Withdrawal Warnings for this farmer's cows
   const cowsWithWithdrawal = farmerCows.filter(c => c.activeWithdrawal?.hasActiveWithdrawal);
 
   // Assigned Booth
-  const assignedBooth = booths.find(b => b.id === 'BOOTH001');
+  const { farmers } = useAavinStore();
+  const assignedBooth = booths.find(b => b.id === farmers.find(f => f.id === farmerId)?.assignedBoothId);
 
   // Last 7 days supply trend
-  const last7DaysData = [
-    { day: 'Mon', date: '2026-10-06', qty: 8.1 },
-    { day: 'Tue', date: '2026-10-07', qty: 8.4 },
-    { day: 'Wed', date: '2026-10-08', qty: 7.8 },
-    { day: 'Thu', date: '2026-10-09', qty: 8.0 },
-    { day: 'Fri', date: '2026-10-10', qty: 8.2 },
-    { day: 'Sat', date: '2026-10-11', qty: 15.0 }, // 8.0 morn + 7.0 eve
-    { day: 'Today', date: '2026-10-12', qty: stats.todaySupply },
-  ];
-
-  const maxDailyQty = Math.max(...last7DaysData.map(d => d.qty), 16);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 400);
-  };
+  const last7DaysData = (summary?.dailyTrend || []).map(point => ({
+    date: point.date, qty: Number(point.quantityLitres),
+    day: point.date === summary?.today ? 'Today' : new Date(point.date + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'UTC' }),
+  }));
+  const maxDailyQty = Math.max(...last7DaysData.map(d => d.qty), 1);
+  const onRefresh = async () => { setRefreshing(true); try { await refresh(); } finally { setRefreshing(false); } };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -64,6 +57,8 @@ export default function FarmerDashboard() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {!ready && <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>{loading ? 'Loading milk collections…' : 'Milk collections unavailable. Pull down to retry.'}</Text>}
+        {error && <Text style={{ color: colors.hold, marginBottom: 12 }}>{error}{ready ? ' Showing last confirmed totals.' : ''}</Text>}
         {/* Active Medicine Withdrawal Alert Banner */}
         {cowsWithWithdrawal.length > 0 && (
           <View style={[styles.alertBanner, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
@@ -114,15 +109,15 @@ export default function FarmerDashboard() {
           </View>
 
           <Text style={styles.heroBalanceNumber}>
-            {stats.todaySupply > 0 ? `${stats.todaySupply.toFixed(1)} L` : '15.0 L'}
+            {ready ? `${stats.todaySupply.toFixed(2)} L` : '—'}
           </Text>
 
           <View style={styles.heroSubRow}>
             <View style={styles.growthPill}>
-              <Text style={styles.growthPillText}>+8.2% ↑</Text>
+              <Text style={styles.growthPillText}>Milk collected</Text>
             </View>
             <Text style={styles.heroSubText}>
-              Est. Monthly: ₹{(stats.monthSupply * 37.5).toFixed(0)} ({stats.monthSupply.toFixed(1)} L)
+              {ready ? `This month: ${stats.monthSupply.toFixed(2)} L` : 'Awaiting server data'}
             </Text>
           </View>
         </View>
@@ -135,13 +130,18 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#E0F2FE' }]}>
                 <Ionicons name="water" size={20} color="#0284C7" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>TODAY</Text>
+              <Text style={[Typography.caption2, styles.statLabel, { color: colors.textSecondary }]}>TODAY</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
-              {stats.todaySupply > 0 ? `${stats.todaySupply.toFixed(1)} L` : 'Pending'}
+            <Text
+              style={[styles.statNumber, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {ready ? `${stats.todaySupply.toFixed(2)} L` : '—'}
             </Text>
-            <Text style={[Typography.caption2, { color: stats.todaySupply > 0 ? '#16A34A' : colors.textMuted }]}>
-              {stats.todaySupply > 0 ? '✓ Recorded at Society' : 'No delivery recorded yet'}
+            <Text style={[Typography.caption2, styles.statDescription, { color: stats.todaySupply > 0 ? '#16A34A' : colors.textMuted }]}>
+              {!ready ? 'Awaiting server data' : stats.todaySupply > 0 ? '✓ Recorded at Society' : 'No delivery recorded yet'}
             </Text>
           </Card>
 
@@ -151,13 +151,18 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#F0FDF4' }]}>
                 <Ionicons name="calendar" size={20} color="#16A34A" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>PAST 7 DAYS</Text>
+              <Text style={[Typography.caption2, styles.statLabel, { color: colors.textSecondary }]}>PAST 7 DAYS</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
-              {stats.last7DaysSupply.toFixed(1)} L
+            <Text
+              style={[styles.statNumber, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {ready ? `${stats.last7DaysSupply.toFixed(2)} L` : '—'}
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Avg {(stats.last7DaysSupply / 7).toFixed(1)} L / day
+            <Text style={[Typography.caption2, styles.statDescription, { color: colors.textSecondary }]}>
+              {ready ? `Avg ${(stats.last7DaysSupply / 7).toFixed(2)} L / day` : 'Awaiting server data'}
             </Text>
           </Card>
 
@@ -167,13 +172,18 @@ export default function FarmerDashboard() {
               <View style={[styles.statIconBadge, { backgroundColor: '#FAF5FF' }]}>
                 <Ionicons name="ribbon" size={20} color="#9333EA" />
               </View>
-              <Text style={[Typography.caption2, { color: colors.textSecondary, fontWeight: '700' }]}>OCTOBER</Text>
+              <Text style={[Typography.caption2, styles.statLabel, { color: colors.textSecondary }]}>OCTOBER</Text>
             </View>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
-              {stats.monthSupply.toFixed(1)} L
+            <Text
+              style={[styles.statNumber, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {ready ? `${stats.monthSupply.toFixed(2)} L` : '—'}
             </Text>
-            <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-              Est. ₹{(stats.monthSupply * 37.5).toFixed(0)} payout
+            <Text style={[Typography.caption2, styles.statDescription, { color: colors.textSecondary }]}>
+              Confirmed monthly milk collections
             </Text>
           </Card>
         </View>
@@ -236,7 +246,7 @@ export default function FarmerDashboard() {
               return (
                 <View key={index} style={styles.barCol}>
                   <Text style={[styles.barQtyLabel, { color: isToday ? colors.primary : colors.textSecondary }]}>
-                    {d.qty > 0 ? d.qty.toFixed(1) : '-'}
+                    {d.qty > 0 ? d.qty.toFixed(2) : '-'}
                   </Text>
                   <View style={styles.barTrack}>
                     <View
@@ -261,7 +271,7 @@ export default function FarmerDashboard() {
             <View style={styles.emptyBox}>
               <Ionicons name="water-outline" size={32} color={colors.textMuted} />
               <Text style={[Typography.subhead, { color: colors.textSecondary, marginTop: 8 }]}>
-                No record available
+                {ready ? 'No collections recorded yet' : 'Collections not loaded yet'}
               </Text>
             </View>
           ) : (
@@ -302,7 +312,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 128,
   },
   alertBanner: {
     borderRadius: 16,
@@ -330,14 +340,20 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
+    minWidth: 0,
     padding: 12,
   },
   statIconRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
     gap: 8,
+  },
+  statLabel: {
+    alignSelf: 'stretch',
+    minHeight: 26,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontWeight: '700',
   },
   statIconBadge: {
     width: 32,
@@ -349,8 +365,15 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     fontSize: 18,
+    lineHeight: 24,
     fontWeight: '900',
-    marginBottom: 2,
+    fontVariant: ['tabular-nums'],
+    textAlign: 'center',
+    includeFontPadding: false,
+    marginBottom: 4,
+  },
+  statDescription: {
+    textAlign: 'center',
   },
   chartCard: {
     padding: 16,

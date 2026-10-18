@@ -1,0 +1,62 @@
+meta {
+  name: 02 Login BMC
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "phone": "{{bmcPhone}}",
+    "password": "{{bmcPassword}}"
+  }
+}
+
+vars:pre-request {
+  baseUrl: https://aavin.todayworld.in
+  bmcPhone: 8056841007
+  bmcPassword: bmcmelur
+}
+
+script:pre-request {
+  bru.setVar("bmcAccessToken", "");
+  bru.setVar("bmcRefreshToken", "");
+  bru.setVar("accessToken", "");
+  bru.setVar("refreshToken", "");
+  bru.setVar("activeRole", "");
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody().data;
+    if (data.user.role !== "bmc") throw new Error("Expected a bmc account; check the phone number.");
+    bru.setVar("bmcAccessToken", data.accessToken);
+    bru.setVar("bmcRefreshToken", data.refreshToken);
+    bru.setVar("bmcId", data.user.id);
+    bru.setVar("accessToken", data.accessToken);
+    bru.setVar("refreshToken", data.refreshToken);
+    bru.setVar("activeRole", "bmc");
+  }
+}
+
+tests {
+  test("Expected HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Logs in an existing bmc account. Saves role-specific tokens and selects it as the active session. Set credentials in the Local environment. Tokens stay in runtime variables.
+}

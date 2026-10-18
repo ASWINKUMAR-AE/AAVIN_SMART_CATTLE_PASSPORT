@@ -81,6 +81,7 @@ export interface TreatmentRecord {
 
 export interface Cow {
   id: string;
+  backendSynced?: boolean;
   cowId: string; // e.g. COW-MDU-001
   tagId: string; // 12-digit tag, e.g. 100100001001
   farmerId: string;
@@ -169,6 +170,8 @@ export interface AuditEntry {
 }
 
 export interface MilkRecord {
+  backendSynced?: boolean;
+  boothName?: string;
   id: string;
   farmerId?: string; // empty if combined vendor
   farmerName?: string;
@@ -222,6 +225,7 @@ export type BMCDeliveryStatus =
   | 'escalated_to_union';
 
 export interface BMCDelivery {
+  backendSynced?: boolean;
   id: string; // e.g. DEL-2026-001
   boothReceiptId: string;
   boothId: string;
@@ -376,3 +380,6 @@ export interface InAppNotification {
   linkRoute?: string;
   referenceId?: string;
 }
+
+export * from '../services/monitoring/monitoringTypes';
+
