@@ -27,6 +27,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { Typography } from '../../../constants/Typography';
 import { Ionicons } from '@expo/vector-icons';
 import { UnionMonitoringSection } from '../../monitoring/UnionMonitoringSection';
+import { OCRRegisterImportModal } from '../../scanner/OCRRegisterImportModal';
 
 interface UnionDesktopHomeProps {
   onIssueDirective?: () => void;
@@ -52,6 +53,9 @@ export const UnionDesktopHome: React.FC<UnionDesktopHomeProps> = () => {
   const [activeTabFilter, setActiveTabFilter] = useState<'Overview' | 'Booths & Low Yield' | 'MCP Chilling' | 'Herd & Cows' | 'Payments'>('Overview');
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(2); // Default to Wed (middle)
   const [statusMode, setStatusMode] = useState<'sum' | 'percent'>('sum');
+
+  // OCR Register Import Modal (Society/Union Scope)
+  const [ocrModalMode, setOcrModalMode] = useState<'farmers' | 'milk' | null>(null);
 
   // Executive Directive Modal
   const [showDirectiveModal, setShowDirectiveModal] = useState(false);
@@ -228,6 +232,30 @@ export const UnionDesktopHome: React.FC<UnionDesktopHomeProps> = () => {
                 Live District Nodes Synced
               </Text>
             </View>
+
+            <Pressable
+              style={({ hovered }: any) => [
+                styles.dispatchBtn,
+                { backgroundColor: '#0284C7' },
+                hovered && styles.dispatchBtnHovered,
+              ]}
+              onPress={() => setOcrModalMode('farmers')}
+            >
+              <Ionicons name="scan-circle-outline" size={15} color="#FFFFFF" />
+              <Text style={styles.dispatchBtnText}>Create Farmers from OCR</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ hovered }: any) => [
+                styles.dispatchBtn,
+                { backgroundColor: '#16A34A' },
+                hovered && styles.dispatchBtnHovered,
+              ]}
+              onPress={() => setOcrModalMode('milk')}
+            >
+              <Ionicons name="document-text-outline" size={15} color="#FFFFFF" />
+              <Text style={styles.dispatchBtnText}>Enter Milk from OCR</Text>
+            </Pressable>
 
             <Pressable
               style={({ hovered }: any) => [
@@ -1192,6 +1220,13 @@ export const UnionDesktopHome: React.FC<UnionDesktopHomeProps> = () => {
         )}
 
       </View>
+
+      {/* OCR Register Import Modal (Society & Union Scope) */}
+      <OCRRegisterImportModal
+        visible={ocrModalMode !== null}
+        onClose={() => setOcrModalMode(null)}
+        mode={ocrModalMode || 'farmers'}
+      />
 
       {/* =========================================================================
           EXECUTIVE DIRECTIVE MODAL

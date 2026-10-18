@@ -19,6 +19,7 @@ import { submissionKey } from '../../services/dispatchApi';
 import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
 import { indiaDate } from '../../services/milkCollectionsApi';
 import { CollectionRoute, MeasurementMethod } from '../../types/aavin';
+import { OCRRegisterImportModal } from '../../components/scanner/OCRRegisterImportModal';
 
 export default function RecordMilkScreen() {
   const { width, fontScale } = useWindowDimensions();
@@ -28,6 +29,7 @@ export default function RecordMilkScreen() {
   const { vendors, createVendor, createVendorMilk, refresh: refreshWorkflow, error: workflowError, loading: workflowLoading } = useDispatchWorkflow();
   useDispatchRefresh();
   const vendorSubmission = useRef(submissionKey());
+  const [isOcrMilkOpen, setIsOcrMilkOpen] = useState(false);
   const [vendorForm, setVendorForm] = useState(false);
   const [vendorDraft, setVendorDraft] = useState({ code: '', name: '', phone: '', routeName: '', vehicleNumber: '', vehicleType: '' });
   const [vendorSaving, setVendorSaving] = useState(false);
@@ -184,7 +186,20 @@ export default function RecordMilkScreen() {
         {!farmersLoading && !farmersError && assignedFarmers.length === 0 && <Text style={{ color: colors.textSecondary }}>No active farmers assigned. Register a farmer before recording milk.</Text>}
         {workflowError && <Text style={{ color: colors.hold }}>{workflowError}</Text>}
         <Card style={styles.sectionCard}>
-          <Button title={vendorForm ? 'Close Vendor Form' : '+ Add Route Vendor'} variant="outline" onPress={() => setVendorForm(!vendorForm)} />
+          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+            <Button
+              title="Enter Milk from OCR"
+              icon="scan-outline"
+              size="sm"
+              onPress={() => setIsOcrMilkOpen(true)}
+            />
+            <Button
+              title={vendorForm ? 'Close Vendor Form' : '+ Add Route Vendor'}
+              variant="outline"
+              size="sm"
+              onPress={() => setVendorForm(!vendorForm)}
+            />
+          </View>
           {vendorForm && <View style={{ gap: 10, marginTop: 12 }}>
             {(['code', 'name', 'phone', 'routeName', 'vehicleNumber', 'vehicleType'] as const).map(field => (
               <TextField key={field} label={{ code: 'Vendor Code', name: 'Vendor Name', phone: 'Phone', routeName: 'Route Name', vehicleNumber: 'Vehicle Number', vehicleType: 'Vehicle Type' }[field]}
@@ -759,6 +774,16 @@ export default function RecordMilkScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* OCR Register Milk Import Modal */}
+      <OCRRegisterImportModal
+        visible={isOcrMilkOpen}
+        onClose={() => setIsOcrMilkOpen(false)}
+        mode="milk"
+        onSuccess={() => {
+          router.push('/(booth)/review-collection' as any);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

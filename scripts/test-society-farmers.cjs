@@ -65,6 +65,7 @@ function harness(initial = original) {
     '../../components/ui/Card':{Card:'Card'},'../../components/booth/BoothButton':{BoothButton:'Button'},
     '../../components/ui/TextField':{TextField:'TextField'},'@expo/vector-icons':{Ionicons:'Ionicons'},
     '../../components/ui/EmptyState':{EmptyState:'EmptyState'},
+    '../../components/scanner/OCRRegisterImportModal':{OCRRegisterImportModal:()=>null},
   }).default;
   function render(){slot=0;tree=screen();return tree;}
   function* walk(node){

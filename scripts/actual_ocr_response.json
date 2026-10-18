@@ -1,0 +1,436 @@
+{
+  "success": true,
+  "request_id": "ebe838c0-bf09-4fed-97ba-aa8b73936851",
+  "filename": "media_1792322141826.jpg",
+  "content_type": "image/jpeg",
+  "tables": [
+    {
+      "table_index": 0,
+      "table_id": 1,
+      "headers": [
+        "பொருப்பு",
+        "முயர்களையும்",
+        "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+        "3226 8762",
+        "5891",
+        "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+        "91508 70971"
+      ],
+      "headers_detail": [
+        {
+          "original": "பொருப்பு",
+          "display": "பொருப்பு",
+          "original_header": "பொருப்பு",
+          "display_header": "பொருப்பு",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "original": "முயர்களையும்",
+          "display": "முயர்களையும்",
+          "original_header": "முயர்களையும்",
+          "display_header": "முயர்களையும்",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "original": "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+          "display": "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+          "original_header": "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+          "display_header": "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": [
+            "Column '7435 அத்தர் 8692 4216 மண்ணிக்கு' contains data matching 'identifier' (77% consistency); preserved explicit header."
+          ]
+        },
+        {
+          "original": "3226 8762",
+          "display": "3226 8762",
+          "original_header": "3226 8762",
+          "display_header": "3226 8762",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": [
+            "Column '3226 8762' contains data matching 'identifier' (75% consistency); preserved explicit header."
+          ]
+        },
+        {
+          "original": "5891",
+          "display": "5891",
+          "original_header": "5891",
+          "display_header": "5891",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "original": "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+          "display": "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+          "original_header": "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+          "display_header": "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "original": "91508 70971",
+          "display": "91508 70971",
+          "original_header": "91508 70971",
+          "display_header": "91508 70971",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        }
+      ],
+      "rows": [
+        [
+          "",
+          "முடக்குன்",
+          "",
+          "",
+          "",
+          "சேலிலிலையே மேவும்",
+          ""
+        ],
+        [
+          "",
+          "கீட்டியியப்பன்",
+          "4268 5766 322b",
+          "400678 541362,",
+          "Expecced",
+          "துவர் US காட்டிஸ் இயாங்கி",
+          "97876075 30"
+        ],
+        [
+          "",
+          "",
+          "",
+          "1567928610AL,",
+          "",
+          "கிம்பு இவ்லைப்பட்டி",
+          ""
+        ],
+        [
+          "",
+          "",
+          "2",
+          "96 541050723,",
+          "",
+          "",
+          ""
+        ],
+        [
+          "மர்களை கிடுப்பவல்",
+          "",
+          "63214002 7899 100",
+          "ஃபுல் 6652999,",
+          "கிர்பக்",
+          "29, கியமகளுக் பொன்னஸ்",
+          "8682811882"
+        ],
+        [
+          "",
+          "",
+          "",
+          "100346652 9949",
+          "",
+          "பெய்க்கப்புத்தை",
+          ""
+        ],
+        [
+          "",
+          "",
+          "14321",
+          "62 89555,",
+          "",
+          "",
+          ""
+        ],
+        [
+          "நுர்கா",
+          "",
+          "9924 56532001",
+          "உட்டிபட்டப்படை",
+          "இடைப்புக்க்க்கிடெகிட",
+          "அமைப்புக் மிதர 7894",
+          "564311"
+        ],
+        [
+          "",
+          "",
+          "265432",
+          "894 325.",
+          "",
+          "விடுகுளுகிக",
+          ""
+        ],
+        [
+          "மியதினை",
+          "",
+          "543265310079 1446654",
+          "33277,",
+          "கூறவைபடும்",
+          "மிபிவர்கக் 634321",
+          "08050"
+        ],
+        [
+          "",
+          "",
+          "",
+          "144783546469,",
+          "",
+          "இம்வுடம்",
+          ""
+        ],
+        [
+          "",
+          "",
+          "1500",
+          "528956 88,",
+          "",
+          "",
+          ""
+        ],
+        [
+          "யூமொபி",
+          "",
+          "8894 70043264 26784",
+          "6996543. இறவிவு",
+          "மாதி பிரத்தில்",
+          "கேமம்படு 94321 65431",
+          ""
+        ]
+      ],
+      "row_count": 13,
+      "column_count": 7,
+      "columns": [
+        {
+          "key": "பரபப",
+          "label": "பொருப்பு",
+          "original_header": "பொருப்பு",
+          "display_header": "பொருப்பு",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "key": "மயரகளயம",
+          "label": "முயர்களையும்",
+          "original_header": "முயர்களையும்",
+          "display_header": "முயர்களையும்",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "key": "7435_அததர_8692_4216_மணணகக",
+          "label": "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+          "original_header": "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+          "display_header": "7435 அத்தர் 8692 4216 மண்ணிக்கு",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": [
+            "Column '7435 அத்தர் 8692 4216 மண்ணிக்கு' contains data matching 'identifier' (77% consistency); preserved explicit header."
+          ]
+        },
+        {
+          "key": "3226_8762",
+          "label": "3226 8762",
+          "original_header": "3226 8762",
+          "display_header": "3226 8762",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": [
+            "Column '3226 8762' contains data matching 'identifier' (75% consistency); preserved explicit header."
+          ]
+        },
+        {
+          "key": "5891",
+          "label": "5891",
+          "original_header": "5891",
+          "display_header": "5891",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "key": "உனகயம_கறமயய_75_மயலமபட",
+          "label": "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+          "original_header": "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+          "display_header": "உனகியம் கிறமையாய் 75 மெயிலம்படை",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        },
+        {
+          "key": "91508_70971",
+          "label": "91508 70971",
+          "original_header": "91508 70971",
+          "display_header": "91508 70971",
+          "semantic_type": "explicit_text",
+          "confidence": 0.95,
+          "inference_method": "explicit_header",
+          "classification_warnings": []
+        }
+      ],
+      "data": [
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "முடக்குன்",
+          "7435_அததர_8692_4216_மணணகக": "",
+          "3226_8762": "",
+          "உனகயம_கறமயய_75_மயலமபட": "சேலிலிலையே மேவும்",
+          "91508_70971": ""
+        },
+        {
+          "5891": "Expecced",
+          "பரபப": "",
+          "மயரகளயம": "கீட்டியியப்பன்",
+          "7435_அததர_8692_4216_மணணகக": "4268 5766 322b",
+          "3226_8762": "400678 541362,",
+          "உனகயம_கறமயய_75_மயலமபட": "துவர் US காட்டிஸ் இயாங்கி",
+          "91508_70971": "97876075 30"
+        },
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "",
+          "3226_8762": "1567928610AL,",
+          "உனகயம_கறமயய_75_மயலமபட": "கிம்பு இவ்லைப்பட்டி",
+          "91508_70971": ""
+        },
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "2",
+          "3226_8762": "96 541050723,",
+          "உனகயம_கறமயய_75_மயலமபட": "",
+          "91508_70971": ""
+        },
+        {
+          "5891": "கிர்பக்",
+          "பரபப": "மர்களை கிடுப்பவல்",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "63214002 7899 100",
+          "3226_8762": "ஃபுல் 6652999,",
+          "உனகயம_கறமயய_75_மயலமபட": "29, கியமகளுக் பொன்னஸ்",
+          "91508_70971": "8682811882"
+        },
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "",
+          "3226_8762": "100346652 9949",
+          "உனகயம_கறமயய_75_மயலமபட": "பெய்க்கப்புத்தை",
+          "91508_70971": ""
+        },
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "14321",
+          "3226_8762": "62 89555,",
+          "உனகயம_கறமயய_75_மயலமபட": "",
+          "91508_70971": ""
+        },
+        {
+          "5891": "இடைப்புக்க்க்கிடெகிட",
+          "பரபப": "நுர்கா",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "9924 56532001",
+          "3226_8762": "உட்டிபட்டப்படை",
+          "உனகயம_கறமயய_75_மயலமபட": "அமைப்புக் மிதர 7894",
+          "91508_70971": "564311"
+        },
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "265432",
+          "3226_8762": "894 325.",
+          "உனகயம_கறமயய_75_மயலமபட": "விடுகுளுகிக",
+          "91508_70971": ""
+        },
+        {
+          "5891": "கூறவைபடும்",
+          "பரபப": "மியதினை",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "543265310079 1446654",
+          "3226_8762": "33277,",
+          "உனகயம_கறமயய_75_மயலமபட": "மிபிவர்கக் 634321",
+          "91508_70971": "08050"
+        },
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "",
+          "3226_8762": "144783546469,",
+          "உனகயம_கறமயய_75_மயலமபட": "இம்வுடம்",
+          "91508_70971": ""
+        },
+        {
+          "5891": "",
+          "பரபப": "",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "1500",
+          "3226_8762": "528956 88,",
+          "உனகயம_கறமயய_75_மயலமபட": "",
+          "91508_70971": ""
+        },
+        {
+          "5891": "மாதி பிரத்தில்",
+          "பரபப": "யூமொபி",
+          "மயரகளயம": "",
+          "7435_அததர_8692_4216_மணணகக": "8894 70043264 26784",
+          "3226_8762": "6996543. இறவிவு",
+          "உனகயம_கறமயய_75_மயலமபட": "கேமம்படு 94321 65431",
+          "91508_70971": ""
+        }
+      ],
+      "confidence": 0.94,
+      "detection_strategy": "bbox_clustering",
+      "is_uncertain": false,
+      "warnings": [
+        "Column '7435 அத்தர் 8692 4216 மண்ணிக்கு' contains data matching 'identifier' (77% consistency); preserved explicit header.",
+        "Column '3226 8762' contains data matching 'identifier' (75% consistency); preserved explicit header."
+      ],
+      "html": "<div class=\"ocr-table-container\">\n  <table class=\"ocr-rendered-table\" data-table-index=\"0\" data-strategy=\"bbox_clustering\">\n    <thead>\n      <tr>\n        <th scope=\"col\" data-col-idx=\"0\" contenteditable=\"true\" data-semantic-type=\"explicit_text\" data-inference-method=\"explicit_header\" title=\"Click to rename\">பொருப்பு</th>\n        <th scope=\"col\" data-col-idx=\"1\" contenteditable=\"true\" data-semantic-type=\"explicit_text\" data-inference-method=\"explicit_header\" title=\"Click to rename\">முயர்களையும்</th>\n        <th scope=\"col\" data-col-idx=\"2\" contenteditable=\"true\" data-semantic-type=\"explicit_text\" data-inference-method=\"explicit_header\" title=\"Column &#x27;7435 அத்தர் 8692 4216 மண்ணிக்கு&#x27; contains data matching &#x27;identifier&#x27; (77% consistency); preserved explicit header.\">7435 அத்தர் 8692 4216 மண்ணிக்கு <span class=\"th-warn-icon\" title=\"Review note\">⚠️</span></th>\n        <th scope=\"col\" data-col-idx=\"3\" contenteditable=\"true\" data-semantic-type=\"explicit_text\" data-inference-method=\"explicit_header\" title=\"Column &#x27;3226 8762&#x27; contains data matching &#x27;identifier&#x27; (75% consistency); preserved explicit header.\">3226 8762 <span class=\"th-warn-icon\" title=\"Review note\">⚠️</span></th>\n        <th scope=\"col\" data-col-idx=\"4\" contenteditable=\"true\" data-semantic-type=\"explicit_text\" data-inference-method=\"explicit_header\" title=\"Click to rename\">5891</th>\n        <th scope=\"col\" data-col-idx=\"5\" contenteditable=\"true\" data-semantic-type=\"explicit_text\" data-inference-method=\"explicit_header\" title=\"Click to rename\">உனகியம் கிறமையாய் 75 மெயிலம்படை</th>\n        <th scope=\"col\" data-col-idx=\"6\" contenteditable=\"true\" data-semantic-type=\"explicit_text\" data-inference-method=\"explicit_header\" title=\"Click to rename\">91508 70971</th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr data-row-idx=\"0\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">முடக்குன்</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">சேலிலிலையே மேவும்</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"1\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">கீட்டியியப்பன்</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">4268 5766 322b</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">400678 541362,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">Expecced</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">துவர் US காட்டிஸ் இயாங்கி</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">97876075 30</td>\n      </tr>\n      <tr data-row-idx=\"2\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">1567928610AL,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">கிம்பு இவ்லைப்பட்டி</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"3\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">2</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">96 541050723,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"4\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">மர்களை கிடுப்பவல்</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">63214002 7899 100</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">ஃபுல் 6652999,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">கிர்பக்</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">29, கியமகளுக் பொன்னஸ்</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">8682811882</td>\n      </tr>\n      <tr data-row-idx=\"5\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">100346652 9949</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">பெய்க்கப்புத்தை</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"6\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">14321</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">62 89555,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"7\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">நுர்கா</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">9924 56532001</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">உட்டிபட்டப்படை</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">இடைப்புக்க்க்கிடெகிட</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">அமைப்புக் மிதர 7894</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">564311</td>\n      </tr>\n      <tr data-row-idx=\"8\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">265432</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">894 325.</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">விடுகுளுகிக</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"9\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">மியதினை</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">543265310079 1446654</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">33277,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">கூறவைபடும்</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">மிபிவர்கக் 634321</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">08050</td>\n      </tr>\n      <tr data-row-idx=\"10\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">144783546469,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">இம்வுடம்</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"11\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">1500</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">528956 88,</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n      <tr data-row-idx=\"12\">\n        <td data-col-idx=\"0\" contenteditable=\"true\">யூமொபி</td>\n        <td data-col-idx=\"1\" contenteditable=\"true\">&nbsp;</td>\n        <td data-col-idx=\"2\" contenteditable=\"true\">8894 70043264 26784</td>\n        <td data-col-idx=\"3\" contenteditable=\"true\">6996543. இறவிவு</td>\n        <td data-col-idx=\"4\" contenteditable=\"true\">மாதி பிரத்தில்</td>\n        <td data-col-idx=\"5\" contenteditable=\"true\">கேமம்படு 94321 65431</td>\n        <td data-col-idx=\"6\" contenteditable=\"true\">&nbsp;</td>\n      </tr>\n    </tbody>\n  </table>\n</div>",
+      "detected_languages": [
+        "ta"
+      ],
+      "unassigned_text": "கியகாமின் பிரப்பண்டு டப்பிட ஆருகர் பக்ஷின் டுருவமி பிரமையும்"
+    }
+  ],
+  "extracted_text": "அள்ளக் None கியகாமின் பிரப்பண்டு டப்பிட ஆருகர் பக்ஷின் டுருவமி பிரமையும் ரினேப்\nபொருப்பு முடக்குன் முயர்களையும் 7435 அத்தர் 8692 4216 மண்ணிக்கு 3226 8762 5891 உனகியம் கிறமையாய் 75 மெயிலம்படை 91508 70971\nசேலிலிலையே மேவும்\nகீட்டியியப்பன் 4268 5766 322b 400678 541362, Expecced துவர் US காட்டிஸ் இயாங்கி 97876075 30\n1567928610AL, கிம்பு இவ்லைப்பட்டி\n2 96 541050723,\nமர்களை கிடுப்பவல் 63214002 7899 100 ஃபுல் 6652999, கிர்பக் 29, கியமகளுக் பொன்னஸ் 8682811882\n100346652 9949 பெய்க்கப்புத்தை\n14321 62 89555,\n12264322 ர்மிடி\nபட்டப்பட்டம்\nநுர்கா 9924 56532001 உட்டிபட்டப்படை இடைப்புக்க்க்கிடெகிட அமைப்புக் மிதர 7894 564311\n265432 894 325. விடுகுளுகிக\nமியதினை 543265310079 1446654 33277, கூறவைபடும் மிபிவர்கக் 634321 08050\n144783546469, இம்வுடம்\n182467894379\n1500 528956 88,\nயூமொபி 8894 70043264 26784 6996543. இறவிவு மாதி பிரத்தில் கேமம்படு 94321 65431\nபிடக்கிறப்பட்டி",
+  "metadata": {
+    "ocr_engine": "ocr-tamil",
+    "preprocessing_applied": true,
+    "processing_time_ms": 19814.27,
+    "image_dimensions": {
+      "width": 1024,
+      "height": 768
+    }
+  },
+  "warnings": []
+}

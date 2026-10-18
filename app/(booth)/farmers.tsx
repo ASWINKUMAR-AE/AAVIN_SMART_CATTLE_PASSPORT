@@ -29,6 +29,7 @@ import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { TextField } from '../../components/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { OCRRegisterImportModal } from '../../components/scanner/OCRRegisterImportModal';
 import { Farmer, Cow } from '../../types/aavin';
 
 export default function BoothFarmersScreen() {
@@ -67,6 +68,9 @@ export default function BoothFarmersScreen() {
     });
     return () => { active = false; };
   }, [user?.role, user?.associatedId, replaceSocietyFarmers, loadAttempt]));
+
+  // OCR Register Import Modal State
+  const [isOcrImportOpen, setIsOcrImportOpen] = useState(false);
 
   // New Farmer & Cattle Registration Modal State (Booth Operator Flow)
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -492,11 +496,24 @@ export default function BoothFarmersScreen() {
           )}
         </View>
 
-        <Button
-          title="+ Register Farmer"
-          size="sm"
-          onPress={handleOpenRegisterModal}
-        />
+        <View style={styles.actionButtonsRow}>
+          <Button
+            title="Create Farmers from OCR"
+            size="sm"
+            variant="outline"
+            icon="scan-outline"
+            onPress={() => setIsOcrImportOpen(true)}
+            style={styles.halfWidthButton}
+            textStyle={styles.halfWidthButtonText}
+          />
+          <Button
+            title="+ Register Farmer"
+            size="sm"
+            onPress={handleOpenRegisterModal}
+            style={styles.halfWidthButton}
+            textStyle={styles.halfWidthButtonText}
+          />
+        </View>
       </View>
 
       {/* Filter Chips Bar */}
@@ -1311,6 +1328,20 @@ export default function BoothFarmersScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* OCR Register Import Modal */}
+      <OCRRegisterImportModal
+        visible={isOcrImportOpen}
+        onClose={() => setIsOcrImportOpen(false)}
+        mode="farmers"
+        onSuccess={() => {
+          AccountsApi.listFarmers().then(accounts => {
+            const domainFarmers = accounts.map(mapFarmer);
+            const domainCows = accounts.flatMap(account => mapCows(account) || []);
+            replaceSocietyFarmers(boothId, domainFarmers, domainCows);
+          }).catch(console.warn);
+        }}
+      />
+
       {/* Register New Farmer & Cattle Slider Modal (Booth Operator Flow) */}
       <Modal
         visible={isRegisterModalOpen}
@@ -1779,11 +1810,26 @@ const createStyles = (width: number, fontScale: number, height: number) => {
       minWidth: 0,
     },
     topBar: {
-      flexDirection: compact ? 'column' : 'row',
-      alignItems: compact ? 'stretch' : 'center',
+      flexDirection: 'column',
+      alignItems: 'stretch',
       padding: 14,
-      gap: 10,
+      gap: 12,
       borderBottomWidth: 1,
+    },
+    actionButtonsRow: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    halfWidthButton: {
+      flex: 1,
+      minWidth: 0,
+      paddingHorizontal: 8,
+    },
+    halfWidthButtonText: {
+      fontSize: width < 380 ? 12 : 13,
+      textAlign: 'center',
     },
     searchBox: {
       minHeight: 44,

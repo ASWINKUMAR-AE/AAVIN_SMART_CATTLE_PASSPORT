@@ -34,6 +34,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemeColors } from '../../constants/Colors';
 import { UnionDesktopHome } from '../../components/union/desktop/UnionDesktopHome';
 import { UnionMonitoringSection } from '../../components/monitoring/UnionMonitoringSection';
+import { OCRRegisterImportModal } from '../../components/scanner/OCRRegisterImportModal';
 
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 
@@ -68,6 +69,9 @@ export default function UnionDashboard() {
   const [activeTabFilter, setActiveTabFilter] = useState<'Overview' | 'Booths & Low Yield' | 'MCP Chilling' | 'Herd & Cows' | 'Payments'>('Overview');
   const [statusMode, setStatusMode] = useState<'sum' | 'percent'>('sum');
   const [trendRange, setTrendRange] = useState<'Daily' | 'Weekly'>('Daily');
+
+  // OCR Register Import Modal State
+  const [ocrModalMode, setOcrModalMode] = useState<'farmers' | 'milk' | null>(null);
 
   // Directive Modal state (Input Fields & Actions)
   const [showDirectiveModal, setShowDirectiveModal] = useState(false);
@@ -289,13 +293,31 @@ export default function UnionDashboard() {
               </Text>
             </View>
 
-            <Pressable
-              style={[styles.newTaskBtn, isMobile && styles.mobileNewTaskBtn]}
-              onPress={() => setShowDirectiveModal(true)}
-            >
-              <Ionicons name="add" size={17} color={isDark ? '#09121E' : '#FFFFFF'} />
-              <Text style={styles.newTaskBtnText}>New Directive</Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Pressable
+                style={[styles.newTaskBtn, { backgroundColor: '#0284C7' }, isMobile && styles.mobileNewTaskBtn]}
+                onPress={() => setOcrModalMode('farmers')}
+              >
+                <Ionicons name="scan-circle-outline" size={15} color="#FFFFFF" />
+                <Text style={[styles.newTaskBtnText, { color: '#FFFFFF' }]}>Farmers OCR</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.newTaskBtn, { backgroundColor: '#16A34A' }, isMobile && styles.mobileNewTaskBtn]}
+                onPress={() => setOcrModalMode('milk')}
+              >
+                <Ionicons name="document-text-outline" size={15} color="#FFFFFF" />
+                <Text style={[styles.newTaskBtnText, { color: '#FFFFFF' }]}>Milk OCR</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.newTaskBtn, isMobile && styles.mobileNewTaskBtn]}
+                onPress={() => setShowDirectiveModal(true)}
+              >
+                <Ionicons name="add" size={17} color={isDark ? '#09121E' : '#FFFFFF'} />
+                <Text style={styles.newTaskBtnText}>New Directive</Text>
+              </Pressable>
+            </View>
           </View>
 
           {/* URGENT EXECUTIVE AUDIT BANNER */}
@@ -1372,6 +1394,13 @@ export default function UnionDashboard() {
           </View>
         </View>
       </Modal>
+
+      {/* OCR Register Import Modal (Society & Union Scope) */}
+      <OCRRegisterImportModal
+        visible={ocrModalMode !== null}
+        onClose={() => setOcrModalMode(null)}
+        mode={ocrModalMode || 'farmers'}
+      />
 
     </View>
   );

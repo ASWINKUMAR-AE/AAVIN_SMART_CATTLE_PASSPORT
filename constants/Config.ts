@@ -9,6 +9,7 @@ const getDefaultApiUrl = () => {
 
 export const Config = {
   DEFAULT_API_URL: getDefaultApiUrl(),
+  DEFAULT_OCR_URL: process.env.EXPO_PUBLIC_OCR_API_URL || 'http://106.51.21.4/api/v1/ocr/table',
   STORAGE_KEYS: {
     API_URL: 'aavin_api_url',
     AUTH_TOKEN: 'aavin_auth_token',
