@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, Pressable, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, View, Text, FlatList, Pressable, TextInput, BackHandler } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { SmartCattleTagScannerModal } from '../../components/scanner/SmartCattleTagScannerModal';
 
 export default function CattleRegistryScreen() {
+  const params = useLocalSearchParams();
   const { cows } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
@@ -18,6 +19,22 @@ export default function CattleRegistryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'under_treatment' | 'healthy'>('all');
   const [scannerVisible, setScannerVisible] = useState(false);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(veterinary)' as any);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
 
   const filteredCows = cows.filter(c => {
     if (searchQuery.trim()) {
@@ -39,6 +56,7 @@ export default function CattleRegistryScreen() {
         title="District Cattle Registry"
         subtitle={`${cows.length} Bovines in Veterinary Surveillance Grid`}
         showBack
+        onBack={handleBack}
       />
 
       <View style={[styles.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -100,7 +118,10 @@ export default function CattleRegistryScreen() {
         renderItem={({ item }) => {
           const hasWithdrawal = item.activeWithdrawal?.hasActiveWithdrawal;
           return (
-            <Pressable onPress={() => router.push(`/(veterinary)/cow-details?cowId=${item.id}` as any)}>
+            <Pressable onPress={() => router.push({
+              pathname: '/(veterinary)/cow-details',
+              params: { cowId: item.id, tagId: item.tagId, from: 'cattle' },
+            } as any)}>
               <Card style={[styles.card, hasWithdrawal && { borderColor: '#EF4444', borderWidth: 1.5 }]}>
                 <View style={styles.headerRow}>
                   <View style={{ flex: 1 }}>
@@ -156,8 +177,8 @@ export default function CattleRegistryScreen() {
         onScan={(tagId) => {
           setScannerVisible(false);
           router.push({
-            pathname: '/cow-details',
-            params: { tagId },
+            pathname: '/(veterinary)/cow-details',
+            params: { tagId, from: 'cattle' },
           } as any);
         }}
         userRoleLabel="Veterinary Doctor"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAavinStore } from '../store/AavinStoreContext';
@@ -64,6 +65,42 @@ export default function UniversalCowDetailsScreen() {
     return () => { isMounted = false; };
   }, [queryTag]);
 
+  // Robust layer-by-layer back navigation handler
+  const handleBack = useCallback(() => {
+    const fromParam = (params.from as string) || '';
+    if (fromParam === 'cattle' || fromParam === 'cattle-registry') {
+      router.replace('/(veterinary)/cattle-registry' as any);
+      return;
+    }
+    if (fromParam === 'home' || fromParam === 'index') {
+      router.replace('/(veterinary)' as any);
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    // Safe role-based fallback
+    if (activeRole === 'veterinary') {
+      router.replace('/(veterinary)/cattle-registry' as any);
+    } else if (activeRole === 'farmer') {
+      router.replace('/(farmer)/cows' as any);
+    } else if (activeRole === 'booth') {
+      router.replace('/(booth)/farmers' as any);
+    } else {
+      router.back();
+    }
+  }, [params.from, router, activeRole]);
+
+  // Hardware back button support for Android
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
+
   // Find exact cow from backend data or local store
   const cow = backendCow || (queryTag
     ? cows.find(
@@ -107,6 +144,7 @@ export default function UniversalCowDetailsScreen() {
           title={queryTag ? `Tag #${queryTag}` : 'Cattle Registry'}
           subtitle="Aavin Cattle Registry Search"
           showBack
+          onBack={handleBack}
         />
         <View style={styles.unregisteredContainer}>
           <Card style={styles.unregisteredCard}>
@@ -201,6 +239,7 @@ export default function UniversalCowDetailsScreen() {
         title={cow.name}
         subtitle={`Digital Passport • Pashu Aadhaar #${cow.tagId}`}
         showBack
+        onBack={handleBack}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -314,14 +353,30 @@ export default function UniversalCowDetailsScreen() {
                 <Button
                   title="Prescribe Rx"
                   size="sm"
-                  onPress={() => router.push('/(veterinary)/treatment-entry' as any)}
+                  onPress={() => router.push({
+                    pathname: '/(veterinary)/treatment-entry',
+                    params: {
+                      cowId: cow.id,
+                      tagId: cow.tagId,
+                      from: 'cow-details',
+                      returnFrom: params.from || 'cattle',
+                    },
+                  } as any)}
                   style={{ flex: 1 }}
                 />
                 <Button
                   title="Clinical Exam"
                   variant="secondary"
                   size="sm"
-                  onPress={() => router.push('/(veterinary)/examination-entry' as any)}
+                  onPress={() => router.push({
+                    pathname: '/(veterinary)/examination-entry',
+                    params: {
+                      cowId: cow.id,
+                      tagId: cow.tagId,
+                      from: 'cow-details',
+                      returnFrom: params.from || 'cattle',
+                    },
+                  } as any)}
                   style={{ flex: 1 }}
                 />
               </>

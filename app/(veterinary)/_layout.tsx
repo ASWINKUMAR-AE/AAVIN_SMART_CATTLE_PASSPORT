@@ -10,6 +10,7 @@ export default function VeterinaryLayout() {
   return (
     <Tabs
       tabBar={(props) => <FloatingAavinTabBar {...props} />}
+      backBehavior="history"
       screenOptions={{
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.primary,

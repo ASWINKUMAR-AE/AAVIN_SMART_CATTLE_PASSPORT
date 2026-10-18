@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable, BackHandler } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { goBackOrReplace } from '../../services/navigation';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
@@ -13,12 +13,66 @@ import { TextField } from '../../components/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ExaminationEntryScreen() {
+  const params = useLocalSearchParams();
   const { user } = useAuth();
   const { cows, addMedicalRecord } = useAavinStore();
   const { colors } = useTheme();
   const router = useRouter();
 
-  const [selectedCowId, setSelectedCowId] = useState(cows[0]?.id || 'COW001');
+  const initialCowId = (params.cowId as string) || (params.tagId as string);
+  const [selectedCowId, setSelectedCowId] = useState(
+    initialCowId || cows[0]?.id || 'COW001'
+  );
+
+  // Sync selected cow if incoming cowId/tagId parameter changes
+  useEffect(() => {
+    const incomingId = (params.cowId as string) || (params.tagId as string);
+    if (incomingId) {
+      const found = cows.find(c => c.id === incomingId || c.tagId === incomingId || c.cowId === incomingId);
+      if (found) {
+        setSelectedCowId(found.id);
+      }
+    }
+  }, [params.cowId, params.tagId, cows]);
+
+  // Layer-by-layer back navigation: returns to cow details if entered from passport
+  const handleBack = useCallback(() => {
+    const fromParam = (params.from as string) || '';
+    const targetCowId = (params.cowId as string) || selectedCowId;
+    const returnFrom = (params.returnFrom as string) || 'cattle';
+
+    if (fromParam === 'cow-details' || (params.cowId && fromParam !== 'home')) {
+      router.replace({
+        pathname: '/(veterinary)/cow-details',
+        params: {
+          cowId: targetCowId,
+          from: returnFrom,
+        },
+      } as any);
+      return;
+    }
+
+    if (fromParam === 'home' || fromParam === 'index') {
+      router.replace('/(veterinary)' as any);
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/(veterinary)' as any);
+  }, [params.from, params.cowId, params.returnFrom, selectedCowId, router]);
+
+  // Hardware back button for Android
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
 
   // Examination fields
   const [diagnosis, setDiagnosis] = useState('Routine Bovine Lactation Checkup');
@@ -58,7 +112,17 @@ export default function ExaminationEntryScreen() {
         [
           {
             text: 'View Passport',
-            onPress: () => router.push(`/(veterinary)/cow-details?cowId=${selectedCow.id}` as any),
+            onPress: () => router.replace({
+              pathname: '/(veterinary)/cow-details',
+              params: {
+                cowId: selectedCow.id,
+                from: (params.returnFrom as string) || 'cattle',
+              },
+            } as any),
+          },
+          {
+            text: 'Done',
+            onPress: handleBack,
           },
         ]
       );
@@ -77,6 +141,7 @@ export default function ExaminationEntryScreen() {
         title="Clinical Examination Entry"
         subtitle="Health Audit & Bovine Diagnostics"
         showBack
+        onBack={handleBack}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">

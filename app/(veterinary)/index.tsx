@@ -96,7 +96,10 @@ export default function VeterinaryDashboard() {
             cowsWithWithdrawal.map((c) => (
               <Pressable
                 key={c.id}
-                onPress={() => router.push(`/(veterinary)/cow-details?cowId=${c.id}` as any)}
+                onPress={() => router.push({
+                  pathname: '/(veterinary)/cow-details',
+                  params: { cowId: c.id, tagId: c.tagId, from: 'home' },
+                } as any)}
                 style={styles.cowSurveillanceItem}
               >
                 <View style={[styles.statusIndicator, { backgroundColor: '#DC2626' }]} />
@@ -175,17 +178,26 @@ export default function VeterinaryDashboard() {
             title="💊 Prescribe Treatment & Set Withdrawal Period"
             size="lg"
             variant="outline"
-            onPress={() => router.push('/(veterinary)/treatment-entry' as any)}
+            onPress={() => router.push({
+              pathname: '/(veterinary)/treatment-entry',
+              params: { from: 'home' },
+            } as any)}
           />
           <Button
             title="🩺 Perform Clinical Examination"
             variant="secondary"
-            onPress={() => router.push('/(veterinary)/examination-entry' as any)}
+            onPress={() => router.push({
+              pathname: '/(veterinary)/examination-entry',
+              params: { from: 'home' },
+            } as any)}
           />
           <Button
             title="🔍 Search & Browse Cattle Registry"
             variant="outline"
-            onPress={() => router.push('/(veterinary)/cattle-registry' as any)}
+            onPress={() => router.push({
+              pathname: '/(veterinary)/cattle-registry',
+              params: { from: 'home' },
+            } as any)}
           />
         </View>
       </ScrollView>
@@ -196,8 +208,8 @@ export default function VeterinaryDashboard() {
         onScan={(tagId) => {
           setScannerVisible(false);
           router.push({
-            pathname: '/cow-details',
-            params: { tagId },
+            pathname: '/(veterinary)/cow-details',
+            params: { tagId, from: 'home' },
           } as any);
         }}
         userRoleLabel="Veterinary Doctor"
