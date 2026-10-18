@@ -2,10 +2,11 @@ import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
-  Text,
+  Text as NativeText,
+  type TextProps,
   Pressable,
   ActivityIndicator,
-  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -14,8 +15,6 @@ import { useAavinStore } from '../../store/AavinStoreContext';
 import { indiaDate } from '../../services/milkCollectionsApi';
 import {
   FarmerBatchMonitoringResult,
-  FarmerDailyMonitoringSummary,
-  MonitoringBatch,
   MilkMonitoringAlert,
 } from '../../services/monitoring/monitoringTypes';
 import { FarmerMonitoringDetailModal } from './FarmerMonitoringDetailModal';
@@ -25,22 +24,32 @@ interface SocietyMonitoringSectionProps {
   societyName: string;
 }
 
+// Keep Android's extra font padding from shifting labels relative to icons and values.
+const Text = ({ style, ...props }: TextProps) => (
+  <NativeText {...props} style={[styles.textBase, style]} />
+);
+
 export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> = ({
   societyId,
   societyName,
 }) => {
   const { colors } = useTheme();
+  const { width, fontScale } = useWindowDimensions();
+  const [sectionWidth, setSectionWidth] = useState<number | null>(null);
+  // Measure the card, since a tablet may show it inside a narrow dashboard column.
+  const readableWidth = Math.max(0, (sectionWidth ?? width - 32) - 34) / fontScale;
+  const compact = readableWidth < 600;
+  const narrow = readableWidth < 260;
   const {
     getSocietyMonitoringSummary,
     runBatchMonitoring,
     reviewMonitoringAlert,
     resolveMonitoringAlert,
     escalateMonitoringAlert,
-    monitoringConfig,
   } = useAavinStore();
 
   const [selectedTab, setSelectedTab] = useState<'morning' | 'evening' | 'daily'>('morning');
-  const [selectedDate, setSelectedDate] = useState<string>(indiaDate());
+  const [selectedDate] = useState<string>(indiaDate());
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [detailResult, setDetailResult] = useState<FarmerBatchMonitoringResult | null>(null);
   const [activeAlert, setActiveAlert] = useState<MilkMonitoringAlert | null>(null);
@@ -111,17 +120,21 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
   const activeAlertsCount = summary.alerts.filter(a => a.status === 'active' || a.status === 'escalated_to_union').length;
 
   return (
-    <View style={[styles.sectionContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View
+      testID="society-milk-monitoring"
+      onLayout={event => setSectionWidth(event.nativeEvent.layout.width)}
+      style={[styles.sectionContainer, { backgroundColor: colors.card, borderColor: colors.border }]}
+    >
       {/* Section Header */}
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="analytics" size={20} color={colors.primary} />
-            <Text style={[Typography.title3, { color: colors.text, fontWeight: '800' }]}>
-              Morning & Evening Milk Monitoring
-            </Text>
-          </View>
-          <Text style={[Typography.caption2, { color: colors.textSecondary, marginTop: 2 }]}>
+      <View style={[styles.headerRow, compact && styles.headerStack]}>
+        <View style={[styles.headerCopy, compact && styles.headerCopyCompact]}>
+          <Text style={[Typography.footnote, styles.eyebrow, { color: colors.primary }]}>
+            Morning & Evening
+          </Text>
+          <Text accessibilityRole="header" style={[Typography.title3, styles.title, { color: colors.text }]}>
+            Milk Monitoring
+          </Text>
+          <Text style={[Typography.footnote, styles.subtitle, { color: colors.textSecondary }]}>
             Cow-wise yield baselines • Dual-batch shortfall checks • Society escalation
           </Text>
         </View>
@@ -129,7 +142,10 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
         <Pressable
           onPress={handleEvaluateCutoff}
           disabled={isEvaluating}
-          style={[styles.recalcBtn, { backgroundColor: colors.primary }]}
+          accessibilityRole="button"
+          accessibilityLabel="Recalculate milk monitoring"
+          accessibilityState={{ disabled: isEvaluating, busy: isEvaluating }}
+          style={[styles.recalcBtn, compact && styles.recalcBtnCompact, { backgroundColor: colors.primary }]}
         >
           {isEvaluating ? (
             <ActivityIndicator size="small" color="#FFF" />
@@ -142,125 +158,68 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
         </Pressable>
       </View>
 
-      {/* Overview Cards */}
-      <View style={[styles.overviewRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
-        <View style={styles.overviewCol}>
-          <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Total Expected</Text>
-          <Text style={[Typography.headline, { color: colors.primary, fontWeight: '800' }]}>
-            {totalExpected.toFixed(1)} L
-          </Text>
-        </View>
-        <View style={styles.vDivider} />
-        <View style={styles.overviewCol}>
-          <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Total Verified</Text>
-          <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-            {totalActual.toFixed(1)} L
-          </Text>
-        </View>
-        <View style={styles.vDivider} />
-        <View style={styles.overviewCol}>
-          <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Active Alerts</Text>
-          <Text
-            style={[
-              Typography.headline,
-              { color: activeAlertsCount > 0 ? '#EF4444' : '#10B981', fontWeight: '800' },
-            ]}
-          >
-            {activeAlertsCount}
-          </Text>
-        </View>
-        <View style={styles.vDivider} />
-        <View style={styles.overviewCol}>
-          <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Cutoff Schedule</Text>
-          <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
-            M: {monitoringConfig.morningCutoffTime} | E: {monitoringConfig.eveningCutoffTime}
-          </Text>
-        </View>
+      {/* Full-width rows keep every label and value on the same alignment rails. */}
+      <View style={[styles.overviewPanel, { backgroundColor: colors.background, borderColor: colors.border }]}>
+        {[
+          { label: 'Total Expected', value: totalExpected.toFixed(1) + ' L', color: colors.primary },
+          { label: 'Total Verified', value: totalActual.toFixed(1) + ' L', color: colors.text },
+          { label: 'Active Alerts', value: String(activeAlertsCount), color: activeAlertsCount > 0 ? '#EF4444' : '#10B981' },
+        ].map((metric, index) => (
+          <View key={metric.label} testID="monitoring-metric-row" style={[
+            styles.metricRow, narrow && styles.metricRowStack,
+            index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+          ]}>
+            <Text style={[Typography.footnote, styles.metricLabel, narrow && styles.metricLabelStack, { color: colors.textSecondary }]}>{metric.label}</Text>
+            <Text style={[Typography.title3, styles.metricValue, narrow && styles.metricValueStack, { color: metric.color }]}>
+              {metric.value}
+            </Text>
+          </View>
+        ))}
+
       </View>
 
-      {/* Tabs Row */}
-      <View style={styles.tabsRow}>
-        <Pressable
-          onPress={() => setSelectedTab('morning')}
-          style={[
-            styles.tabBtn,
-            selectedTab === 'morning' && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
-          ]}
-        >
-          <Ionicons
-            name="sunny-outline"
-            size={16}
-            color={selectedTab === 'morning' ? colors.primary : colors.textSecondary}
-          />
-          <Text
-            style={[
-              Typography.subhead,
-              {
-                color: selectedTab === 'morning' ? colors.primary : colors.textSecondary,
-                fontWeight: selectedTab === 'morning' ? '800' : '600',
-              },
-            ]}
-          >
-            Morning Batch
-          </Text>
-        </Pressable>
+      {/* Each tab owns its full label, including when text is enlarged. */}
+      <View accessibilityRole="tablist" style={[styles.tabsRow, narrow && styles.tabsStack]}>
+        {([
+          { key: 'morning', label: 'Morning', icon: 'sunny-outline' },
+          { key: 'evening', label: 'Evening', icon: 'moon-outline' },
+          { key: 'daily', label: 'Daily', icon: 'calendar-outline' },
+        ] as const).map(tab => {
+          const selected = selectedTab === tab.key;
+          return (
+            <Pressable
+              key={tab.key}
+              accessibilityRole="tab"
+              accessibilityLabel={tab.label}
+              accessibilityState={{ selected }}
+              onPress={() => setSelectedTab(tab.key)}
+              style={[
+                styles.tabBtn,
+                narrow && styles.tabBtnStack,
+                { borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected ? colors.background : 'transparent' },
+              ]}
+            >
+              <View style={styles.tabIcon}>
+                <Ionicons name={tab.icon} size={18} color={selected ? colors.primary : colors.textSecondary} />
+              </View>
+              <View style={[styles.tabCopy, narrow && styles.tabCopyStack]}>
+                <Text style={[Typography.footnote, styles.tabLabel, narrow && styles.tabLabelStack,
+                  { color: selected ? colors.primary : colors.textSecondary }]}>
+                  {tab.label}
+                </Text>
 
-        <Pressable
-          onPress={() => setSelectedTab('evening')}
-          style={[
-            styles.tabBtn,
-            selectedTab === 'evening' && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
-          ]}
-        >
-          <Ionicons
-            name="moon-outline"
-            size={16}
-            color={selectedTab === 'evening' ? colors.primary : colors.textSecondary}
-          />
-          <Text
-            style={[
-              Typography.subhead,
-              {
-                color: selectedTab === 'evening' ? colors.primary : colors.textSecondary,
-                fontWeight: selectedTab === 'evening' ? '800' : '600',
-              },
-            ]}
-          >
-            Evening Batch
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setSelectedTab('daily')}
-          style={[
-            styles.tabBtn,
-            selectedTab === 'daily' && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
-          ]}
-        >
-          <Ionicons
-            name="calendar-outline"
-            size={16}
-            color={selectedTab === 'daily' ? colors.primary : colors.textSecondary}
-          />
-          <Text
-            style={[
-              Typography.subhead,
-              {
-                color: selectedTab === 'daily' ? colors.primary : colors.textSecondary,
-                fontWeight: selectedTab === 'daily' ? '800' : '600',
-              },
-            ]}
-          >
-            Daily Summary
-          </Text>
-        </Pressable>
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
 
       {/* Batch Specific List or Daily Summary */}
       {selectedTab !== 'daily' ? (
         <View style={styles.tableWrapper}>
           {activeBatchResults.length === 0 ? (
-            <Text style={[Typography.caption1, { color: colors.textSecondary, textAlign: 'center', padding: 16 }]}>
+            <Text style={[Typography.caption1, styles.emptyText, { color: colors.textSecondary }]}>
               No farmers assigned to this society yet.
             </Text>
           ) : (
@@ -273,10 +232,10 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
                   { backgroundColor: colors.background, borderColor: colors.border },
                 ]}
               >
-                <View style={styles.farmerCardMain}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                <View style={[styles.farmerCardMain, compact && styles.farmerCardMainCompact]}>
+                  <View style={[styles.farmerInfo, compact && styles.farmerInfoCompact]}>
+                    <View style={styles.farmerNameRow}>
+                      <Text style={[Typography.subhead, styles.farmerName, { color: colors.text, fontWeight: '800' }]}>
                         {farmerResult.farmerName}
                       </Text>
                       {getStatusBadge(farmerResult.severity)}
@@ -289,7 +248,7 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
                     </Text>
                   </View>
 
-                  <View style={styles.quantityBox}>
+                  <View style={[styles.quantityBox, compact && styles.quantityBoxCompact]}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                       Exp: <Text style={{ fontWeight: '700', color: colors.text }}>{farmerResult.expectedBatchLitres.toFixed(1)}L</Text>
                     </Text>
@@ -313,7 +272,7 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
         /* Daily Summary View */
         <View style={styles.tableWrapper}>
           {summary.daily.length === 0 ? (
-            <Text style={[Typography.caption1, { color: colors.textSecondary, textAlign: 'center', padding: 16 }]}>
+            <Text style={[Typography.caption1, styles.emptyText, { color: colors.textSecondary }]}>
               No daily data available.
             </Text>
           ) : (
@@ -326,28 +285,26 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
                 ]}
               >
                 <View style={styles.dailyCardHeader}>
-                  <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
+                  <Text style={[Typography.subhead, styles.farmerName, { color: colors.text, fontWeight: '800' }]}>
                     {daily.farmerName} ({daily.farmerIdCode})
                   </Text>
                   {getStatusBadge(daily.overallSeverity)}
                 </View>
 
-                <View style={styles.dailyBreakdownRow}>
-                  <View style={styles.dailyCol}>
+                <View style={[styles.dailyBreakdownRow, compact && styles.dailyBreakdownStack]}>
+                  <View style={[styles.dailyCol, compact && styles.dailyColCompact]}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Morning</Text>
                     <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
                       {daily.morning.actualBatchLitres} / {daily.morning.expectedBatchLitres} L
                     </Text>
                   </View>
-                  <View style={styles.vDivider} />
-                  <View style={styles.dailyCol}>
+                  <View style={[styles.dailyCol, compact && styles.dailyColCompact]}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Evening</Text>
                     <Text style={[Typography.caption1, { color: colors.text, fontWeight: '700' }]}>
                       {daily.evening.actualBatchLitres} / {daily.evening.expectedBatchLitres} L
                     </Text>
                   </View>
-                  <View style={styles.vDivider} />
-                  <View style={styles.dailyCol}>
+                  <View style={[styles.dailyCol, compact && styles.dailyColCompact]}>
                     <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Daily Combined</Text>
                     <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800' }]}>
                       {daily.dailyActualLitres} / {daily.dailyExpectedLitres} L
@@ -382,105 +339,69 @@ export const SocietyMonitoringSection: React.FC<SocietyMonitoringSectionProps> =
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-    marginVertical: 12,
+    borderRadius: 20, borderWidth: 1, padding: 16, marginVertical: 12,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 16, marginBottom: 16,
   },
+  headerStack: { flexDirection: 'column', alignItems: 'stretch' },
+  headerCopy: { flex: 1, minWidth: 0 },
+  headerCopyCompact: { flex: 0 },
+  textBase: { includeFontPadding: false, textAlign: 'left' },
+  eyebrow: { fontWeight: '700', marginBottom: 4 },
+  title: { fontWeight: '700', fontSize: 22, lineHeight: 28 },
+  subtitle: { marginTop: 8 },
   recalcBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    minHeight: 44, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+    flexShrink: 0,
   },
+  recalcBtnCompact: { alignSelf: 'stretch' },
   recalcBtnText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '800',
+    color: '#FFF', fontSize: 13, lineHeight: 18, fontWeight: '800',
+    flexShrink: 1, textAlign: 'center',
   },
-  overviewRow: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 10,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  overviewCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  vDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#E2E8F0',
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
-    marginBottom: 10,
-  },
+  overviewPanel: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, marginBottom: 16 },
+  metricRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
+  metricRowStack: { flexDirection: 'column', alignItems: 'stretch', gap: 6 },
+  metricLabel: { flex: 1, flexShrink: 1, minWidth: 0 },
+  metricLabelStack: { flex: 0 },
+  metricValue: { flexShrink: 1, textAlign: 'right', fontWeight: '700', fontVariant: ['tabular-nums'] },
+  metricValueStack: { textAlign: 'left' },
+  tabsRow: { flexDirection: 'row', gap: 8, marginBottom: 16, alignItems: 'stretch' },
+  tabsStack: { flexDirection: 'column' },
   tabBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    gap: 6,
+    flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'flex-start',
+    paddingVertical: 12, paddingHorizontal: 4, gap: 8, borderWidth: 1, borderRadius: 10,
   },
-  tableWrapper: {
-    gap: 8,
-  },
-  farmerCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-  },
-  farmerCardMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  quantityBox: {
-    alignItems: 'flex-end',
-    minWidth: 85,
-  },
+  tabBtnStack: { flexDirection: 'row', flex: 0, alignItems: 'center', minHeight: 48, paddingHorizontal: 14 },
+  tabIcon: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  tabCopy: { alignSelf: 'stretch', alignItems: 'stretch', gap: 3 },
+  tabCopyStack: { flex: 1, alignSelf: 'auto' },
+  tabLabel: { textAlign: 'center', fontWeight: '700' },
+  tabLabelStack: { textAlign: 'left' },
+  tableWrapper: { gap: 8 },
+  emptyText: { textAlign: 'center', paddingHorizontal: 8, paddingVertical: 20 },
+  farmerCard: { borderRadius: 12, borderWidth: 1, padding: 12 },
+  farmerCardMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  farmerCardMainCompact: { flexWrap: 'wrap' },
+  farmerInfo: { flex: 1, minWidth: 0 },
+  farmerInfoCompact: { flexBasis: '100%' },
+  farmerNameRow: { flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 },
+  farmerName: { flexShrink: 1, minWidth: 0 },
+  quantityBox: { alignItems: 'flex-end', flexShrink: 1, gap: 4 },
+  quantityBoxCompact: { flex: 1, alignItems: 'flex-start' },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, maxWidth: '100%',
+    alignSelf: 'flex-start',
   },
-  statusBadgeText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  dailyCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-  },
+  statusBadgeText: { color: '#FFF', fontSize: 10, lineHeight: 14, fontWeight: '800' },
+  dailyCard: { borderRadius: 12, borderWidth: 1, padding: 12 },
   dailyCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 8, marginBottom: 12,
   },
-  dailyBreakdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dailyCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
+  dailyBreakdownRow: { flexDirection: 'row', gap: 12 },
+  dailyBreakdownStack: { flexDirection: 'column' },
+  dailyCol: { flex: 1, minWidth: 0, gap: 4 },
+  dailyColCompact: { flex: 0 },
 });
