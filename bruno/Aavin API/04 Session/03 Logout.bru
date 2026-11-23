@@ -1,0 +1,57 @@
+meta {
+  name: 03 Logout
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/logout
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "refreshToken": "{{refreshToken}}"
+  }
+}
+
+script:pre-request {
+  if (!bru.getVar("accessToken")) {
+    throw new Error("Run the matching role login first.");
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const role = bru.getVar("activeRole");
+    if (role) {
+      bru.setVar(role + "AccessToken", "");
+      bru.setVar(role + "RefreshToken", "");
+    }
+    bru.setVar("accessToken", "");
+    bru.setVar("refreshToken", "");
+    bru.setVar("activeRole", "");
+  }
+}
+
+tests {
+  test("Expected HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Revokes the active refresh token and clears its runtime session variables. Previously issued access tokens remain valid on the server until expiry.
+}

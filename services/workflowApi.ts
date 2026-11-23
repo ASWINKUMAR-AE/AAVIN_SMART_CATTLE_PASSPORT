@@ -1,27 +1,5 @@
 import { api } from './api';
 
-export interface RecordMilkApiPayload {
-  farmerUserId?: string;
-  farmerName?: string;
-  boothId: string;
-  collectionDate: string;
-  session: 'morning' | 'evening';
-  quantityLitres: number;
-  route: 'direct' | 'vendor';
-  vendorId?: string;
-  vendorName?: string;
-  measurementMethod: 'farmer_wise' | 'combined';
-  cowId?: string;
-  notes?: string;
-}
-
-export interface GenerateBoothReceiptApiPayload {
-  boothId: string;
-  collectionDate: string;
-  session: 'morning' | 'evening' | 'full_day';
-  notes?: string;
-}
-
 export interface ConfirmBmcDeliveryApiPayload {
   measuredReceivedQuantity: number;
   notes?: string;
@@ -31,38 +9,17 @@ export interface ConfirmBmcDeliveryApiPayload {
 export const WorkflowApi = {
   // Master data
   getBooths: async () => {
-    const res = await api.get('/workflow/booths');
+    const res = await api.get('/societies');
     return res.data?.data;
   },
 
   getBmcs: async () => {
-    const res = await api.get('/workflow/bmcs');
+    const res = await api.get('/bmcs');
     return res.data?.data;
   },
 
   getVendors: async () => {
     const res = await api.get('/workflow/vendors');
-    return res.data?.data;
-  },
-
-  // Stage 1 & 2: Milk recording & Booth receipts
-  recordMilkTransaction: async (payload: RecordMilkApiPayload) => {
-    const res = await api.post('/workflow/milk-transactions', payload);
-    return res.data?.data;
-  },
-
-  listMilkTransactions: async (params?: { boothId?: string; collectionDate?: string; farmerUserId?: string }) => {
-    const res = await api.get('/workflow/milk-transactions', { params });
-    return res.data?.data;
-  },
-
-  reviewBoothCollection: async (boothId: string, collectionDate: string) => {
-    const res = await api.get('/workflow/booth-review', { params: { boothId, collectionDate } });
-    return res.data?.data;
-  },
-
-  generateBoothReceipt: async (payload: GenerateBoothReceiptApiPayload) => {
-    const res = await api.post('/workflow/booth-receipts', payload);
     return res.data?.data;
   },
 

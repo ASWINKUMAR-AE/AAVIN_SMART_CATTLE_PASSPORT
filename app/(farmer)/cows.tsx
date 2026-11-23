@@ -16,7 +16,7 @@ export default function FarmerCowsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const farmerId = user?.associatedId || 'FARMER001';
+  const farmerId = user?.id || '';
   const myCows = cows.filter(c => c.farmerId === farmerId);
 
   const [searchQuery, setSearchQuery] = useState('');

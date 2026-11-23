@@ -7,11 +7,11 @@ import { Typography } from '../../constants/Typography';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  AnalyticsPeriod, 
-  PERIOD_LABELS, 
-  formatLitres, 
-  getBmcAnalyticsById 
+import {
+  AnalyticsPeriod,
+  PERIOD_LABELS,
+  formatLitres,
+  getBmcAnalyticsById
 } from '../../services/bmcAnalyticsService';
 import { VerticalComparisonBarChart } from '../../components/analytics/VerticalComparisonBarChart';
 import { useIsDesktop } from '../../hooks/useIsDesktop';

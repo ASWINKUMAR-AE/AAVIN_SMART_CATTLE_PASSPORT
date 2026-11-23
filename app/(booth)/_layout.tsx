@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
-import { FloatingAavinTabBar } from '../../components/navigation/FloatingAavinTabBar';
+import { BoothTabBar as FloatingAavinTabBar } from '../../components/booth/BoothTabBar';
 import { TAB_BAR_CONTENT_INSET } from '../../components/navigation/curvedNavPath';
 
 export default function BoothLayout() {

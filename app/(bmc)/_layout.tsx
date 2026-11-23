@@ -2,20 +2,22 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import { FloatingAavinTabBar } from '../../components/navigation/FloatingAavinTabBar';
-import { TAB_BAR_CONTENT_INSET } from '../../components/navigation/curvedNavPath';
+import { TAB_BAR_HEIGHT } from '../../components/navigation/curvedNavPath';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function BMCLayout() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
-      tabBar={(props) => <FloatingAavinTabBar {...props} />}
+      tabBar={(props) => <FloatingAavinTabBar {...props} hideOnScroll={false} hideOnKeyboard={false} />}
       screenOptions={{
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.primary,
         headerTitleStyle: { color: colors.text, fontWeight: '700' },
         headerShown: false,
-        sceneStyle: { paddingBottom: TAB_BAR_CONTENT_INSET, backgroundColor: colors.background },
+        sceneStyle: { paddingBottom: TAB_BAR_HEIGHT + Math.max(insets.bottom, 12) + 12, backgroundColor: colors.background },
       }}
     >
       {/* 1. Home */}
@@ -45,11 +47,11 @@ export default function BMCLayout() {
         }}
       />
 
-      {/* 4. Alerts */}
+      {/* 4. Centre dashboard */}
       <Tabs.Screen
-        name="investigations"
+        name="dashboard"
         options={{
-          title: 'Alerts',
+          title: 'Dashboard',
           headerShown: false,
         }}
       />
@@ -64,6 +66,8 @@ export default function BMCLayout() {
       />
 
       {/* Sub-routes (Hidden from floating tab bar) */}
+      <Tabs.Screen name="my-societies" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="operations" options={{ href: null, headerShown: false }} />
       <Tabs.Screen
         name="society-details"
         options={{

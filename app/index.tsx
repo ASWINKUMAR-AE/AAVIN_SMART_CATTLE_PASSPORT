@@ -11,13 +11,10 @@ export default function IndexScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    // Initial entry point is the Login Screen as requested
-    const timer = setTimeout(() => {
-      router.replace('/(auth)/login');
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [router]);
+    if (isLoading) return;
+    const route = activeRole === 'booth' ? '/(booth)' : activeRole ? `/(${activeRole})` : '/(auth)/login';
+    router.replace(route as any);
+  }, [router, isLoading, activeRole]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.primary }]}>

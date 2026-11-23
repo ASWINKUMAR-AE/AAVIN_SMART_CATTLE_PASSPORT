@@ -1,25 +1,30 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, Pressable, TextInput, Modal, ScrollView } from 'react-native';
+import { BoothScreen } from '../../components/booth/BoothScreen';
+import { BoothText as Text } from '../../components/booth/BoothText';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, FlatList, Pressable, TextInput, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAavinStore } from '../../store/AavinStoreContext';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
-import { DemoHeader } from '../../components/DemoHeader';
+import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { BoothReceipt } from '../../types/aavin';
 
 export default function SentReceiptsScreen() {
+  const { width, height, fontScale } = useWindowDimensions();
+  const styles = createStyles(width, fontScale, height);
   const { user } = useAuth();
-  const { boothReceipts, bmcDeliveries, booths, discrepancyCases } = useAavinStore();
+  const { boothReceipts, bmcDeliveries, context, loading, error, refresh } = useDispatchWorkflow();
+  useDispatchRefresh();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
+  const boothId = user?.id || '';
+  const booth = context?.society || { id: boothId, name: user?.fullName || '' };
 
   // All receipts from this booth
   const myReceipts = boothReceipts.filter(r => r.boothId === booth.id);
@@ -30,6 +35,8 @@ export default function SentReceiptsScreen() {
 
   // Selected receipt for "More View" popup modal
   const [selectedReceiptForModal, setSelectedReceiptForModal] = useState<BoothReceipt | null>(null);
+
+  useEffect(() => { setSelectedReceiptForModal(null); setSearchQuery(''); }, [user?.id]);
 
   // Stats calculation
   const totalDispatchedLitres = myReceipts.reduce((sum, r) => sum + r.dispatchQuantity, 0);
@@ -94,19 +101,25 @@ export default function SentReceiptsScreen() {
   const modalVariance = modalDelivery?.difference !== undefined ? modalDelivery.difference : 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <BoothScreen style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
         title="Sent Dispatch Receipts"
         subtitle={`BMC Transit & Reconciliation Ledger • ${booth.name}`}
         showBack
       />
 
+      {error && <Text style={{ color: colors.hold }}>{error}</Text>}
+      {/* Compact Receipts List */}
+      <FlatList
+        refreshing={loading}
+        onRefresh={refresh}
+        ListHeaderComponent={<>
       {/* Top Search & Action Bar */}
       <View style={[styles.topBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: colors.border }]}>
           <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
           <TextInput
-            placeholder="Search Receipt ID, Destination BMC, Date..."
+            placeholder="Search BMC or collection date"
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -218,8 +231,7 @@ export default function SentReceiptsScreen() {
         </View>
       </View>
 
-      {/* Compact Receipts List */}
-      <FlatList
+        </>}
         data={filteredReceipts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
@@ -241,7 +253,7 @@ export default function SentReceiptsScreen() {
               <View style={styles.cardHeader}>
                 <View style={styles.receiptTitleRow}>
                   <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900' }]}>
-                    #{item.id}
+                    Dispatch receipt
                   </Text>
                   <View style={[styles.sessionPill, { backgroundColor: item.session === 'morning' ? '#FEF3C7' : '#E0E7FF' }]}>
                     <Ionicons 
@@ -301,7 +313,7 @@ export default function SentReceiptsScreen() {
                   onPress={() => setSelectedReceiptForModal(item)}
                 >
                   <Ionicons name="eye-outline" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
-                  <Text style={styles.moreViewBtnText}>More View</Text>
+                  <Text style={styles.moreViewBtnText}>View Details</Text>
                 </Pressable>
               </View>
             </Card>
@@ -321,12 +333,12 @@ export default function SentReceiptsScreen() {
             <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {/* Modal Header */}
               <View style={styles.modalHeader}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '800', letterSpacing: 0.5 }]}>
                     AAVIN DISPATCH CONSIGNMENT MANIFEST
                   </Text>
                   <Text style={[Typography.headline, { color: colors.text, fontWeight: '900', marginTop: 2 }]}>
-                    Receipt #{selectedReceiptForModal.id}
+                    Dispatch receipt
                   </Text>
                   <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                     Collection Date: {selectedReceiptForModal.collectionDate} • {selectedReceiptForModal.session.toUpperCase()} Shift
@@ -342,7 +354,7 @@ export default function SentReceiptsScreen() {
                 </Pressable>
               </View>
 
-              <ScrollView contentContainerStyle={styles.modalScrollBody} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ flexShrink: 1, minHeight: 0 }} contentContainerStyle={styles.modalScrollBody} showsVerticalScrollIndicator={false}>
                 {/* Status Strip */}
                 <View style={[styles.modalStatusStrip, { backgroundColor: modalBadge.bg }]}>
                   <Ionicons name={modalBadge.icon} size={15} color={modalBadge.color} style={{ marginRight: 6 }} />
@@ -359,7 +371,6 @@ export default function SentReceiptsScreen() {
                     <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', textAlign: 'center' }]} numberOfLines={1}>
                       {selectedReceiptForModal.boothName}
                     </Text>
-                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>ID: {selectedReceiptForModal.boothId}</Text>
                   </View>
 
                   <Ionicons name="arrow-forward-circle" size={20} color="#0284C7" style={{ marginHorizontal: 6 }} />
@@ -370,7 +381,6 @@ export default function SentReceiptsScreen() {
                     <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800', textAlign: 'center' }]} numberOfLines={1}>
                       {selectedReceiptForModal.bmcName}
                     </Text>
-                    <Text style={[Typography.caption2, { color: colors.textMuted }]}>ID: {selectedReceiptForModal.bmcId}</Text>
                   </View>
                 </View>
 
@@ -493,7 +503,7 @@ export default function SentReceiptsScreen() {
               {/* Modal Bottom Actions */}
               <View style={styles.modalActionsRow}>
                 <Button
-                  title="Open Full Digital Waybill & Slip ➔"
+                  title="Open Waybill"
                   size="md"
                   onPress={() => {
                     const id = selectedReceiptForModal.id;
@@ -514,250 +524,279 @@ export default function SentReceiptsScreen() {
           </View>
         </Modal>
       )}
-    </View>
+    </BoothScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 10,
-    borderBottomWidth: 1,
-  },
-  searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    padding: 0,
-  },
-  kpiContainer: {
-    padding: 14,
-    borderBottomWidth: 1,
-    gap: 10,
-  },
-  kpiRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  kpiTile: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  kpiNumber: {
-    fontSize: 18,
-    fontWeight: '900',
-    marginTop: 2,
-  },
-  filterChipRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  filterChipText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  listContent: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 40,
-  },
-  compactReceiptCard: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  receiptTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sessionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 3,
-  },
-  sessionPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  cardMidRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  routeTextCol: {
-    flex: 1,
-    marginRight: 10,
-  },
-  volumeRightBox: {
-    alignItems: 'flex-end',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  volumeLargeNum: {
-    fontSize: 20,
-    fontWeight: '900',
-    marginTop: 1,
-  },
-  cardBottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  moreViewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  moreViewBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 480,
-    maxHeight: '88%',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1.5,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalScrollBody: {
-    gap: 12,
-    paddingBottom: 10,
-  },
-  modalStatusStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  modalStatusText: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-  modalCorridorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  modalCorridorCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  modalReconGrid: {
-    flexDirection: 'row',
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  modalGridItem: {
-    flex: 1,
-    padding: 10,
-    alignItems: 'center',
-  },
-  modalGridBorder: {
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderRightWidth: StyleSheet.hairlineWidth,
-  },
-  modalDetailsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modalDetailTile: {
-    width: '48.5%',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  modalTokenCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  modalNotesCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
-  },
-  modalActionsRow: {
-    marginTop: 10,
-  },
-});
+const createStyles = (width: number, fontScale: number, height: number) => {
+  const compact = width < 600 || fontScale > 1.2;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      minWidth: 0,
+    },
+    topBar: {
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'stretch',
+      padding: 14,
+      gap: 10,
+      borderBottomWidth: 1,
+    },
+    searchBox: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    searchInput: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: 13,
+      padding: 0,
+    },
+    kpiContainer: {
+      padding: 14,
+      borderBottomWidth: 1,
+      gap: 10,
+    },
+    kpiRow: {
+      flexDirection: compact ? 'column' : 'row',
+      gap: 8,
+    },
+    kpiTile: {
+      flex: 1,
+      minWidth: 0,
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    kpiNumber: {
+      fontSize: 18,
+      fontWeight: '900',
+      marginTop: 2,
+    },
+    filterChipRow: {
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    filterChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+    },
+    filterChipText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    listContent: {
+      width: '100%',
+      maxWidth: 960,
+      alignSelf: 'center',
+      padding: 16,
+      gap: 12,
+      paddingBottom: 128,
+    },
+    compactReceiptCard: {
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+    },
+    cardHeader: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    receiptTitleRow: {
+      minWidth: 0,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    sessionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 3,
+    },
+    sessionPillText: {
+      fontSize: 9,
+      fontWeight: '800',
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    statusText: {
+      fontSize: 10,
+      fontWeight: '800',
+    },
+    cardMidRow: {
+      gap: 12,
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'stretch',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    routeTextCol: {
+      flex: 1,
+      minWidth: 0,
+      marginRight: 10,
+    },
+    volumeRightBox: {
+      alignItems: 'flex-end',
+      backgroundColor: '#F1F5F9',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+    },
+    volumeLargeNum: {
+      fontSize: 20,
+      fontWeight: '900',
+      marginTop: 1,
+    },
+    cardBottomRow: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    moreViewBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    moreViewBtnText: {
+      color: '#FFFFFF',
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    modalOverlay: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.65)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 16,
+    },
+    modalCard: {
+      width: '100%',
+      maxWidth: 760,
+      height: height * 0.9,
+      maxHeight: height * 0.9,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1.5,
+    },
+    modalHeader: {
+      flexShrink: 0,
+      gap: 12,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 12,
+    },
+    modalCloseBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalScrollBody: {
+      gap: 12,
+      paddingBottom: 10,
+    },
+    modalStatusStrip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+    },
+    modalStatusText: {
+      fontSize: 11,
+      fontWeight: '900',
+      letterSpacing: 0.3,
+    },
+    modalCorridorBox: {
+      gap: 12,
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    modalCorridorCol: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+    },
+    modalReconGrid: {
+      flexDirection: compact ? 'column' : 'row',
+      borderRadius: 12,
+      borderWidth: 1,
+      overflow: 'hidden',
+    },
+    modalGridItem: {
+      flex: 1,
+      minWidth: 0,
+      padding: 10,
+      alignItems: 'center',
+    },
+    modalGridBorder: {
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+    },
+    modalDetailsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    modalDetailTile: {
+      flexBasis: compact ? '100%' : '47%',
+      flexGrow: 1,
+      minWidth: 0,
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    modalTokenCard: {
+      gap: 8,
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    modalNotesCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 10,
+      borderRadius: 8,
+    },
+    modalActionsRow: {
+      marginTop: 10,
+    },
+  });
+};

@@ -30,7 +30,9 @@
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -54,6 +56,13 @@
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7070c6cd-517b-4e97-a408-56c22c0549cb"
+      }
+    },
+    "owner": "lax_2010"
   }
 }

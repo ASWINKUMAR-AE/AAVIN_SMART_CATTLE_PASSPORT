@@ -1,0 +1,58 @@
+meta {
+  name: 04 Union creates another Society
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/register
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{unionAccessToken}}
+}
+
+body:json {
+  {
+    "phone": "{{additionalSocietyPhone}}",
+    "fullName": "Additional Society",
+    "password": "{{additionalSocietyPassword}}",
+    "role": "society",
+    "parentId": "{{bmcId}}"
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://127.0.0.1:8000/
+}
+
+script:pre-request {
+  if (!bru.getVar("unionAccessToken")) {
+    throw new Error("Run the matching role login first.");
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("additionalSocietyId", res.getBody().data.user.id);
+  }
+}
+
+tests {
+  test("Expected HTTP 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Creates a real account in the configured database. Use an unused phone number and a strong password. Run Union creates BMC first to capture bmcId, or enter an existing BMC UUID in the environment.
+}

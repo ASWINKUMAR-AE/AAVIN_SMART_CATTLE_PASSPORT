@@ -1,0 +1,34 @@
+meta {
+  name: 01 Current user
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/auth/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:pre-request {
+  if (!bru.getVar("accessToken")) {
+    throw new Error("Run the matching role login first.");
+  }
+}
+
+tests {
+  test("Expected HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Uses the active session from the most recent successful login.
+}

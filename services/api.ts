@@ -41,7 +41,7 @@ export async function deleteSecureItem(key: string): Promise<void> {
 // Initialize dynamic API base URL
 export async function initializeApiClient() {
   const savedUrl = await AsyncStorage.getItem(Config.STORAGE_KEYS.API_URL);
-  if (savedUrl && !savedUrl.includes('10.0.2.2') && !savedUrl.includes('localhost')) {
+  if (savedUrl) {
     currentBaseUrl = savedUrl;
     api.defaults.baseURL = savedUrl;
   } else {
@@ -69,27 +69,37 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// Response interceptor: handle 401 token refresh if possible
+// Share one refresh request across concurrent expired-token responses.
+let refreshInFlight: Promise<string> | null = null;
+async function refreshAccessToken(): Promise<string> {
+  const refreshToken = await getSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
+  if (!refreshToken) throw new Error('Sign in again.');
+  const response = await axios.post(`${currentBaseUrl}/auth/refresh`, { refreshToken }, { timeout: 15000 });
+  const accessToken = response.data?.data?.accessToken;
+  if (!accessToken) throw new Error('Invalid refresh response.');
+  await setSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN, accessToken);
+  return accessToken;
+}
+
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthRequest = ['/auth/login', '/auth/refresh'].includes(originalRequest?.url);
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
       try {
-        const refreshToken = await getSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
-        if (refreshToken) {
-          const refreshRes = await axios.post(`${currentBaseUrl}/auth/refresh`, { refreshToken });
-          if (refreshRes.data?.data?.accessToken) {
-            const newToken = refreshRes.data.data.accessToken;
-            await setSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN, newToken);
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return api(originalRequest);
-          }
+        if (!refreshInFlight) refreshInFlight = refreshAccessToken().finally(() => { refreshInFlight = null; });
+        const accessToken = await refreshInFlight;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError: any) {
+        // A network failure must not erase an otherwise usable refresh token.
+        if (refreshError?.response?.status === 401 || !await getSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN)) {
+          await deleteSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN);
+          await deleteSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
         }
-      } catch (refreshErr) {
-        await deleteSecureItem(Config.STORAGE_KEYS.AUTH_TOKEN);
-        await deleteSecureItem(Config.STORAGE_KEYS.REFRESH_TOKEN);
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);

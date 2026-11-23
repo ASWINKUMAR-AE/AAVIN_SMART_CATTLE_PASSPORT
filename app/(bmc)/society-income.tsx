@@ -19,6 +19,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { SocietyIncomeCategory, SocietyIncomeRecord } from '../../types/aavin';
+import { goBackOrReplace } from '../../services/navigation';
 
 const CATEGORIES: Array<{ id: SocietyIncomeCategory; label: string; desc: string }> = [
   { id: 'procurement_payment', label: 'Procurement Payment', desc: 'Milk purchase disbursement to society' },
@@ -156,8 +157,8 @@ export default function SocietyIncomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Record Society Income"
-        subtitle={`${bmc.name} • Financial Ledger & Remittance`}
+        title="Society payments"
+        subtitle={`${bmc.name} • Payments, incentives and deductions`}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -165,16 +166,18 @@ export default function SocietyIncomeScreen() {
         <View style={styles.topNavRow}>
           <Pressable 
             style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]} 
-            onPress={() => router.back()}
+            onPress={() => goBackOrReplace(router, '/(bmc)/operations')}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={18} color={colors.text} />
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginLeft: 6 }]}>
-              Dashboard
+              Back
             </Text>
           </Pressable>
 
           <Text style={[Typography.caption1, { color: colors.textSecondary }]}>
-            Authorized BMC Financial Portal
+            Payment records
           </Text>
         </View>
 
@@ -186,7 +189,7 @@ export default function SocietyIncomeScreen() {
             </View>
             <View style={{ marginLeft: 10 }}>
               <Text style={[Typography.headline, { color: colors.text, fontWeight: '800' }]}>
-                New Income / Ledger Entry
+                Add payment record
               </Text>
               <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                 Record society earnings, procurement balances, or approved incentives.
@@ -382,7 +385,7 @@ export default function SocietyIncomeScreen() {
 
           {/* Submit Action */}
           <Button
-            title={isSubmitting ? 'Recording Ledger...' : '💾 Save Society Income Entry'}
+            title={isSubmitting ? 'Saving record...' : 'Save payment record'}
             size="lg"
             onPress={handleSaveIncome}
             disabled={isSubmitting}

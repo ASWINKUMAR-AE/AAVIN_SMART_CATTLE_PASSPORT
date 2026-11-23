@@ -1,42 +1,91 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable, TextInput } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { BoothText as Text } from '../../components/booth/BoothText';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { StyleSheet, View, ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, useWindowDimensions } from 'react-native';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
-import { DemoHeader } from '../../components/DemoHeader';
+import { BoothHeader as DemoHeader } from '../../components/booth/BoothHeader';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { BoothButton as Button } from '../../components/booth/BoothButton';
 import { TextField } from '../../components/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
+import { AccountsApi } from '../../services/accountsApi';
+import { mapFarmer, apiErrorMessage } from '../../services/accountMapping';
+import { Farmer } from '../../types/aavin';
+import { useMilkCollections } from '../../context/MilkCollectionsContext';
+import { submissionKey } from '../../services/dispatchApi';
+import { useDispatchWorkflow, useDispatchRefresh } from '../../context/DispatchContext';
+import { indiaDate } from '../../services/milkCollectionsApi';
 import { CollectionRoute, MeasurementMethod } from '../../types/aavin';
+import { OCRRegisterImportModal } from '../../components/scanner/OCRRegisterImportModal';
 
 export default function RecordMilkScreen() {
+  const { width, fontScale } = useWindowDimensions();
+  const styles = createStyles(width, fontScale);
   const { user } = useAuth();
-  const { farmers, vendors, booths, recordMilk, cows } = useAavinStore();
+  const { booths, cows } = useAavinStore();
+  const { vendors, createVendor, createVendorMilk, refresh: refreshWorkflow, error: workflowError, loading: workflowLoading } = useDispatchWorkflow();
+  useDispatchRefresh();
+  const vendorSubmission = useRef(submissionKey());
+  const [isOcrMilkOpen, setIsOcrMilkOpen] = useState(false);
+  const [vendorForm, setVendorForm] = useState(false);
+  const [vendorDraft, setVendorDraft] = useState({ code: '', name: '', phone: '', routeName: '', vehicleNumber: '', vehicleType: '' });
+  const [vendorSaving, setVendorSaving] = useState(false);
+  const vendorSavingRef = useRef(false);
+  const handleCreateVendor = async () => {
+    if (vendorSavingRef.current) return;
+    if (!vendorDraft.code.trim() || !vendorDraft.name.trim()) { setErrorMsg('Enter a vendor code and name.'); return; }
+    const account = boothId;
+    vendorSavingRef.current = true; setVendorSaving(true);
+    try {
+      const vendor = await createVendor(vendorDraft);
+      if (accountRef.current !== account) return;
+      setSelectedVendorId(vendor.id); setVendorForm(false);
+      setVendorDraft({ code: '', name: '', phone: '', routeName: '', vehicleNumber: '', vehicleType: '' });
+      await refreshWorkflow();
+    } catch (err) { if (accountRef.current === account) setErrorMsg(apiErrorMessage(err)); }
+    finally { vendorSavingRef.current = false; if (accountRef.current === account) setVendorSaving(false); }
+  };
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ farmerId?: string }>();
 
-  const boothId = user?.associatedId || 'BOOTH001';
-  const booth = booths.find(b => b.id === boothId) || booths[0];
-  const assignedFarmers = farmers.filter(f => f.assignedBoothId === booth.id);
+  const boothId = user?.id || '';
+  const booth = booths.find(b => b.id === boothId) || { id: boothId, name: user?.fullName || 'Society' };
+  const { save } = useMilkCollections();
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [farmersLoading, setFarmersLoading] = useState(true);
+  const [farmersError, setFarmersError] = useState<string | null>(null);
+  const accountRef = useRef(boothId);
+  accountRef.current = boothId;
+  const submittingRef = useRef(false);
+  const assignedFarmers = farmers.filter(f => f.assignedBoothId === boothId);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setFarmers([]); setFarmersLoading(true); setFarmersError(null);
+    AccountsApi.listFarmers().then(accounts => {
+      if (active && accountRef.current === boothId) setFarmers(accounts.filter(a => a.isActive !== false).map(mapFarmer));
+    }).catch(err => { if (active) setFarmersError(apiErrorMessage(err)); })
+      .finally(() => { if (active) setFarmersLoading(false); });
+    return () => { active = false; };
+  }, [boothId]));
 
   // Mode: 'farmer_wise' vs 'combined'
   const [measurementMethod, setMeasurementMethod] = useState<MeasurementMethod>('farmer_wise');
-  const [selectedFarmerId, setSelectedFarmerId] = useState(params.farmerId || assignedFarmers[0]?.id || 'FARMER001');
+  const [selectedFarmerId, setSelectedFarmerId] = useState(params.farmerId || '');
   const [farmerSearch, setFarmerSearch] = useState('');
-  const [showFarmerSelector, setShowFarmerSelector] = useState(false);
+  const [showFarmerSelector, setShowFarmerSelector] = useState(true);
 
   // Delivery Route
   const [route, setRoute] = useState<CollectionRoute>('direct');
-  const [selectedVendorId, setSelectedVendorId] = useState(vendors[0]?.id || 'VEND001');
+  const [selectedVendorId, setSelectedVendorId] = useState('');
 
   // Intake Data
   const [quantityLitres, setQuantityLitres] = useState('');
   const [session, setSession] = useState<'morning' | 'evening'>('morning');
-  const [collectionDate, setCollectionDate] = useState('2026-10-12');
+  const [collectionDate, setCollectionDate] = useState(indiaDate);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -50,8 +99,8 @@ export default function RecordMilkScreen() {
   }, [params.farmerId]);
 
   // Selected entities
-  const selectedFarmer = farmers.find(f => f.id === selectedFarmerId) || assignedFarmers[0];
-  const selectedVendor = vendors.find(v => v.id === selectedVendorId) || vendors[0];
+  const selectedFarmer = assignedFarmers.find(f => f.id === selectedFarmerId);
+  const selectedVendor = vendors.find(v => v.id === selectedVendorId);
 
   // Active withdrawal check
   const farmerCows = cows.filter(c => c.farmerId === selectedFarmerId);
@@ -71,109 +120,50 @@ export default function RecordMilkScreen() {
 
   // Quick preset quantity adjustment
   const handlePresetVolume = (litres: number) => {
-    setQuantityLitres(litres.toFixed(1));
+    setQuantityLitres(litres.toFixed(2));
     setErrorMsg(null);
   };
 
   const handleStepVolume = (delta: number) => {
     const current = parseFloat(quantityLitres) || 0;
     const nextVal = Math.max(0, current + delta);
-    setQuantityLitres(nextVal > 0 ? nextVal.toFixed(1) : '');
+    setQuantityLitres(nextVal > 0 ? nextVal.toFixed(2) : '');
     setErrorMsg(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (submittingRef.current) return;
     setErrorMsg(null);
-    const qty = parseFloat(quantityLitres);
-    if (isNaN(qty) || qty <= 0) {
-      setErrorMsg('Please enter a valid measured milk volume in litres (greater than 0).');
-      return;
+    if (measurementMethod === 'farmer_wise' && (!selectedFarmer || farmersLoading || farmersError)) { setErrorMsg('Select a farmer from the current society list.'); return; }
+    if ((measurementMethod === 'combined' || route === 'vendor') && !selectedVendor) { setErrorMsg('Select a saved route vendor.'); return; }
+    const cleanQty = quantityLitres.trim();
+    if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(cleanQty) || Number(cleanQty) <= 0) {
+      setErrorMsg('Enter collected litres greater than zero, with at most two decimal places.'); return;
     }
-
-    setSubmitting(true);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(collectionDate) || !Number.isFinite(Date.parse(collectionDate + 'T00:00:00Z')) ||
+        new Date(collectionDate + 'T00:00:00Z').toISOString().slice(0, 10) !== collectionDate || collectionDate > indiaDate()) {
+      setErrorMsg('Enter a valid collection date on or before today (India time).'); return;
+    }
+    if (notes.trim().length > 1000) { setErrorMsg('Notes must be 1,000 characters or fewer.'); return; }
+    const account = boothId;
+    submittingRef.current = true; setSubmitting(true);
     try {
-      if (measurementMethod === 'farmer_wise') {
-        const farmerObj = farmers.find(f => f.id === selectedFarmerId) || selectedFarmer;
-        recordMilk({
-          farmerId: selectedFarmerId,
-          farmerName: farmerObj?.name,
-          boothId: booth.id,
-          collectionDate,
-          session,
-          quantityLitres: qty,
-          route,
-          vendorId: route === 'vendor' ? selectedVendorId : undefined,
-          vendorName: route === 'vendor' ? vendors.find(v => v.id === selectedVendorId)?.name : undefined,
-          measurementMethod: 'farmer_wise',
-          individualAllocation: 'measured',
-          createdBy: user?.fullName || 'Society Operator',
-          notes: notes.trim() || undefined,
-        });
-
-        Alert.alert(
-          'Milk Intake Recorded Successfully',
-          `Successfully recorded ${qty.toFixed(2)} Litres for ${farmerObj?.name}.\n\nThe collection entry has been logged into the society ledger and eligible dispatch total.`,
-          [
-            {
-              text: '+ Record Another Entry',
-              onPress: () => {
-                setQuantityLitres('');
-                setNotes('');
-              },
-            },
-            {
-              text: 'Review Dispatch Receipts',
-              onPress: () => router.push('/(booth)/review-collection'),
-            },
-          ]
-        );
-      } else {
-        // Combined bulk route batch
-        const vendorObj = vendors.find(v => v.id === selectedVendorId) || selectedVendor;
-        recordMilk({
-          farmerId: undefined,
-          farmerName: undefined,
-          boothId: booth.id,
-          collectionDate,
-          session,
-          quantityLitres: qty,
-          route: 'vendor',
-          vendorId: selectedVendorId,
-          vendorName: vendorObj?.name,
-          measurementMethod: 'combined',
-          individualAllocation: 'not_available',
-          createdBy: user?.fullName || 'Society Operator',
-          notes: notes.trim() || 'Bulk intake batch from route vendor cans.',
-        });
-
-        Alert.alert(
-          'Combined Route Batch Recorded',
-          `Successfully recorded ${qty.toFixed(2)} Litres for Vendor ${vendorObj?.name} (Method: Combined Bulk Route).\n\nConsolidated volume added to the eligible society dispatch receipt.`,
-          [
-            {
-              text: '+ Record Another Entry',
-              onPress: () => {
-                setQuantityLitres('');
-                setNotes('');
-              },
-            },
-            {
-              text: 'Review Dispatch Receipts',
-              onPress: () => router.push('/(booth)/review-collection'),
-            },
-          ]
-        );
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Could not save milk collection entry.');
-    } finally {
-      setSubmitting(false);
-    }
+      const record = measurementMethod === 'combined'
+        ? await createVendorMilk({ vendorId: selectedVendor!.id, quantityLitres: cleanQty, collectionDate, session, notes: notes.trim(), submissionKey: vendorSubmission.current })
+        : await save({ farmerId: selectedFarmer!.id, vendorId: route === 'vendor' ? selectedVendor!.id : undefined, quantityLitres: cleanQty, collectionDate, session, notes: notes.trim() });
+      if (accountRef.current !== account) return;
+      vendorSubmission.current = submissionKey();
+      setQuantityLitres(''); setNotes('');
+      void refreshWorkflow();
+      Alert.alert('Milk Collection Saved', `${record.quantityLitres.toFixed(2)} litres recorded for ${record.farmerName || record.vendorName} on ${record.collectionDate} (${record.session}). ${measurementMethod === 'combined' ? 'Vendor batch saved without individual farmer allocation.' : 'The farmer can view this collection and notification in their app.'}`,
+        [{ text: 'Record Another', onPress: () => { setQuantityLitres(''); setNotes(''); } },
+         { text: 'View Collection', onPress: () => router.push({ pathname: '/(booth)/review-collection', params: { collectionDate: record.collectionDate } }) }]);
+    } catch (err: any) { if (accountRef.current === account) setErrorMsg(apiErrorMessage(err)); }
+    finally { submittingRef.current = false; if (accountRef.current === account) setSubmitting(false); }
   };
 
   // Live calculation preview
   const enteredQty = parseFloat(quantityLitres) || 0;
-  const estimatedPayout = (enteredQty * 35.5).toFixed(2); // Avg standard rate ₹35.50/L
 
   return (
     <KeyboardAvoidingView
@@ -191,6 +181,34 @@ export default function RecordMilkScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {farmersLoading && <Text style={{ color: colors.textSecondary }}>Loading assigned farmers…</Text>}
+        {farmersError && <Text style={{ color: colors.hold }}>{farmersError} Leave and reopen this screen to retry.</Text>}
+        {!farmersLoading && !farmersError && assignedFarmers.length === 0 && <Text style={{ color: colors.textSecondary }}>No active farmers assigned. Register a farmer before recording milk.</Text>}
+        {workflowError && <Text style={{ color: colors.hold }}>{workflowError}</Text>}
+        <Card style={styles.sectionCard}>
+          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+            <Button
+              title="Enter Milk from OCR"
+              icon="scan-outline"
+              size="sm"
+              onPress={() => setIsOcrMilkOpen(true)}
+            />
+            <Button
+              title={vendorForm ? 'Close Vendor Form' : '+ Add Route Vendor'}
+              variant="outline"
+              size="sm"
+              onPress={() => setVendorForm(!vendorForm)}
+            />
+          </View>
+          {vendorForm && <View style={{ gap: 10, marginTop: 12 }}>
+            {(['code', 'name', 'phone', 'routeName', 'vehicleNumber', 'vehicleType'] as const).map(field => (
+              <TextField key={field} label={{ code: 'Vendor Code', name: 'Vendor Name', phone: 'Phone', routeName: 'Route Name', vehicleNumber: 'Vehicle Number', vehicleType: 'Vehicle Type' }[field]}
+                value={vendorDraft[field]} onChangeText={value => setVendorDraft(draft => ({ ...draft, [field]: value }))} />
+            ))}
+            <Button title="Save Vendor" onPress={handleCreateVendor} loading={vendorSaving} disabled={vendorSaving} />
+          </View>}
+          {!workflowLoading && vendors.length === 0 && <Text style={{ color: colors.textSecondary, marginTop: 8 }}>Add a route vendor before recording vendor milk.</Text>}
+        </Card>
         {/* 1. Intake Mode Toggle Card */}
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
@@ -264,14 +282,14 @@ export default function RecordMilkScreen() {
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="person-circle-outline" size={18} color={colors.primary} />
               <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800', marginLeft: 8 }]}>
-                Selected Milk Producer
+                Select Farmer
               </Text>
               <Pressable 
                 onPress={() => setShowFarmerSelector(!showFarmerSelector)}
                 style={styles.changeProducerLink}
               >
                 <Text style={[Typography.caption1, { color: colors.primary, fontWeight: '800' }]}>
-                  {showFarmerSelector ? 'Close List' : 'Change Producer ▾'}
+                  {showFarmerSelector ? 'Close List' : 'Select Farmer ▾'}
                 </Text>
               </Pressable>
             </View>
@@ -302,9 +320,6 @@ export default function RecordMilkScreen() {
                     <Text style={[Typography.subhead, { color: colors.text, fontWeight: '900' }]} numberOfLines={1}>
                       {selectedFarmer.name}
                     </Text>
-                    <View style={styles.farmerCodeBadge}>
-                      <Text style={styles.farmerCodeBadgeText}>{selectedFarmer.farmerIdCode}</Text>
-                    </View>
                   </View>
 
                   <View style={styles.farmerMetaAlignedRow}>
@@ -366,7 +381,7 @@ export default function RecordMilkScreen() {
                 </View>
 
                 {/* Farmers Radio List */}
-                <View style={styles.farmerListScroll}>
+                <ScrollView style={styles.farmerListScroll} contentContainerStyle={{ gap: 8 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
                   {filteredFarmers.map((f) => {
                     const isSelected = selectedFarmerId === f.id;
                     return (
@@ -394,9 +409,6 @@ export default function RecordMilkScreen() {
                             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '800' }]}>
                               {f.name}
                             </Text>
-                            <Text style={[Typography.caption2, { color: colors.primary, fontWeight: '700' }]}>
-                              {f.farmerIdCode}
-                            </Text>
                           </View>
                           <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
                             {f.village} • {f.numberOfCows} Cows • +91 {f.mobileNumber}
@@ -405,7 +417,7 @@ export default function RecordMilkScreen() {
                       </Pressable>
                     );
                   })}
-                </View>
+                </ScrollView>
               </View>
             )}
 
@@ -549,7 +561,7 @@ export default function RecordMilkScreen() {
                         {v.name}
                       </Text>
                       <Text style={[Typography.caption2, { color: colors.textSecondary }]}>
-                        Route: {v.routeName} • Vehicle: {v.vehicleNumber} • ID: {v.id}
+                        Route: {v.routeName} • Vehicle: {v.vehicleNumber}
                       </Text>
                     </View>
                   </Pressable>
@@ -575,12 +587,12 @@ export default function RecordMilkScreen() {
           <View style={[styles.volumeInputBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
             <TextInput
               style={[styles.bigVolumeTextInput, { color: colors.primary }]}
-              placeholder="0.0"
+              placeholder="0.00"
               placeholderTextColor={colors.textMuted}
               value={quantityLitres}
               onChangeText={(t) => { setQuantityLitres(t); setErrorMsg(null); }}
               keyboardType="decimal-pad"
-              maxLength={6}
+              maxLength={11}
             />
             <View style={styles.volumeUnitTag}>
               <Ionicons name="water-outline" size={14} color="#0284C7" />
@@ -730,49 +742,17 @@ export default function RecordMilkScreen() {
             placeholder="e.g. Can #4 inspected, lactometer 1.028, FAT/SNF passed"
             value={notes}
             onChangeText={setNotes}
+            maxLength={1000}
             icon="create-outline"
             helperText="Quality remarks, can IDs, or lactometer test observations"
           />
         </Card>
 
-        {/* 6. Live Intake Summary & Payout Preview (When Volume Entered) */}
-        {enteredQty > 0 && (
-          <View style={[styles.livePreviewCard, { backgroundColor: isDark ? '#1E293B' : '#F0FDF4', borderColor: '#86EFAC' }]}>
-            <View style={styles.livePreviewHeader}>
-              <Ionicons name="calculator-outline" size={16} color="#15803D" />
-              <Text style={[Typography.caption2, { color: '#166534', fontWeight: '800', marginLeft: 6 }]}>
-                INTAKE AUDIT & ESTIMATED VALUE
-              </Text>
-            </View>
-
-            <View style={styles.livePreviewValuesRow}>
-              <View style={styles.livePreviewCol}>
-                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Net Volume</Text>
-                <Text style={[Typography.headline, { color: '#15803D', fontWeight: '900' }]}>
-                  {enteredQty.toFixed(1)} L
-                </Text>
-              </View>
-
-              <View style={styles.livePreviewDivider} />
-
-              <View style={styles.livePreviewCol}>
-                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Est. Value (@₹35.5/L)</Text>
-                <Text style={[Typography.headline, { color: colors.text, fontWeight: '900' }]}>
-                  ₹{estimatedPayout}
-                </Text>
-              </View>
-
-              <View style={styles.livePreviewDivider} />
-
-              <View style={styles.livePreviewCol}>
-                <Text style={[Typography.caption2, { color: colors.textSecondary }]}>Reconciliation</Text>
-                <Text style={[Typography.subhead, { color: colors.primary, fontWeight: '800' }]}>
-                  Eligible
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
+        {enteredQty > 0 && <Card style={styles.sectionCard}>
+          <Text style={{ color: colors.text, fontWeight: '700' }}>Collection preview</Text>
+          <Text style={{ color: colors.textSecondary }}>{measurementMethod === 'combined' ? selectedVendor?.name || 'Select a vendor' : selectedFarmer?.name || 'Select a farmer'} • {enteredQty.toFixed(2)} litres</Text>
+          <Text style={{ color: colors.textSecondary }}>{collectionDate} • {session === 'morning' ? 'Morning' : 'Evening'} shift</Text>
+        </Card>}
 
         {/* 7. Action Buttons */}
         <View style={styles.actionsContainer}>
@@ -780,6 +760,7 @@ export default function RecordMilkScreen() {
             title={submitting ? "Saving Intake Entry..." : "Submit Milk Intake Record"}
             size="lg"
             loading={submitting}
+            disabled={submitting || workflowLoading || !!workflowError || (measurementMethod === 'combined' ? !selectedVendor : !selectedFarmer || farmersLoading || !!farmersError || (route === 'vendor' && !selectedVendor))}
             onPress={handleSubmit}
             icon="checkmark-circle-outline"
             style={{ marginTop: 4 }}
@@ -793,344 +774,380 @@ export default function RecordMilkScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* OCR Register Milk Import Modal */}
+      <OCRRegisterImportModal
+        visible={isOcrMilkOpen}
+        onClose={() => setIsOcrMilkOpen(false)}
+        mode="milk"
+        onSuccess={() => {
+          router.push('/(booth)/review-collection' as any);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 14,
-    paddingBottom: 48,
-  },
-  sectionCard: {
-    padding: 16,
-    borderRadius: 16,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  modeToggleRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modeToggleCard: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  modeTextCol: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  changeProducerLink: {
-    marginLeft: 'auto',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  farmerSpotlightBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 6,
-  },
-  farmerSpotlightAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#0072BC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  farmerSpotlightDetails: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  farmerNameCodeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 3,
-  },
-  farmerCodeBadge: {
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  farmerCodeBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#0284C7',
-  },
-  farmerMetaAlignedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  metaIconText: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  metaDot: {
-    color: '#94A3B8',
-    marginHorizontal: 5,
-    fontSize: 10,
-  },
-  changeFarmerActionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 3,
-    marginLeft: 8,
-  },
-  changeFarmerActionText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  farmerDropdownContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  farmerSearchInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  farmerSearchTextInput: {
-    flex: 1,
-    fontSize: 13,
-    padding: 0,
-  },
-  farmerListScroll: {
-    maxHeight: 220,
-    gap: 8,
-  },
-  farmerOptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  withdrawalWarningCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 12,
-  },
-  warningIconFrame: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  routeSection: {
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  routeHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  routeToggleRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  routeToggleBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  routeBtnTextCol: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  routeToggleBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  vendorSelectContainer: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    backgroundColor: '#F8FAFC',
-    gap: 6,
-  },
-  vendorSelectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  vendorCardsList: {
-    gap: 8,
-  },
-  vendorBatchOptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  volumeInputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    marginVertical: 4,
-  },
-  bigVolumeTextInput: {
-    fontSize: 36,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    flex: 1,
-    padding: 0,
-  },
-  volumeUnitTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
-  },
-  volumeUnitTagText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#0284C7',
-    letterSpacing: 0.5,
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-  },
-  stepperBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  stepperBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  presetsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  presetChip: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  presetChipText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  sessionToggleRow: {
-    gap: 10,
-    marginTop: 4,
-  },
-  sessionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  sessionIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  livePreviewCard: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  livePreviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  livePreviewValuesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  livePreviewCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  livePreviewDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#86EFAC',
-  },
-  actionsContainer: {
-    marginTop: 2,
-    marginBottom: 16,
-  },
-});
+const createStyles = (width: number, fontScale: number) => {
+  const compact = width < 600 || fontScale > 1.2;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      minWidth: 0,
+    },
+    scrollContent: {
+      width: '100%',
+      maxWidth: 960,
+      alignSelf: 'center',
+      padding: 16,
+      gap: 14,
+      paddingBottom: 128,
+    },
+    sectionCard: {
+      padding: 16,
+      borderRadius: 16,
+    },
+    sectionHeaderRow: {
+      gap: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    modeToggleRow: {
+      flexDirection: compact ? 'column' : 'row',
+      gap: 10,
+    },
+    modeToggleCard: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+    },
+    modeTextCol: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '100%',
+    },
+    errorBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+    },
+    changeProducerLink: {
+      marginLeft: 'auto',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    farmerSpotlightBox: {
+      gap: 8,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginTop: 6,
+    },
+    farmerSpotlightAvatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: '#0072BC',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarInitials: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '900',
+    },
+    farmerSpotlightDetails: {
+      minWidth: 0,
+      flex: 1,
+      marginLeft: 12,
+    },
+    farmerNameCodeRow: {
+      gap: 6,
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 3,
+    },
+    farmerCodeBadge: {
+      backgroundColor: '#E0F2FE',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    farmerCodeBadgeText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#0284C7',
+    },
+    farmerMetaAlignedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+    },
+    metaIconText: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    metaDot: {
+      color: '#94A3B8',
+      marginHorizontal: 5,
+      fontSize: 10,
+    },
+    changeFarmerActionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      borderRadius: 8,
+      gap: 3,
+      marginLeft: 8,
+    },
+    changeFarmerActionText: {
+      fontSize: 10,
+      fontWeight: '800',
+    },
+    farmerDropdownContainer: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    farmerSearchInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      marginBottom: 8,
+    },
+    farmerSearchTextInput: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: 13,
+      padding: 0,
+    },
+    farmerListScroll: {
+      maxHeight: 220,
+      gap: 8,
+    },
+    farmerOptionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    withdrawalWarningCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#FEF2F2',
+      borderWidth: 1.5,
+      borderColor: '#FCA5A5',
+      padding: 12,
+      borderRadius: 12,
+      marginTop: 12,
+    },
+    warningIconFrame: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#FEE2E2',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    routeSection: {
+      marginTop: 16,
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    routeHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    routeToggleRow: {
+      flexDirection: compact ? 'column' : 'row',
+      gap: 10,
+    },
+    routeToggleBtn: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      borderWidth: 1.5,
+    },
+    routeBtnTextCol: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    routeToggleBtnText: {
+      fontSize: 12,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    vendorSelectContainer: {
+      marginTop: 10,
+      padding: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      backgroundColor: '#F8FAFC',
+      gap: 6,
+    },
+    vendorSelectRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    vendorCardsList: {
+      gap: 8,
+    },
+    vendorBatchOptionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+    },
+    volumeInputBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      marginVertical: 4,
+    },
+    bigVolumeTextInput: {
+      minWidth: 0,
+      fontSize: width < 360 ? 28 : 36,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+      flex: 1,
+      padding: 0,
+    },
+    volumeUnitTag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#E0F2FE',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 8,
+      gap: 4,
+    },
+    volumeUnitTagText: {
+      fontSize: 11,
+      fontWeight: '900',
+      color: '#0284C7',
+      letterSpacing: 0.5,
+    },
+    stepperRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 10,
+    },
+    stepperBtn: {
+      minHeight: 44,
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    stepperBtnText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    presetsRow: {
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 8,
+    },
+    presetChip: {
+      minHeight: 44,
+      flexBasis: '28%',
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    presetChipText: {
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    sessionToggleRow: {
+      gap: 10,
+      marginTop: 4,
+    },
+    sessionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+    },
+    sessionIconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    livePreviewCard: {
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+    },
+    livePreviewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    livePreviewValuesRow: {
+      gap: 12,
+      flexDirection: compact ? 'column' : 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    livePreviewCol: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+    },
+    livePreviewDivider: {
+      width: 1,
+      height: 28,
+      backgroundColor: '#86EFAC',
+    },
+    actionsContainer: {
+      marginTop: 2,
+      marginBottom: 16,
+    },
+  });
+};

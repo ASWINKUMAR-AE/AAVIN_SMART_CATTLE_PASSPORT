@@ -9,6 +9,7 @@ import { DemoHeader } from '../../components/DemoHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { goBackOrReplace } from '../../services/navigation';
 
 export default function BMCDailySummaryScreen() {
   const { user } = useAuth();
@@ -88,9 +89,10 @@ export default function BMCDailySummaryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader
-        title="BMC Daily Summary & Closure"
-        subtitle={`Audit Reconciliation • Recipient: Aavin Madurai Union`}
+        title="Daily summary"
+        subtitle="Review milk totals and the daily BMC receipt"
         showBack
+        onBack={() => goBackOrReplace(router, '/(bmc)/operations')}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -167,7 +169,7 @@ export default function BMCDailySummaryScreen() {
 
             {todayBmcReceipt.status !== 'sent_to_union' ? (
               <Button
-                title={transmitting ? "Sending to Union..." : "Transmitting Receipt to Union Management"}
+                title={transmitting ? "Sending to union..." : "Send receipt to union"}
                 loading={transmitting}
                 onPress={() => handleSendToUnion(todayBmcReceipt.id)}
                 style={{ marginTop: 12 }}

@@ -1,0 +1,62 @@
+meta {
+  name: 03 Login Society
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "phone": "{{societyPhone}}",
+    "password": "{{societyPassword}}"
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://127.0.0.1:8000/
+  societyPhone: 8056841006
+  societyPassword: societymelur
+}
+
+script:pre-request {
+  bru.setVar("societyAccessToken", "");
+  bru.setVar("societyRefreshToken", "");
+  bru.setVar("accessToken", "");
+  bru.setVar("refreshToken", "");
+  bru.setVar("activeRole", "");
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody().data;
+    if (data.user.role !== "society") throw new Error("Expected a society account; check the phone number.");
+    bru.setVar("societyAccessToken", data.accessToken);
+    bru.setVar("societyRefreshToken", data.refreshToken);
+    bru.setVar("societyId", data.user.id);
+    bru.setVar("accessToken", data.accessToken);
+    bru.setVar("refreshToken", data.refreshToken);
+    bru.setVar("activeRole", "society");
+  }
+}
+
+tests {
+  test("Expected HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Logs in an existing society account. Saves role-specific tokens and selects it as the active session. Set credentials in the Local environment. Tokens stay in runtime variables.
+}

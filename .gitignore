@@ -34,3 +34,9 @@ backend/.env
 # OS files
 .DS_Store
 Thumbs.db
+# Python / Django
+__pycache__/
+*.py[cod]
+.venv/
+backend/staticfiles/
+*.sqlite3

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  ScrollView, 
-  Alert, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Pressable 
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { goBackOrReplace } from '../../services/navigation';
 import { useAavinStore } from '../../store/AavinStoreContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Typography } from '../../constants/Typography';
@@ -19,6 +20,8 @@ import { Card } from '../../components/ui/Card';
 import { DemoHeader } from '../../components/DemoHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { AccountsApi } from '../../services/accountsApi';
+import { apiErrorMessage, mapCows, mapFarmer } from '../../services/accountMapping';
 
 export interface CowFormItem {
   id: string;
@@ -41,13 +44,14 @@ const MILK_PRESETS = ['6', '8', '10', '12', '15', '18', '22'];
 
 export default function RegisterFarmerScreen() {
   const { user } = useAuth();
-  const { booths, cows, addFarmer } = useAavinStore();
+  const { booths: storedBooths, cows, cacheFarmer } = useAavinStore();
+  const booths = user?.role === 'booth' ? storedBooths.filter(booth => booth.id === user.associatedId) : [];
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
-  const defaultBoothId = (user?.role === 'booth' && user.associatedId) 
-    ? user.associatedId 
-    : (booths[0]?.id || 'BOOTH001');
+  const defaultBoothId = (user?.role === 'booth' && user.associatedId)
+    ? user.associatedId
+    : '';
 
   // Farmer Details State (Entered by Booth Operator)
   const [name, setName] = useState('');
@@ -57,7 +61,7 @@ export default function RegisterFarmerScreen() {
   const [community, setCommunity] = useState('Melur Taluk');
   const [assignedBoothId, setAssignedBoothId] = useState(defaultBoothId);
   const [farmerIdCode, setFarmerIdCode] = useState(`FARM-MDU-${Math.floor(105 + Math.random() * 800)}`);
-  
+
   // Banking / DBT State
   const [bankAccountName, setBankAccountName] = useState('');
   const [bankName, setBankName] = useState('');
@@ -128,7 +132,7 @@ export default function RegisterFarmerScreen() {
 
     // 1. Farmer Details Validation
     if (!name.trim()) errs.name = 'Farmer name is required.';
-    
+
     const phoneClean = mobileNumber.trim().replace(/\D/g, '');
     if (!phoneClean) {
       errs.mobileNumber = 'Mobile phone number is required.';
@@ -187,37 +191,34 @@ export default function RegisterFarmerScreen() {
   };
 
   const handleRegister = async () => {
+    if (submitting) return;
+    if (user?.role !== 'booth') {
+      Alert.alert('Registration Failed', 'Sign in as a Society to register a Farmer.');
+      return;
+    }
     if (!validate()) return;
 
     setSubmitting(true);
     try {
-      const initialCows = cowEntries.map((c, idx) => ({
-        pashuAadhaar: c.pashuAadhaar.trim().replace(/\D/g, ''),
-        breed: c.breed.trim() || 'Jersey Cross',
-        milkCapacity: parseFloat(c.milkCapacity) || 10,
-        name: c.name.trim() || `Cow #${idx + 1} (${c.breed.trim() || 'Jersey Cross'})`,
-      }));
-
-      const created = addFarmer(
-        {
+      const account = await AccountsApi.registerFarmer({
+        phone: mobileNumber.trim().replace(/\D/g, ''),
+        fullName: name.trim(), parentId: user.associatedId,
+        personalDetails: {
           farmerIdCode: farmerIdCode.trim().toUpperCase(),
-          name: name.trim(),
-          mobileNumber: mobileNumber.trim().replace(/\D/g, ''),
-          address: address.trim(),
-          village: village.trim(),
-          community: community.trim(),
+          address: address.trim(), village: village.trim(), community: community.trim(),
           numberOfCows: cowEntries.length,
-          assignedBoothId,
-          verificationStatus: 'pending',
-          bankAccountName: bankAccountName.trim() || undefined,
-          bankName: bankName.trim() || undefined,
-          bankAccountNumber: bankAccountNumber.trim() || undefined,
-          bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
-          upiId: upiId.trim() || undefined,
+          bankAccountName: bankAccountName.trim(), bankName: bankName.trim(),
+          bankAccountNumber: bankAccountNumber.trim(), bankIfsc: bankIfsc.trim().toUpperCase(), upiId: upiId.trim(),
         },
-        initialCows
-      );
-
+        cows: cowEntries.map((c, idx) => ({
+          pashuAadhaar: c.pashuAadhaar.trim().replace(/\D/g, ''),
+          breed: c.breed.trim(),
+          milkCapacity: parseFloat(c.milkCapacity),
+          name: c.name.trim() || `Cow #${idx + 1} (${c.breed.trim()})`,
+        })),
+      });
+      const created = mapFarmer(account);
+      cacheFarmer(created, mapCows(account));
       const societyName = booths.find(b => b.id === assignedBoothId)?.name || 'Society';
 
       Alert.alert(
@@ -227,17 +228,21 @@ export default function RegisterFarmerScreen() {
           {
             text: 'Return to Farmers Directory',
             onPress: () => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(booth)/farmers');
-              }
+              goBackOrReplace(router, '/(booth)/farmers');
             },
           },
         ]
       );
     } catch (err: any) {
-      Alert.alert('Registration Failed', err.message || 'Could not register farmer and cattle.');
+      const fieldErrors = err?.response?.data?.errors || {};
+      const formErrors: Record<string, string> = {};
+      const aliases: Record<string, string> = { phone: 'mobileNumber', fullName: 'name' };
+      for (const [key, value] of Object.entries({ ...fieldErrors, ...fieldErrors.personalDetails })) {
+        if (key === 'personalDetails') continue;
+        formErrors[aliases[key] || key] = Array.isArray(value) ? value.join(' ') : String(value);
+      }
+      setErrors(formErrors);
+      Alert.alert('Registration Failed', apiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -251,7 +256,7 @@ export default function RegisterFarmerScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <DemoHeader 
+      <DemoHeader
         title="New Farmer & Cattle Enrollment"
         subtitle={`Society Staff Intake • ${booths.find(b => b.id === assignedBoothId)?.name || 'Society'}`}
         showBack
@@ -330,9 +335,9 @@ export default function RegisterFarmerScreen() {
           </View>
 
           {/* Slider Tabs Navigation */}
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.sliderTabsRow}
           >
             {cowEntries.map((c, idx) => {
@@ -350,13 +355,13 @@ export default function RegisterFarmerScreen() {
                     }
                   ]}
                 >
-                  <Ionicons 
-                    name={isComplete ? "checkmark-circle" : "paw"} 
-                    size={14} 
-                    color={isActive ? "#FFFFFF" : (isComplete ? "#15803D" : colors.textSecondary)} 
+                  <Ionicons
+                    name={isComplete ? "checkmark-circle" : "paw"}
+                    size={14}
+                    color={isActive ? "#FFFFFF" : (isComplete ? "#15803D" : colors.textSecondary)}
                   />
                   <Text style={[
-                    styles.sliderTabPillText, 
+                    styles.sliderTabPillText,
                     { color: isActive ? "#FFFFFF" : colors.text, fontWeight: isActive ? '800' : '600' }
                   ]}>
                     Cow #{idx + 1}
@@ -368,7 +373,7 @@ export default function RegisterFarmerScreen() {
               );
             })}
 
-            <Pressable 
+            <Pressable
               onPress={handleAddCow}
               style={[styles.sliderAddTabBtn, { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
             >
@@ -404,7 +409,7 @@ export default function RegisterFarmerScreen() {
                 )}
 
                 {cowEntries.length > 1 && (
-                  <Pressable 
+                  <Pressable
                     onPress={() => handleRemoveCow(currentCow.id)}
                     style={styles.removeSlideBtn}
                     hitSlop={8}
@@ -435,10 +440,10 @@ export default function RegisterFarmerScreen() {
                     Official Govt. 12-digit RFID Tag
                   </Text>
                   <Text style={[
-                    Typography.caption2, 
-                    { 
-                      fontWeight: '700', 
-                      color: currentCow.pashuAadhaar.length === 12 ? '#15803D' : (currentCow.pashuAadhaar.length > 0 ? '#D97706' : colors.textMuted) 
+                    Typography.caption2,
+                    {
+                      fontWeight: '700',
+                      color: currentCow.pashuAadhaar.length === 12 ? '#15803D' : (currentCow.pashuAadhaar.length > 0 ? '#D97706' : colors.textMuted)
                     }
                   ]}>
                     {currentCow.pashuAadhaar.length} / 12 digits {currentCow.pashuAadhaar.length === 12 ? '✓' : ''}
@@ -493,7 +498,7 @@ export default function RegisterFarmerScreen() {
 
                 {/* Interactive Slider Bar with Steppers */}
                 <View style={styles.sliderControlRow}>
-                  <Pressable 
+                  <Pressable
                     onPress={() => {
                       const current = parseFloat(currentCow.milkCapacity) || 10;
                       const nextVal = Math.max(1, current - 0.5);
@@ -507,15 +512,15 @@ export default function RegisterFarmerScreen() {
 
                   {/* Visual Slider Bar Track */}
                   <View style={[styles.sliderTrackContainer, { backgroundColor: isDark ? '#0F172A' : '#E2E8F0' }]}>
-                    <View 
+                    <View
                       style={[
-                        styles.sliderTrackFill, 
+                        styles.sliderTrackFill,
                         { width: `${Math.min(100, Math.max(4, ((parseFloat(currentCow.milkCapacity) || 0) / 25) * 100))}%` }
-                      ]} 
+                      ]}
                     />
                   </View>
 
-                  <Pressable 
+                  <Pressable
                     onPress={() => {
                       const current = parseFloat(currentCow.milkCapacity) || 10;
                       const nextVal = Math.min(35, current + 0.5);
@@ -654,10 +659,10 @@ export default function RegisterFarmerScreen() {
                     },
                   ]}
                 >
-                  <Ionicons 
-                    name={isSelected ? 'radio-button-on' : 'radio-button-off'} 
-                    size={18} 
-                    color={isSelected ? colors.primary : colors.textMuted} 
+                  <Ionicons
+                    name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                    size={18}
+                    color={isSelected ? colors.primary : colors.textMuted}
                   />
                   <View style={{ marginLeft: 8, flex: 1 }}>
                     <Text style={[Typography.subhead, { color: colors.text, fontWeight: isSelected ? '800' : '500' }]}>
@@ -740,7 +745,7 @@ export default function RegisterFarmerScreen() {
         <Button
           title="Cancel & Return to Farmers Directory"
           variant="outline"
-          onPress={() => router.back()}
+          onPress={() => goBackOrReplace(router, '/(booth)/farmers')}
           style={{ marginTop: 10, marginBottom: 36 }}
         />
       </ScrollView>

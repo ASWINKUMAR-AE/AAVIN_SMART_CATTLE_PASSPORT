@@ -1,17 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  Farmer, 
-  Cow, 
-  Booth, 
-  BMC, 
-  UnionConfig, 
-  Vendor, 
-  MilkRecord, 
-  BoothReceipt, 
-  BMCDelivery, 
-  DiscrepancyCase, 
-  BMCReceipt, 
+import {
+  Farmer,
+  Cow,
+  Booth,
+  BMC,
+  UnionConfig,
+  Vendor,
+  MilkRecord,
+  BoothReceipt,
+  BMCDelivery,
+  DiscrepancyCase,
+  BMCReceipt,
   InAppNotification,
   MedicalRecord,
   VaccinationRecord,
@@ -21,22 +21,33 @@ import {
   SocietyIncomeRecord,
   BMCReportStatus
 } from '../types/aavin';
-import { 
-  SEED_FARMERS, 
-  SEED_COWS, 
-  SEED_BOOTHS, 
-  SEED_BMCS, 
-  SEED_UNION, 
-  SEED_VENDORS, 
-  SEED_MILK_RECORDS, 
-  SEED_BOOTH_RECEIPTS, 
-  SEED_BMC_DELIVERIES, 
-  SEED_DISCREPANCY_CASES, 
-  SEED_BMC_RECEIPTS, 
+import {
+  SEED_FARMERS,
+  SEED_COWS,
+  SEED_BOOTHS,
+  SEED_BMCS,
+  SEED_UNION,
+  SEED_VENDORS,
+  SEED_MILK_RECORDS,
+  SEED_BOOTH_RECEIPTS,
+  SEED_BMC_DELIVERIES,
+  SEED_DISCREPANCY_CASES,
+  SEED_BMC_RECEIPTS,
   SEED_SOCIETY_INCOME,
-  SEED_NOTIFICATIONS 
+  SEED_NOTIFICATIONS
 } from '../data/seedData';
+import { indiaDate, daysBefore } from '../services/milkCollectionsApi';
 import { WorkflowApi } from '../services/workflowApi';
+import {
+  MonitoringBatch,
+  FarmerBatchMonitoringResult,
+  FarmerDailyMonitoringSummary,
+  MilkMonitoringAlert,
+  MilkMonitoringConfig,
+  DEFAULT_MONITORING_CONFIG,
+} from '../services/monitoring/monitoringTypes';
+import { BatchMilkMonitoringService } from '../services/monitoring/batchMilkMonitoringService';
+import { LowSupplyAlertService } from '../services/monitoring/lowSupplyAlertService';
 
 const STORAGE_KEY = '@aavin_smart_cattle_passport_state_v6';
 
@@ -54,10 +65,34 @@ interface AavinState {
   bmcReceipts: BMCReceipt[];
   societyIncomeRecords: SocietyIncomeRecord[];
   notifications: InAppNotification[];
+  monitoringAlerts: MilkMonitoringAlert[];
+  monitoringConfig: MilkMonitoringConfig;
+}
+
+// Preserve local clinical records while refreshing the fields stored by the backend.
+function mergeRegisteredCows(existing: Cow[], incoming: Cow[], farmerIds: Set<string>): Cow[] {
+  const refreshed = incoming.map(cow => {
+    const cached = existing.find(item => item.id === cow.id ||
+      (item.farmerId === cow.farmerId && item.tagId === cow.tagId));
+    return {
+      ...cow, ...cached,
+      id: cow.id, cowId: cow.cowId, tagId: cow.tagId,
+      backendSynced: cow.backendSynced,
+      farmerId: cow.farmerId, farmerName: cow.farmerName,
+      breed: cow.breed, name: cow.name, dailyMilkYield: cow.dailyMilkYield,
+      createdAt: cow.createdAt,
+    };
+  });
+  return [...refreshed, ...existing.filter(cow => !farmerIds.has(cow.farmerId) ||
+    (!cow.backendSynced && !incoming.some(item => item.farmerId === cow.farmerId && item.tagId === cow.tagId)))];
 }
 
 interface AavinStoreContextType extends AavinState {
   isLoading: boolean;
+  setCollectionData: (records: MilkRecord[], notifications: InAppNotification[]) => void;
+  cacheFarmer: (farmer: Farmer, cows?: Cow[]) => void;
+  cacheSociety: (society: Booth) => void;
+  replaceSocietyFarmers: (societyId: string, farmers: Farmer[], cows?: Cow[]) => void;
   // Farmer actions
   addFarmer: (
     farmerData: Omit<Farmer, 'id' | 'createdAt'>,
@@ -70,7 +105,7 @@ interface AavinStoreContextType extends AavinState {
   ) => Farmer;
   updateFarmer: (farmer: Farmer, updatedCows?: Cow[]) => void;
   verifyFarmer: (farmerId: string, status: 'verified' | 'pending') => void;
-  
+
   // Cow actions
   addCow: (cowData: Omit<Cow, 'id' | 'createdAt' | 'medicalHistory' | 'vaccinationHistory' | 'inseminationHistory' | 'treatmentRecords'>) => Cow;
   updateCow: (cow: Cow) => void;
@@ -84,28 +119,16 @@ interface AavinStoreContextType extends AavinState {
   recordMilk: (record: Omit<MilkRecord, 'id' | 'createdAt' | 'status'>) => MilkRecord;
   updateMilkRecord: (recordId: string, newQty: number, reason: string, user: string) => void;
 
-  // Booth actions
-  createBoothReceipt: (
-    boothId: string, 
-    bmcId: string, 
-    collectionDate: string, 
-    session: 'morning' | 'evening' | 'full_day',
-    includedRecordIds: string[], 
-    createdBy: string, 
-    notes?: string
-  ) => BoothReceipt;
-  sendBoothReceiptToBmc: (receiptId: string) => void;
-
   // BMC actions
   receiveBmcDelivery: (deliveryId: string, measuredQuantity: number, receivedBy: string) => { difference: number; isMismatch: boolean };
   addInvestigationNote: (caseId: string, note: string, author: string, evidenceReference?: string) => void;
   resolveDiscrepancyCase: (caseId: string, resolutionReason: string, resolvedBy: string) => void;
   escalateDiscrepancyCase: (caseId: string, reason: string) => void;
   createBmcReceipt: (
-    bmcId: string, 
-    unionId: string, 
-    collectionDate: string, 
-    includedDeliveryIds: string[], 
+    bmcId: string,
+    unionId: string,
+    collectionDate: string,
+    includedDeliveryIds: string[],
     createdBy: string,
     options?: {
       reportingPeriodType?: 'daily' | 'monthly' | 'custom';
@@ -215,6 +238,32 @@ interface AavinStoreContextType extends AavinState {
     activeDiscrepanciesCount: number;
     resolvedDiscrepanciesCount: number;
   };
+
+  // Morning & Evening Milk Monitoring actions
+  runBatchMonitoring: (societyId: string, batch: MonitoringBatch, date?: string) => Promise<FarmerBatchMonitoringResult[]>;
+  reviewMonitoringAlert: (alertId: string, reason: string, notes: string, reviewer: string) => void;
+  resolveMonitoringAlert: (alertId: string, resolutionNotes: string, reviewer: string) => void;
+  escalateMonitoringAlert: (alertId: string, notes: string, reviewer: string) => void;
+  updateMonitoringConfig: (config: Partial<MilkMonitoringConfig>) => void;
+  getSocietyMonitoringSummary: (societyId: string, date: string) => {
+    morning: FarmerBatchMonitoringResult[];
+    evening: FarmerBatchMonitoringResult[];
+    daily: FarmerDailyMonitoringSummary[];
+    alerts: MilkMonitoringAlert[];
+  };
+  getUnionMonitoringAlerts: (unionId?: string) => {
+    alerts: MilkMonitoringAlert[];
+    stats: {
+      totalAlerts: number;
+      morningWarnings: number;
+      eveningWarnings: number;
+      criticalAlerts: number;
+      persistentShortfalls: number;
+      missingRecords: number;
+      awaitingSocietyReview: number;
+      escalatedToUnion: number;
+    };
+  };
 }
 
 const initialSeedState: AavinState = {
@@ -224,13 +273,15 @@ const initialSeedState: AavinState = {
   bmcs: SEED_BMCS,
   union: SEED_UNION,
   vendors: SEED_VENDORS,
-  milkRecords: SEED_MILK_RECORDS,
+  milkRecords: [],
   boothReceipts: SEED_BOOTH_RECEIPTS,
   bmcDeliveries: SEED_BMC_DELIVERIES,
   discrepancyCases: SEED_DISCREPANCY_CASES,
   bmcReceipts: SEED_BMC_RECEIPTS,
   societyIncomeRecords: SEED_SOCIETY_INCOME,
-  notifications: SEED_NOTIFICATIONS,
+  notifications: [],
+  monitoringAlerts: [],
+  monitoringConfig: DEFAULT_MONITORING_CONFIG,
 };
 
 const AavinStoreContext = createContext<AavinStoreContextType | null>(null);
@@ -349,6 +400,8 @@ function sanitizeLoadedState(loadedState: AavinState): AavinState {
         boothName: replaceText(d.boothName),
       }));
     })(),
+    monitoringAlerts: loadedState.monitoringAlerts || [],
+    monitoringConfig: loadedState.monitoringConfig || DEFAULT_MONITORING_CONFIG,
   };
 }
 
@@ -366,11 +419,9 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
         if (saved) {
           const parsed = JSON.parse(saved);
-          const sanitized = sanitizeLoadedState(parsed);
+          const sanitized = sanitizeLoadedState({ ...parsed, milkRecords: [], notifications: [] });
           setState(sanitized);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
-        } else {
-          setState(initialSeedState);
         }
       } catch (err) {
         console.warn('Failed to load demo store state:', err);
@@ -385,11 +436,43 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const persistState = useCallback(async (newState: AavinState) => {
     setState(newState);
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...newState, milkRecords: [], notifications: [] }));
     } catch (err) {
       console.warn('Failed to persist demo store state:', err);
     }
   }, []);
+
+  // Backend records use server UUIDs; these helpers never create demo IDs.
+  const updateBackendCache = useCallback((update: (previous: AavinState) => AavinState) => {
+    setState(previous => {
+      const next = update(previous);
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, milkRecords: [], notifications: [] })).catch(err => console.warn('Backend cache save failed:', err));
+      return next;
+    });
+  }, []);
+  // Private server data is session-scoped and reloaded after authentication, never restored from demo storage.
+  const setCollectionData = useCallback((records: MilkRecord[], notifications: InAppNotification[]) => {
+    setState(previous => ({ ...previous, milkRecords: records, notifications }));
+  }, []);
+  const cacheFarmer = useCallback((farmer: Farmer, cows?: Cow[]) => updateBackendCache(previous => ({
+    ...previous,
+    farmers: [farmer, ...previous.farmers.filter(item => item.id !== farmer.id)],
+    cows: cows === undefined ? previous.cows : mergeRegisteredCows(previous.cows, cows, new Set([farmer.id])),
+  })), [updateBackendCache]);
+  const cacheSociety = useCallback((society: Booth) => updateBackendCache(previous => ({
+    ...previous, booths: [society, ...previous.booths.filter(item => item.id !== society.id)],
+  })), [updateBackendCache]);
+  const replaceSocietyFarmers = useCallback((societyId: string, records: Farmer[], cows?: Cow[]) => updateBackendCache(previous => {
+    const farmerIds = new Set([
+      ...records.map(farmer => farmer.id),
+      ...previous.farmers.filter(farmer => farmer.assignedBoothId === societyId).map(farmer => farmer.id),
+    ]);
+    return {
+      ...previous,
+      farmers: [...records, ...previous.farmers.filter(item => item.assignedBoothId !== societyId && !farmerIds.has(item.id))],
+      cows: cows === undefined ? previous.cows : mergeRegisteredCows(previous.cows, cows, farmerIds),
+    };
+  }), [updateBackendCache]);
 
   // 1. Farmer Actions
   const addFarmer = useCallback((
@@ -562,7 +645,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     // Update farmer cow count
-    const updatedFarmers = state.farmers.map(f => 
+    const updatedFarmers = state.farmers.map(f =>
       f.id === cowData.farmerId ? { ...f, numberOfCows: f.numberOfCows + 1 } : f
     );
 
@@ -697,75 +780,15 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state, persistState]);
 
   // 3. Milk Recording Actions
-  const recordMilk = useCallback((recordData: Omit<MilkRecord, 'id' | 'createdAt' | 'status'>): MilkRecord => {
-    if (recordData.quantityLitres <= 0 || isNaN(recordData.quantityLitres)) {
-      throw new Error('Recorded milk quantity must be greater than zero.');
-    }
-
-    // Check duplicate submission
-    if (recordData.measurementMethod === 'farmer_wise' && recordData.farmerId) {
-      const isDuplicate = state.milkRecords.some(
-        r => r.farmerId === recordData.farmerId &&
-             r.collectionDate === recordData.collectionDate &&
-             r.session === recordData.session
-      );
-      if (isDuplicate) {
-        throw new Error(`A milk entry for this farmer on ${recordData.collectionDate} (${recordData.session}) already exists.`);
-      }
-    }
-
-    const newRecord: MilkRecord = {
-      ...recordData,
-      id: `MR-${Date.now()}`,
-      status: 'recorded',
-      createdAt: new Date().toISOString(),
-    };
-
-    const notifs: InAppNotification[] = [];
-    if (newRecord.farmerId) {
-      notifs.push({
-        id: `NOTIF-MILK-${Date.now()}`,
-        recipientRole: 'farmer',
-        recipientId: newRecord.farmerId,
-        title: 'Milk Supply Recorded',
-        message: `Your ${newRecord.session} supply of ${newRecord.quantityLitres.toFixed(2)} Litres was recorded at the society.`,
-        type: 'milk_recorded',
-        timestamp: 'Just now',
-        isRead: false,
-        linkRoute: '/(farmer)/milk-history',
-      });
-    }
-
-    const updated = {
-      ...state,
-      milkRecords: [newRecord, ...state.milkRecords],
-      notifications: [...notifs, ...state.notifications],
-    };
-    persistState(updated);
-
-    // Background sync to backend MySQL
-    WorkflowApi.recordMilkTransaction({
-      farmerUserId: newRecord.farmerId,
-      farmerName: newRecord.farmerName,
-      boothId: newRecord.boothId,
-      collectionDate: newRecord.collectionDate,
-      session: newRecord.session,
-      quantityLitres: newRecord.quantityLitres,
-      route: newRecord.route,
-      vendorId: newRecord.vendorId,
-      vendorName: newRecord.vendorName,
-      measurementMethod: newRecord.measurementMethod,
-      notes: newRecord.notes,
-    }).catch(err => {
-      console.log('[WorkflowApi] Milk transaction persisted locally. Offline/mock mode:', err?.message || err);
-    });
-
-    return newRecord;
-  }, [state, persistState]);
+  // Production collections must be confirmed by MilkCollectionsApi. Never create local-only entries.
+  const recordMilk = useCallback((_recordData: Omit<MilkRecord, 'id' | 'createdAt' | 'status'>): MilkRecord => {
+    throw new Error('Milk collection must be recorded by your Society staff through the server-backed collection form.');
+  }, []);
 
   const updateMilkRecord = useCallback((recordId: string, newQty: number, reason: string, user: string) => {
     const existing = state.milkRecords.find(r => r.id === recordId);
     if (!existing) return;
+    if (existing.backendSynced) throw new Error('Saved collections are immutable.');
 
     const auditEntry = {
       timestamp: new Date().toISOString(),
@@ -786,126 +809,13 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     persistState(updated);
   }, [state, persistState]);
 
-  // 4. Society Actions
-  const createBoothReceipt = useCallback((
-    boothId: string, 
-    bmcId: string, 
-    collectionDate: string, 
-    session: 'morning' | 'evening' | 'full_day',
-    includedRecordIds: string[], 
-    createdBy: string, 
-    notes?: string
-  ): BoothReceipt => {
-    const booth = state.booths.find(b => b.id === boothId);
-    const bmc = state.bmcs.find(b => b.id === bmcId);
-
-    const records = state.milkRecords.filter(r => includedRecordIds.includes(r.id));
-    const totalQuantity = records.reduce((sum, r) => sum + r.quantityLitres, 0);
-
-    const farmerWiseRecords = records.filter(r => r.measurementMethod === 'farmer_wise');
-    const combinedRecords = records.filter(r => r.measurementMethod === 'combined');
-
-    let basis: 'farmer_wise' | 'combined' | 'mixed' = 'farmer_wise';
-    if (combinedRecords.length > 0 && farmerWiseRecords.length === 0) basis = 'combined';
-    else if (combinedRecords.length > 0 && farmerWiseRecords.length > 0) basis = 'mixed';
-
-    const uniqueFarmers = new Set(farmerWiseRecords.map(r => r.farmerId).filter(Boolean));
-
-    const receiptId = `BR-${collectionDate.replace(/-/g, '')}-${String(state.boothReceipts.length + 1).padStart(3, '0')}`;
-    const verificationCode = `VER-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const newReceipt: BoothReceipt = {
-      id: receiptId,
-      boothId,
-      boothName: booth?.name || 'Aavin Society',
-      bmcId,
-      bmcName: bmc?.name || 'Aavin BMC',
-      collectionDate,
-      session,
-      dispatchQuantity: parseFloat(totalQuantity.toFixed(2)),
-      measurementBasis: basis,
-      includedRecordIds,
-      totalRecordsCount: records.length,
-      totalFarmersCount: uniqueFarmers.size,
-      createdAt: new Date().toISOString(),
-      createdBy,
-      status: 'confirmed',
-      verificationCode,
-      notes,
-    };
-
-    // Mark milk records as included in receipt
-    const updatedMilkRecords = state.milkRecords.map(r => 
-      includedRecordIds.includes(r.id) ? { ...r, status: 'included_in_receipt' as const, receiptId } : r
-    );
-
-    const updated = {
-      ...state,
-      boothReceipts: [newReceipt, ...state.boothReceipts],
-      milkRecords: updatedMilkRecords,
-    };
-    persistState(updated);
-    return newReceipt;
-  }, [state, persistState]);
-
-  const sendBoothReceiptToBmc = useCallback((receiptId: string) => {
-    const receipt = state.boothReceipts.find(r => r.id === receiptId);
-    if (!receipt) return;
-
-    // Check if already sent
-    const existingDelivery = state.bmcDeliveries.find(d => d.boothReceiptId === receiptId);
-    if (existingDelivery) return;
-
-    const newDelivery: BMCDelivery = {
-      id: `DEL-${Date.now()}`,
-      boothReceiptId: receipt.id,
-      boothId: receipt.boothId,
-      boothName: receipt.boothName,
-      bmcId: receipt.bmcId,
-      collectionDate: receipt.collectionDate,
-      dispatchTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      declaredDispatchQuantity: receipt.dispatchQuantity,
-      status: 'pending_arrival',
-    };
-
-    const newNotification: InAppNotification = {
-      id: `NOTIF-DEL-BMC-${Date.now()}`,
-      recipientRole: 'bmc',
-      recipientId: receipt.bmcId,
-      title: 'New Dispatch Awaiting Receipt',
-      message: `${receipt.boothName} dispatched ${receipt.dispatchQuantity.toFixed(2)} Litres (Receipt #${receipt.id}). Ready for measurement entry.`,
-      type: 'delivery_pending',
-      timestamp: 'Just now',
-      isRead: false,
-      linkRoute: '/(bmc)/receive-milk',
-    };
-
-    const updated = {
-      ...state,
-      boothReceipts: state.boothReceipts.map(r => r.id === receiptId ? { ...r, status: 'sent_to_bmc' as const } : r),
-      bmcDeliveries: [newDelivery, ...state.bmcDeliveries],
-      notifications: [newNotification, ...state.notifications],
-    };
-    persistState(updated);
-
-    // Sync to backend
-    WorkflowApi.generateBoothReceipt({
-      boothId: receipt.boothId,
-      collectionDate: receipt.collectionDate,
-      session: receipt.session,
-      notes: receipt.notes,
-    }).catch(err => {
-      console.log('[WorkflowApi] Society receipt dispatched locally. Offline/mock mode:', err?.message || err);
-    });
-  }, [state, persistState]);
-
   // 5. BMC Actions (Crucial Core Workflow!)
   const receiveBmcDelivery = useCallback((deliveryId: string, measuredQuantity: number, receivedBy: string) => {
     const delivery = state.bmcDeliveries.find(d => d.id === deliveryId);
     if (!delivery) throw new Error('Delivery record not found');
 
     const difference = parseFloat((delivery.declaredDispatchQuantity - measuredQuantity).toFixed(2));
-    const differencePercent = delivery.declaredDispatchQuantity > 0 
+    const differencePercent = delivery.declaredDispatchQuantity > 0
       ? parseFloat(((Math.abs(difference) / delivery.declaredDispatchQuantity) * 100).toFixed(2))
       : 0;
 
@@ -1114,10 +1024,10 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state, persistState]);
 
   const createBmcReceipt = useCallback((
-    bmcId: string, 
-    unionId: string, 
-    collectionDate: string, 
-    includedDeliveryIds: string[], 
+    bmcId: string,
+    unionId: string,
+    collectionDate: string,
+    includedDeliveryIds: string[],
     createdBy: string,
     options?: {
       reportingPeriodType?: 'daily' | 'monthly' | 'custom';
@@ -1354,7 +1264,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const reviewBmcReceipt = useCallback((receiptId: string, reviewNotes: string, reviewedBy: string, status?: BMCReportStatus) => {
     const finalStatus: BMCReportStatus = status || 'reviewed_by_union';
     const report = state.bmcReceipts.find(r => r.id === receiptId);
-    
+
     const updatedReceipts = state.bmcReceipts.map(r => r.id === receiptId ? {
       ...r,
       status: finalStatus,
@@ -1411,7 +1321,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const markAllNotificationsAsRead = useCallback((role?: UserRole) => {
     const updated = {
       ...state,
-      notifications: state.notifications.map(n => 
+      notifications: state.notifications.map(n =>
         (!role || n.recipientRole === role) ? { ...n, isRead: true } : n
       ),
     };
@@ -1435,21 +1345,21 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // 9. Selectors
   const getFarmerStats = useCallback((farmerId: string) => {
     const farmerRecords = state.milkRecords.filter(r => r.farmerId === farmerId);
-    const today = '2026-10-12';
-    
+    const today = indiaDate();
+
     // Today's
     const todaySupply = farmerRecords
       .filter(r => r.collectionDate === today)
       .reduce((sum, r) => sum + r.quantityLitres, 0);
 
-    // Month (2026-10)
+    // Current India month
     const monthSupply = farmerRecords
-      .filter(r => r.collectionDate.startsWith('2026-10'))
+      .filter(r => r.collectionDate.startsWith(today.slice(0, 7)))
       .reduce((sum, r) => sum + r.quantityLitres, 0);
 
     // Last 7 days
     const last7DaysSupply = farmerRecords
-      .slice(0, 14) // sample
+      .filter(r => r.collectionDate >= daysBefore(today, 6) && r.collectionDate <= today)
       .reduce((sum, r) => sum + r.quantityLitres, 0);
 
     const farmerCows = state.cows.filter(c => c.farmerId === farmerId);
@@ -1465,7 +1375,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state]);
 
   const getBoothStats = useCallback((boothId: string) => {
-    const today = '2026-10-12';
+    const today = indiaDate();
     const records = state.milkRecords.filter(r => r.boothId === boothId && r.collectionDate === today);
 
     const farmerWiseRecords = records.filter(r => r.measurementMethod === 'farmer_wise');
@@ -1619,7 +1529,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .reduce((sum, i) => sum + i.amountInr, 0);
 
     // Amount reported to Union through submitted receipts
-    const relevantReceipts = state.bmcReceipts.filter(r => 
+    const relevantReceipts = state.bmcReceipts.filter(r =>
       r.status === 'sent_to_union' || r.status === 'under_review' || r.status === 'reviewed_by_union'
     );
     let amountReportedToUnion = 0;
@@ -1632,7 +1542,7 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ? deliveries[0].collectionDate
       : societyRecords.length > 0 ? societyRecords[0].collectionDate : 'None';
 
-    const reconciliationStatus: 'reconciled' | 'variance' | 'pending' = 
+    const reconciliationStatus: 'reconciled' | 'variance' | 'pending' =
       deliveries.length === 0 ? 'pending' : (activeDiscrepancies.length > 0 || Math.abs(differenceLitres) > 5 ? 'variance' : 'reconciled');
 
     return {
@@ -1680,11 +1590,272 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [state]);
 
+  const runBatchMonitoring = useCallback(async (
+    societyId: string,
+    batch: MonitoringBatch,
+    date?: string
+  ): Promise<FarmerBatchMonitoringResult[]> => {
+    const targetDate = date || indiaDate();
+    if (!state.monitoringConfig.enabled) {
+      return [];
+    }
+
+    try {
+      const society = state.booths.find(b => b.id === societyId);
+      const societyName = society ? society.name : `Society ${societyId}`;
+
+      const batchResults = BatchMilkMonitoringService.monitorSocietyBatch(
+        societyId,
+        state.farmers,
+        state.cows,
+        state.milkRecords,
+        batch,
+        targetDate,
+        state.monitoringConfig
+      );
+
+      // Process alerts idempotently
+      let currentAlerts = [...state.monitoringAlerts];
+      let collectedNotifs: InAppNotification[] = [];
+
+      for (const res of batchResults) {
+        const { updatedAlerts, newNotifications } = LowSupplyAlertService.processBatchAlert(
+          res,
+          societyName,
+          currentAlerts,
+          state.monitoringAlerts,
+          state.monitoringConfig
+        );
+        currentAlerts = updatedAlerts;
+        collectedNotifs = [...collectedNotifs, ...newNotifications];
+      }
+
+      setState(prev => {
+        const nextState = {
+          ...prev,
+          monitoringAlerts: currentAlerts,
+          notifications: [...collectedNotifs, ...prev.notifications],
+        };
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+        return nextState;
+      });
+
+      return batchResults;
+    } catch (err) {
+      console.warn('Monitoring service error isolated:', err);
+      return [];
+    }
+  }, [state]);
+
+  const reviewMonitoringAlert = useCallback((
+    alertId: string,
+    reason: string,
+    notes: string,
+    reviewer: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    setState(prev => {
+      const updated = prev.monitoringAlerts.map(alert => {
+        if (alert.id !== alertId) return alert;
+        return {
+          ...alert,
+          status: 'investigating' as const,
+          reviewReason: reason,
+          reviewNotes: notes,
+          reviewedBy: reviewer,
+          reviewedAt: timestamp,
+          updatedAt: timestamp,
+          auditTrail: [
+            ...alert.auditTrail,
+            {
+              timestamp,
+              action: 'SOCIETY_REVIEWED',
+              actor: reviewer,
+              details: `Investigation recorded. Reason: ${reason}. Notes: ${notes}`,
+            },
+          ],
+        };
+      });
+      const nextState = { ...prev, monitoringAlerts: updated };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const resolveMonitoringAlert = useCallback((
+    alertId: string,
+    resolutionNotes: string,
+    reviewer: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    setState(prev => {
+      const updated = prev.monitoringAlerts.map(alert => {
+        if (alert.id !== alertId) return alert;
+        return {
+          ...alert,
+          status: 'resolved' as const,
+          resolutionNotes,
+          resolvedBy: reviewer,
+          resolvedAt: timestamp,
+          updatedAt: timestamp,
+          auditTrail: [
+            ...alert.auditTrail,
+            {
+              timestamp,
+              action: 'MANUAL_RESOLVED',
+              actor: reviewer,
+              details: `Alert resolved: ${resolutionNotes}`,
+            },
+          ],
+        };
+      });
+      const nextState = { ...prev, monitoringAlerts: updated };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const escalateMonitoringAlert = useCallback((
+    alertId: string,
+    notes: string,
+    reviewer: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    setState(prev => {
+      let escalatedAlert: MilkMonitoringAlert | undefined;
+      const updated = prev.monitoringAlerts.map(alert => {
+        if (alert.id !== alertId) return alert;
+        escalatedAlert = {
+          ...alert,
+          status: 'escalated_to_union' as const,
+          isEscalatedToUnion: true,
+          escalatedAt: timestamp,
+          reviewNotes: notes ? `${alert.reviewNotes || ''}\nEscalation note: ${notes}`.trim() : alert.reviewNotes,
+          updatedAt: timestamp,
+          auditTrail: [
+            ...alert.auditTrail,
+            {
+              timestamp,
+              action: 'MANUAL_ESCALATED_TO_UNION',
+              actor: reviewer,
+              details: `Escalated to Union: ${notes}`,
+            },
+          ],
+        };
+        return escalatedAlert;
+      });
+
+      const newNotifs = [...prev.notifications];
+      if (escalatedAlert) {
+        newNotifs.unshift({
+          id: `NOTIF-ESC-${alertId}-${Date.now()}`,
+          recipientRole: 'union',
+          title: `Escalated Milk Shortfall: ${escalatedAlert.farmerName} (${escalatedAlert.societyName})`,
+          message: `${escalatedAlert.batch.toUpperCase()} batch shortfall: ${escalatedAlert.actualLitres} L vs ${escalatedAlert.expectedLitres} L. Notes: ${notes}`,
+          type: 'union_escalation',
+          timestamp,
+          isRead: false,
+          referenceId: alertId,
+          linkRoute: '/(union)',
+        });
+      }
+
+      const nextState = { ...prev, monitoringAlerts: updated, notifications: newNotifs };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const updateMonitoringConfig = useCallback((config: Partial<MilkMonitoringConfig>) => {
+    setState(prev => {
+      const nextConfig = { ...prev.monitoringConfig, ...config };
+      const nextState = { ...prev, monitoringConfig: nextConfig };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextState)).catch(() => {});
+      return nextState;
+    });
+  }, []);
+
+  const getSocietyMonitoringSummary = useCallback((societyId: string, date: string) => {
+    const targetDate = date || indiaDate();
+    const morningResults = BatchMilkMonitoringService.monitorSocietyBatch(
+      societyId,
+      state.farmers,
+      state.cows,
+      state.milkRecords,
+      'morning',
+      targetDate,
+      state.monitoringConfig
+    );
+
+    const eveningResults = BatchMilkMonitoringService.monitorSocietyBatch(
+      societyId,
+      state.farmers,
+      state.cows,
+      state.milkRecords,
+      'evening',
+      targetDate,
+      state.monitoringConfig
+    );
+
+    const dailySummaries = morningResults.map((m, idx) => {
+      const e = eveningResults[idx] || eveningResults.find(r => r.farmerId === m.farmerId) || m;
+      return BatchMilkMonitoringService.calculateDailySummary(m, e);
+    });
+
+    const societyAlerts = state.monitoringAlerts.filter(
+      a => a.societyId === societyId && a.collectionDate === targetDate
+    );
+
+    return {
+      morning: morningResults,
+      evening: eveningResults,
+      daily: dailySummaries,
+      alerts: societyAlerts,
+    };
+  }, [state]);
+
+  const getUnionMonitoringAlerts = useCallback((unionId?: string) => {
+    let alerts = state.monitoringAlerts;
+    if (unionId) {
+      const linkedBmcIds = state.bmcs.map(b => b.id);
+      const linkedSocietyIds = state.booths
+        .filter(b => linkedBmcIds.includes(b.assignedBmcId))
+        .map(b => b.id);
+      alerts = alerts.filter(a => linkedSocietyIds.includes(a.societyId));
+    }
+
+    const morningWarnings = alerts.filter(a => a.batch === 'morning' && a.severity === 'warning').length;
+    const eveningWarnings = alerts.filter(a => a.batch === 'evening' && a.severity === 'warning').length;
+    const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
+    const persistentShortfalls = alerts.filter(a => a.severity === 'persistent').length;
+    const missingRecords = alerts.filter(a => a.severity === 'no_record').length;
+    const awaitingSocietyReview = alerts.filter(a => a.status === 'active' && !a.reviewReason).length;
+    const escalatedToUnion = alerts.filter(a => a.isEscalatedToUnion && a.status !== 'resolved').length;
+
+    return {
+      alerts,
+      stats: {
+        totalAlerts: alerts.length,
+        morningWarnings,
+        eveningWarnings,
+        criticalAlerts,
+        persistentShortfalls,
+        missingRecords,
+        awaitingSocietyReview,
+        escalatedToUnion,
+      },
+    };
+  }, [state]);
+
   return (
     <AavinStoreContext.Provider
       value={{
         ...state,
         isLoading,
+        setCollectionData,
+        cacheFarmer,
+        cacheSociety,
+        replaceSocietyFarmers,
         addFarmer,
         updateFarmer,
         verifyFarmer,
@@ -1697,8 +1868,6 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addTreatmentRecord,
         recordMilk,
         updateMilkRecord,
-        createBoothReceipt,
-        sendBoothReceiptToBmc,
         receiveBmcDelivery,
         addInvestigationNote,
         resolveDiscrepancyCase,
@@ -1718,6 +1887,13 @@ export const AavinStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getBmcStats,
         getSocietyDetailedStats,
         getUnionStats,
+        runBatchMonitoring,
+        reviewMonitoringAlert,
+        resolveMonitoringAlert,
+        escalateMonitoringAlert,
+        updateMonitoringConfig,
+        getSocietyMonitoringSummary,
+        getUnionMonitoringAlerts,
       }}
     >
       {children}

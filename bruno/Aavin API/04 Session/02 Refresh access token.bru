@@ -1,0 +1,47 @@
+meta {
+  name: 02 Refresh access token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/refresh
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "refreshToken": "{{refreshToken}}"
+  }
+}
+
+script:pre-request {
+  if (!bru.getVar("refreshToken")) throw new Error("Log in before refreshing.");
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const token = res.getBody().data.accessToken;
+    bru.setVar("accessToken", token);
+    const role = bru.getVar("activeRole");
+    if (role) bru.setVar(role + "AccessToken", token);
+  }
+}
+
+tests {
+  test("Expected HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Successful API response", function () {
+    expect(res.getBody().success).to.equal(true);
+  });
+}
+
+docs {
+  Refreshes the active session and updates its role-specific access token.
+}

@@ -1,79 +1,39 @@
-# Aavin Smart Cattle Passport — Milk Safety Twin Architecture
+# Current architecture
 
-## System Architecture Overview
+The Expo frontend calls Django REST Framework on port 4000. PostgreSQL stores
+phone/password authentication, role accounts, farmer/cattle details, milk intake,
+attendance, dispatch receipts, and the linked BMC inbox.
 
-The **Aavin Smart Cattle Passport (Milk Safety Twin)** is a dairy ecosystem designed for Madurai District Milk Union, Tamil Nadu. It seamlessly connects six distinct actors:
-1. **Farmers / Cattle Owners**
-2. **Veterinary Doctors**
-3. **Collection Centre Operators**
-4. **Milk Transport Vendors**
-5. **Aavin Central Administrators**
-6. **Backend AI Advisory Intelligence**
+The backend has five domain owners:
 
-```
- ┌─────────────────┐       ┌─────────────────┐       ┌──────────────────┐
- │  Farmer Mobile  │       │ Veterinary App  │       │ Collection Centre│
- │  (My Cows & QR) │       │ (Rx & Withdrawal│       │ (Intake Analyzer)│
- └────────┬────────┘       └────────┬────────┘       └────────┬─────────┘
-          │                         │                         │
-          └─────────────────────────┼─────────────────────────┘
-                                    │ (REST API / JWT)
-                                    ▼
-                 ┌──────────────────────────────────────┐
-                 │  Node.js Express TypeScript Backend  │
-                 │             (Port 4000)              │
-                 ├──────────────────────────────────────┤
-                 │ • Deterministic Safety Twin Engine   │
-                 │ • 15-Day Payment Calculation Engine  │
-                 │ • Role & Record Authorization Guard  │
-                 │ • AI Provider Service (OpenRouter/Own│
-                 │ • Centralized Audit Ledger           │
-                 └──────────────────┬───────────────────┘
-                                    │
-                                    ▼
-                 ┌──────────────────────────────────────┐
-                 │  MySQL Relational Database (XAMPP)   │
-                 │         (Database: aavin_milkflow)   │
-                 │      40 InnoDB Relational Tables     │
-                 └──────────────────────────────────────┘
-```
+| Domain | Models and responsibility |
+| --- | --- |
+| `accounts` (Auth) | Django `User`, credentials, phone, JWT sessions, role registration, shared account transport. |
+| `unions` | `Union`, the root of the account hierarchy. |
+| `bmcs` | `BMC`, Union membership, incoming `BMCDelivery`. |
+| `societies` | `Society`, BMC membership, farmer/vendor milk, vendors, attendance, dispatch receipts and items. |
+| `farmers` | `Farmer`, Society membership, personal/bank/KYC fields, `Cow`, private collection notifications. |
 
----
+`Union → BMC → Society → Farmer` uses explicit foreign keys between typed models.
+Each role record has a one-to-one authentication account and shares its UUID.
+Authentication `parent` is retained for the existing API contract and synchronized
+atomically with the typed relationship. Existing account roles cannot change.
 
-## The Milk Safety Twin Engine (Central Business Logic)
+Business ownership points to typed Farmer, Society, and BMC models. Audit creators
+and notification recipients point to authentication accounts. Querysets enforce
+ownership at the server; caller-supplied IDs cannot widen access.
 
-The Safety Twin connects four critical domains into a deterministic, explainable decision matrix:
-- **Domain A: Animal Health Profile**
-- **Domain B: Veterinary Clinical Treatment & Active Withdrawal Enforcement**
-- **Domain C: Physical Milk Analyzer Quality Readings (FAT %, SNF %, Temp, Density, Adulteration)**
-- **Domain D: Collection & Pooling Authorization**
+Existing frontend response shapes and URLs remain compatible. Farmer enrollment
+uses the canonical `/api/v1/farmers` endpoint; `/api/v1/auth/register` continues to
+create the appropriate role record for existing clients. See [all endpoint owners](domain-models.md).
 
-### Decision Outcomes
+The old `accounts.FarmerProfile`, `accounts.Cow`, `collections.*`, and `dispatch.*`
+models no longer register at runtime. The retired top-level `dispatch` package is removed; its migrations live under
+`accounts/migration_history/dispatch` with the original label, so existing
+databases can upgrade. The role transition migration copies farmer
+profiles, adopts existing business tables, rebinds their foreign keys, maps Django
+permissions, and removes the old profile table. User UUIDs, password hashes, JWT
+references, and business IDs stay unchanged.
 
-1. **CLEAR:**
-   - No active veterinary withdrawal restriction in force.
-   - FAT % meets standard ($\ge 3.50\%$).
-   - SNF % meets standard ($\ge 8.50\%$).
-   - Temperature is chilled ($\le 12.0^\circ\text{C}$).
-   - Adulteration chemical screen is negative.
-   - **Result:** Milk is accepted into the collection pool, payment calculated with quality incentive.
-
-2. **REVIEW:**
-   - Any quality parameter falls in the configured review warning boundary (e.g. FAT $3.00\% - 3.49\%$, SNF $8.00\% - 8.49\%$, or elevated intake temperature).
-   - Flagged for operator review and supervisor audit queue.
-
-3. **HOLD:**
-   - **Mandatory Safety Hold:** Active veterinary antibiotic withdrawal period detected.
-   - **Quality Hold:** Adulteration detected or FAT/SNF below critical minimums ($<3.0\% / <8.0\%$).
-   - **Result:** Milk is strictly held. Payable amount is set to ₹0.00. Operators cannot override a HOLD without an authorized, audited review workflow.
-
----
-
-## AI Architecture (OpenRouter & Own AI API with Non-Silent Fallback)
-
-- **Backend-Controlled:** Mobile clients never store AI API keys or select model endpoints directly.
-- **Provider Switching:** Backend supports `AI_PROVIDER = 'openrouter' | 'own_api' | 'disabled'`.
-- **Automatic Fallback:** `AI_FALLBACK_ENABLED=false` by default. When enabled by an administrator:
-  - Triggers only on network failure, 5xx server errors, or timeouts.
-  - **Never silent:** Emits an entry to `ai_usage_logs` detailing the primary error and fallback trigger, creates an admin notification, and marks the response with `isFallback: true`.
-- **Safety Isolation:** AI is strictly barred from diagnosing cattle, prescribing medication, calculating payments, or overriding CLEAR/REVIEW/HOLD decisions.
+Clinical records, payments, cattle verification, and AI workflows retain local/demo
+behavior. The earlier Node/MySQL backend remains an archive under `legacy/`.

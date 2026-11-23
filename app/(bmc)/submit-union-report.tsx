@@ -19,6 +19,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { BMCReceipt, BMCReportStatus } from '../../types/aavin';
+import { goBackOrReplace } from '../../services/navigation';
 
 export default function SubmitUnionReportScreen() {
   const router = useRouter();
@@ -195,8 +196,8 @@ export default function SubmitUnionReportScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DemoHeader 
-        title="Submit to Union"
-        subtitle={`${bmc.name} • Official Union Consolidation Gateway`}
+        title="Union report"
+        subtitle={`${bmc.name} • Prepare, review and send your report`}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -204,11 +205,13 @@ export default function SubmitUnionReportScreen() {
         <View style={styles.topNavRow}>
           <Pressable 
             style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]} 
-            onPress={() => router.back()}
+            onPress={() => goBackOrReplace(router, '/(bmc)/operations')}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={18} color={colors.text} />
             <Text style={[Typography.subhead, { color: colors.text, fontWeight: '700', marginLeft: 6 }]}>
-              Dashboard
+              Back
             </Text>
           </Pressable>
 
@@ -343,7 +346,7 @@ export default function SubmitUnionReportScreen() {
               </View>
 
               <Button
-                title="Review Consolidated Report Preview →"
+                title="Review report"
                 size="lg"
                 style={{ marginTop: 16 }}
                 onPress={() => setStep('preview')}
@@ -412,7 +415,7 @@ export default function SubmitUnionReportScreen() {
                 onPress={() => setStep('configure')}
               />
               <Button
-                title={isSubmitting ? 'Transmitting...' : '🚀 Final Submit to Union'}
+                title={isSubmitting ? 'Sending report...' : 'Send report to union'}
                 size="md"
                 style={{ flex: 2 }}
                 disabled={isSubmitting}
@@ -449,10 +452,10 @@ export default function SubmitUnionReportScreen() {
             </View>
 
             <Button
-              title="Return to BMC Dashboard"
+              title="Back to reports & payments"
               size="lg"
               style={{ width: '100%', marginTop: 20 }}
-              onPress={() => router.push('/(bmc)')}
+              onPress={() => router.replace('/(bmc)/operations')}
             />
           </Card>
         )}

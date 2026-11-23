@@ -28,7 +28,7 @@ export default function FarmerProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DemoHeader 
+      <DemoHeader
         title="Farmer Profile & KYC"
         subtitle={`ID: ${farmer.farmerIdCode} • ${farmer.verificationStatus.toUpperCase()}`}
         showBack
@@ -49,19 +49,19 @@ export default function FarmerProfileScreen() {
                 {farmer.farmerIdCode}
               </Text>
               <View style={[
-                styles.badge, 
-                { backgroundColor: farmer.verificationStatus === 'verified' 
-                  ? (isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7') 
-                  : (isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7') 
+                styles.badge,
+                { backgroundColor: farmer.verificationStatus === 'verified'
+                  ? (isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7')
+                  : (isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7')
                 }
               ]}>
-                <Ionicons 
-                  name={farmer.verificationStatus === 'verified' ? 'checkmark-circle' : 'time'} 
-                  size={14} 
-                  color={farmer.verificationStatus === 'verified' ? (isDark ? '#4ADE80' : '#15803D') : (isDark ? '#FBBF24' : '#B45309')} 
+                <Ionicons
+                  name={farmer.verificationStatus === 'verified' ? 'checkmark-circle' : 'time'}
+                  size={14}
+                  color={farmer.verificationStatus === 'verified' ? (isDark ? '#4ADE80' : '#15803D') : (isDark ? '#FBBF24' : '#B45309')}
                 />
                 <Text style={[
-                  styles.badgeText, 
+                  styles.badgeText,
                   { color: farmer.verificationStatus === 'verified' ? (isDark ? '#4ADE80' : '#15803D') : (isDark ? '#FBBF24' : '#B45309') }
                 ]}>
                   {farmer.verificationStatus === 'verified' ? 'Aavin Verified Member' : 'Pending Verification'}
